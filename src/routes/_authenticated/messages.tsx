@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { MessageSquare } from "lucide-react";
@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_authenticated/messages")({
 function MessagesLayout() {
   const { user } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const activeThread = pathname.startsWith("/messages/") ? pathname.split("/")[2] : null;
+  const activeThread = pathname.startsWith("/messages/") ? pathname.split("/")[2] || null : null;
 
   const { data: conversations, isLoading } = useQuery({
     queryKey: ["conversations", user?.id],
@@ -26,10 +26,9 @@ function MessagesLayout() {
       const { data, error } = await supabase
         .from("conversations")
         .select(`
-          id, last_message_at, campaign_id,
-          advertiser:advertiser_id(display_name, avatar_url),
-          creator:creator_id(display_name, avatar_url),
-          advertiser_id, creator_id,
+          id, last_message_at, campaign_id, advertiser_id, creator_id,
+          advertiser:profiles!conversations_advertiser_profile_fkey(display_name, avatar_url),
+          creator:profiles!conversations_creator_profile_fkey(display_name, avatar_url),
           campaigns(title)
         `)
         .or(`advertiser_id.eq.${user!.id},creator_id.eq.${user!.id}`)
@@ -38,23 +37,6 @@ function MessagesLayout() {
       return data;
     },
   });
-
-  const ChildOutlet = () => {
-    // child route renders its own content; when standalone visiting /messages, show prompt
-    if (!activeThread) {
-      return (
-        <div className="hidden md:flex flex-1 items-center justify-center">
-          <EmptyState
-            icon={MessageSquare}
-            title="Pick a conversation"
-            description="Your messages with brands and creators live here."
-            className="border-0"
-          />
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <div className="h-[calc(100vh-9rem)] -my-4 flex rounded-2xl border border-border overflow-hidden bg-card">
@@ -66,9 +48,7 @@ function MessagesLayout() {
           {isLoading ? (
             <div className="p-3"><ListSkeleton rows={6} /></div>
           ) : !conversations || conversations.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">
-              No conversations yet.
-            </div>
+            <div className="p-6 text-center text-sm text-muted-foreground">No conversations yet.</div>
           ) : (
             <ul className="p-2">
               {conversations.map((c: any) => {
@@ -108,16 +88,19 @@ function MessagesLayout() {
         </div>
       </aside>
       <div className="flex-1 flex flex-col min-w-0">
-        <ChildOutlet />
-        {/* TanStack Outlet for child thread */}
-        <ThreadOutlet />
+        {activeThread ? (
+          <Outlet />
+        ) : (
+          <div className="hidden md:flex flex-1 items-center justify-center">
+            <EmptyState
+              icon={MessageSquare}
+              title="Pick a conversation"
+              description="Your messages with brands and creators live here."
+              className="border-0 bg-transparent"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
-}
-
-function ThreadOutlet() {
-  // Use of Outlet from tanstack
-  const Outlet = require("@tanstack/react-router").Outlet;
-  return <Outlet />;
 }
