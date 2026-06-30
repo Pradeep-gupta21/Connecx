@@ -245,7 +245,7 @@ function ApplicationStatusSelect({ applicationId, status, campaignId }: { applic
     onError: (e: Error) => toast.error(e.message),
   });
   return (
-    <Select value={status} onValueChange={(v) => m.mutate(v)}>
+    <Select value={status} onValueChange={(v) => m.mutate(v as "pending" | "accepted" | "rejected" | "withdrawn")}>
       <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
       <SelectContent>
         <SelectItem value="pending">Pending</SelectItem>
