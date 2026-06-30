@@ -9,7 +9,6 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { VisuallyHidden } from "@radix-ui/react-dialog";
 import {
   Bell,
   Compass,
@@ -47,10 +46,8 @@ export function CommandPalette() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="overflow-hidden p-0 max-w-[600px]" showCloseButton={false}>
-        <VisuallyHidden>
-          <DialogTitle>Command palette</DialogTitle>
-        </VisuallyHidden>
+      <DialogContent className="overflow-hidden p-0 max-w-[600px]">
+        <DialogTitle className="sr-only">Command palette</DialogTitle>
         <Command className="[&_[cmdk-input-wrapper]]:border-b [&_[cmdk-input-wrapper]]:border-border">
           <CommandInput placeholder="Search or jump to..." />
           <CommandList>
