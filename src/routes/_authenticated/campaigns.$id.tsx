@@ -167,7 +167,10 @@ function CampaignDetail() {
                           variant="ghost"
                           size="sm"
                           className="gap-2"
-                          onClick={() => startConvoFromApp(a, c.id).then((tid) => tid && navigate({ to: "/messages/$threadId", params: { threadId: tid } }))}
+                          onClick={async () => {
+                            const tid = await startConvoFromApp(a, c.id);
+                            if (tid) navigate({ to: "/messages/$threadId", params: { threadId: tid } });
+                          }}
                         >
                           <MessageSquare className="h-3.5 w-3.5" /> Message
                         </Button>
@@ -231,7 +234,7 @@ function ApplyDialog({ campaignId }: { campaignId: string }) {
 function ApplicationStatusSelect({ applicationId, status, campaignId }: { applicationId: string; status: string; campaignId: string }) {
   const qc = useQueryClient();
   const m = useMutation({
-    mutationFn: async (s: string) => {
+    mutationFn: async (s: "pending" | "accepted" | "rejected" | "withdrawn") => {
       const { error } = await supabase.from("applications").update({ status: s }).eq("id", applicationId);
       if (error) throw error;
     },
@@ -239,7 +242,7 @@ function ApplicationStatusSelect({ applicationId, status, campaignId }: { applic
       qc.invalidateQueries({ queryKey: ["campaign-apps", campaignId] });
       toast.success("Status updated");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
   return (
     <Select value={status} onValueChange={(v) => m.mutate(v)}>
