@@ -325,33 +325,39 @@ export type Database = {
           active_role: Database["public"]["Enums"]["app_role"] | null
           avatar_url: string | null
           bio: string | null
+          country: string | null
           created_at: string
           display_name: string | null
           id: string
           location: string | null
           onboarded: boolean
+          phone: string | null
           updated_at: string
         }
         Insert: {
           active_role?: Database["public"]["Enums"]["app_role"] | null
           avatar_url?: string | null
           bio?: string | null
+          country?: string | null
           created_at?: string
           display_name?: string | null
           id: string
           location?: string | null
           onboarded?: boolean
+          phone?: string | null
           updated_at?: string
         }
         Update: {
           active_role?: Database["public"]["Enums"]["app_role"] | null
           avatar_url?: string | null
           bio?: string | null
+          country?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
           location?: string | null
           onboarded?: boolean
+          phone?: string | null
           updated_at?: string
         }
         Relationships: []
