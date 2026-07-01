@@ -1,110 +1,90 @@
-# BrandBridge — Build Plan
+## Auth upgrade plan
 
-A two-sided marketplace connecting advertisers with creators. Production-ready MVP, premium handcrafted UI, external Supabase backend.
+Extend the current auth with signup fields (country, phone, primary role), required email verification, forgot password, role-based redirect, and a profile-completion flow. Keep the existing dual-role workspace model — signup picks the *primary* role, users can add the second role later in Settings.
 
-## 1. Design first (3 directions)
+### 1. Database
 
-Before any code, I'll render 3 distinct design directions — all locked to your palette/fonts:
+Migration adds two columns to `profiles`:
+- `country text`
+- `phone text`
 
-- Fonts: Inter (body) + Manrope (display), loaded via `@fontsource`
-- Primary `#111827`, Accent `#4F46E5`, Secondary `#F5F7FA`
-- Light + dark mode, large whitespace, soft shadows, rounded corners
-- No rainbow gradients, no excessive blue, no generic AI dashboard look
+No other schema changes (roles already live in `user_roles`, primary role tracked in `profiles.active_role`, `onboarded` flag already exists).
 
-The 3 directions will vary composition/density/motion register (e.g. editorial-quiet à la Linear, dense command-center à la Raycast/Vercel, warm-marketplace à la Airbnb-meets-Notion). You pick one, I build it across every surface.
+### 2. Signup form (`/auth`)
 
-## 2. Connecting your external Supabase
+Replace current sign-up tab fields with:
+- Full name
+- Email
+- Password (+ confirm)
+- Primary role — segmented control: Creator / Advertiser
+- Country — searchable select (ISO country list)
+- Phone — input with country dial-code prefix based on selected country (stored E.164-ish, no SMS)
 
-You'll provide three values via the secrets form after plan approval:
+On submit:
+1. `supabase.auth.signUp` with `emailRedirectTo: ${origin}/auth/callback`, metadata carries `full_name`, `role`, `country`, `phone`.
+2. Show "Check your inbox" screen — do NOT navigate into the app.
 
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_PUBLISHABLE_KEY` (anon key)
-- `SUPABASE_SERVICE_ROLE_KEY` (server-only, for admin tasks)
+Update the `handle_new_user` trigger to also copy `country`, `phone`, `active_role` from `raw_user_meta_data` into `profiles`, and insert the chosen role into `user_roles`.
 
-I'll wire a typed Supabase client, set up Auth (email/password + Google), and run all schema as SQL migrations you can copy into your Supabase SQL editor (or I'll run via the service role).
+### 3. Email verification (required)
 
-## 3. Data model (Postgres + RLS)
+- New public route `/auth/callback` — parses Supabase hash tokens, calls `setSession`, then routes based on `active_role`.
+- Managed `_authenticated` gate additionally checks `user.email_confirmed_at`. If null → redirect to `/auth/verify-email` (public route showing "Verify your inbox" + "Resend email" button using `supabase.auth.resend`).
+- Enable Supabase auth email templates via the email-templates scaffold so the confirmation email is branded.
 
-```text
-profiles            (id=auth.uid, display_name, avatar_url, bio, location, active_role)
-user_roles          (user_id, role enum: advertiser | creator)  -- users can hold both
-creator_profiles    (user_id, headline, categories[], rate_min, rate_max, socials jsonb, portfolio_media[])
-advertiser_profiles (user_id, brand_name, website, industry, logo_url)
-campaigns           (id, advertiser_id, title, brief, budget_min, budget_max, category, status, deadline)
-applications        (id, campaign_id, creator_id, pitch, status: pending|accepted|rejected, created_at)
-conversations       (id, campaign_id nullable, advertiser_id, creator_id) UNIQUE pair
-messages            (id, conversation_id, sender_id, body, read_at, created_at)
-notifications       (id, user_id, type, payload jsonb, read_at)
+### 4. Forgot password
+
+- Link on sign-in tab → `/auth/forgot-password` (public): email input → `resetPasswordForEmail(email, { redirectTo: ${origin}/auth/reset-password })`.
+- `/auth/reset-password` (public): detects `type=recovery` in URL hash, shows new-password form, calls `supabase.auth.updateUser({ password })`, then redirects to sign-in.
+
+### 5. Role-based redirect
+
+Add two thin layout routes:
+- `src/routes/_authenticated/dashboard.creator.tsx` → `/dashboard/creator`
+- `src/routes/_authenticated/dashboard.advertiser.tsx` → `/dashboard/advertiser`
+
+Each renders the existing role-aware dashboard filtered to that role. The generic `/dashboard` becomes a redirector that sends the user to `/dashboard/<active_role>`. `WorkspaceSwitcher` navigates between the two.
+
+Post-login/verification/callback redirect target:
+```
+active_role === 'advertiser' → /dashboard/advertiser
+otherwise                    → /dashboard/creator
 ```
 
-Roles live in `user_roles` with a `has_role(uid, role)` SECURITY DEFINER function (never on profiles). RLS on every table; explicit GRANTs to `authenticated` (and `anon` only for public creator discovery columns). A trigger auto-creates `profiles` on signup.
+### 6. Profile completion flow
 
-Storage buckets: `avatars` (public read), `portfolios` (public read), `brand-logos` (public read), `message-attachments` (signed URLs).
+`onboarding.tsx` becomes the *profile completion* gate. Trigger conditions (checked in `_authenticated` layout, in order):
+1. No email confirmation → `/auth/verify-email`
+2. `profile.onboarded === false` → `/onboarding`
+3. Missing role-specific required fields (creator: categories + rate; advertiser: brand_name + industry) → `/onboarding?step=profile`
+4. Otherwise → requested route.
 
-Realtime: enabled on `messages`, `applications`, `notifications`.
+Onboarding is trimmed since signup now collects role/country/phone:
+- Step 1: confirm/adjust display name + bio + avatar upload.
+- Step 2: role-specific fields (creator categories & rate, or advertiser brand & industry).
+- Sets `onboarded=true` and routes to `/dashboard/<active_role>`.
 
-## 4. App surfaces (v1 scope)
+Settings gains an "Add second role" action that upserts into `user_roles` and, if missing, opens the corresponding role-specific profile form.
 
-- **Auth + onboarding** — email/password, Google OAuth, role picker (can enable both), profile setup wizard
-- **Workspace switcher** — top-nav toggle between Advertiser / Creator workspaces for dual-role users
-- **Creator discovery** — searchable/filterable grid (category, rate, location), public creator profile pages with portfolio gallery
-- **Campaigns** — advertiser creates/edits/closes campaigns; creators browse open campaigns and apply with a pitch; advertiser reviews applications and accepts/rejects
-- **Realtime messaging** — 1:1 threads (optionally scoped to a campaign), unread counts, typing-free but live message delivery via Supabase Realtime
-- **Dashboards** — role-specific home: stats (active campaigns, applications, unread messages, profile views), recent activity, charts (applications over time, campaign performance) via Recharts
-- **Notifications** — bell menu, realtime updates, mark-as-read
-- **Settings** — account, profile, role management, sign out
+### 7. Route protection & session persistence
 
-## 5. Design system (componentized)
+Already handled by `_authenticated/route.tsx` (Supabase persisted session + `getUser()` gate). We extend it with the email-verified + onboarded checks above. Public routes: `/`, `/auth`, `/auth/callback`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/verify-email`.
 
-Built on shadcn/ui, restyled to the brand. Every primitive lives in `src/components/ui/*` and gets used everywhere — no one-off styles:
+Google OAuth button stays (uses `lovable.auth.signInWithOAuth`). OAuth users skip email verification but are routed through `/onboarding` because they won't have `country`/`phone`/role yet.
 
-Buttons (5 variants + sizes), Cards (default/elevated/glass), Inputs, Textareas, Selects, Dropdowns, Comboboxes, Badges (status + category), Avatars (+ stacks), Dialogs/Modals, Sheets, Drawers, Tabs, Tables (sortable, with empty states), Sidebar nav, Top nav with command palette (⌘K via `cmdk`), Toasts (sonner), Notification popover, Charts (Recharts wrappers), Empty states, Error states, Skeleton loaders, Keyboard shortcut hints.
+### 8. Technical notes
 
-Micro-interactions via `framer-motion` (fade/scale on mount, hover-lift on cards, page transitions). Dark/light toggle persisted.
+- Country list: local constant array (name + ISO2 + dial code), no external dep.
+- Phone stored as `+<dial><digits>`; validated with a light regex (`^\+\d{6,15}$`).
+- All new forms use `react-hook-form` + `zod` (already installed) matching existing style.
+- No Edge Functions; all reads/writes go through the browser Supabase client.
+- Confirmation & recovery emails: scaffold branded templates via the email-templates tool.
+- Toast feedback on every auth action; loading states on every submit button.
 
-## 6. Stack & routing
+### Files touched / added
 
-You asked for React Router, but this project's template is **TanStack Start** (file-based routing in `src/routes/`, SSR-capable). I'll use TanStack Router throughout — the developer ergonomics and type safety are equivalent/better than React Router DOM, and switching frameworks would break the template. If you'd prefer a pure React Router SPA, say so and I'll restructure.
+Added: `src/routes/auth.callback.tsx`, `src/routes/auth.forgot-password.tsx`, `src/routes/auth.reset-password.tsx`, `src/routes/auth.verify-email.tsx`, `src/routes/_authenticated/dashboard.creator.tsx`, `src/routes/_authenticated/dashboard.advertiser.tsx`, `src/lib/countries.ts`.
 
-- TypeScript strict, Tailwind v4, shadcn/ui, TanStack Query for all data, Supabase JS client, Recharts, framer-motion, cmdk, sonner, zod + react-hook-form.
+Modified: `src/routes/auth.tsx` (new signup fields + forgot link), `src/routes/onboarding.tsx` (profile completion only), `src/routes/_authenticated/route.tsx` (verify + completion gates), `src/routes/_authenticated/dashboard.tsx` (becomes redirector), `src/components/layout/WorkspaceSwitcher.tsx` (route on switch), `src/routes/_authenticated/settings.tsx` (country/phone editing + add-second-role).
 
-## 7. Route map
-
-```text
-/                       marketing landing (logged-out)
-/auth                   sign in / sign up / Google
-/onboarding             role picker + profile setup
-/_authenticated/
-  /dashboard            role-aware home
-  /discover             creator search/grid
-  /creators/$id         public creator profile
-  /campaigns            list (role-aware: mine vs open)
-  /campaigns/new        advertiser-only
-  /campaigns/$id        detail + applications panel
-  /messages             inbox
-  /messages/$threadId   thread (realtime)
-  /notifications        list
-  /settings             account/profile/roles
-```
-
-## 8. Delivery order
-
-1. Install deps, fonts, Tailwind tokens, dark mode, design system primitives
-2. Render 3 design directions → you pick one
-3. External Supabase wiring + SQL migrations (you'll paste keys via secret form)
-4. Auth + onboarding + role model
-5. Profiles (creator + advertiser) + Storage uploads
-6. Campaigns + applications
-7. Discovery + public creator pages
-8. Realtime messaging
-9. Dashboards + notifications + command palette
-10. Empty/error/skeleton states pass + polish pass
-
-## Technical notes
-
-- **External Supabase, not Lovable Cloud**: I won't call `supabase--enable`. You'll add `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` via the secrets form. I'll generate a hand-rolled `src/integrations/supabase/client.ts` (no template integration) and emit `.sql` migration files you can run, plus an admin client behind `*.server.ts` for the few server-side admin tasks.
-- **RLS**: every table RLS-enabled, policies use `auth.uid()` and the `has_role()` SECURITY DEFINER function; `GRANT`s issued alongside each `CREATE TABLE`.
-- **Realtime**: Supabase Realtime channels for `messages` (per conversation) and `notifications` (per user); TanStack Query cache invalidation on events.
-- **Storage**: signed-URL uploads from the browser using the publishable key + RLS-protected `storage.objects` policies.
-- **No `src/server/`**: server-only helpers go in `*.server.ts`; server functions in `src/lib/*.functions.ts`.
-- **Confirm before I start**: external Supabase means no Lovable-managed `_authenticated/route.tsx` auto-gate — I'll author the auth gate manually with `supabase.auth.getUser()`, `ssr: false`.
+Migration: add `country`, `phone` to `profiles`; update `handle_new_user` to persist metadata + insert primary role into `user_roles`.
