@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
@@ -14,6 +14,7 @@ function AuthenticatedLayout() {
   const { user, loading } = useAuth();
   const { profile, loading: wsLoading } = useWorkspace();
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   useEffect(() => {
     if (loading) return;
@@ -21,10 +22,16 @@ function AuthenticatedLayout() {
       navigate({ to: "/auth", replace: true });
       return;
     }
-    if (!wsLoading && profile && !profile.onboarded) {
+    // Require verified email before any app access.
+    if (!user.email_confirmed_at) {
+      navigate({ to: "/auth/verify-email", replace: true });
+      return;
+    }
+    // Require onboarding.
+    if (!wsLoading && profile && !profile.onboarded && pathname !== "/onboarding") {
       navigate({ to: "/onboarding", replace: true });
     }
-  }, [user, loading, profile, wsLoading, navigate]);
+  }, [user, loading, profile, wsLoading, navigate, pathname]);
 
   if (loading || !user) {
     return (

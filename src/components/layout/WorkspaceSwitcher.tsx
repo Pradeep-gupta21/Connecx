@@ -51,7 +51,11 @@ export function WorkspaceSwitcher() {
             <DropdownMenuItem
               key={r}
               disabled={!enabled}
-              onClick={() => enabled && setActiveRole(r)}
+              onClick={() => {
+                if (!enabled) return;
+                setActiveRole(r);
+                navigate({ to: r === "advertiser" ? "/dashboard/advertiser" : "/dashboard/creator" });
+              }}
               className="gap-3 py-2.5"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-md bg-secondary">
