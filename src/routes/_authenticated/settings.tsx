@@ -100,6 +100,30 @@ function SettingsPage() {
               <Label htmlFor="bio">Bio</Label>
               <Textarea id="bio" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Country</Label>
+                <Select value={country} onValueChange={setCountry}>
+                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    {COUNTRIES.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>
+                        <span className="mr-2 text-muted-foreground">{c.dial}</span>{c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone</Label>
+                <div className="flex">
+                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-secondary text-sm text-muted-foreground min-w-14 justify-center">
+                    {dialFor(country) || "+—"}
+                  </span>
+                  <Input id="phone" type="tel" className="rounded-l-none" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                </div>
+              </div>
+            </div>
             <div className="flex justify-end">
               <Button onClick={saveProfile} disabled={savingProfile}>
                 {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save changes"}
