@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { DashboardView } from "@/components/dashboard/DashboardView";
 import { useWorkspace } from "@/hooks/useWorkspace";
-import DashboardComponent from "./dashboard";
 
 export const Route = createFileRoute("/_authenticated/dashboard/creator")({
   head: () => ({ meta: [{ title: "Creator dashboard · BrandBridge" }] }),
@@ -13,5 +13,5 @@ function CreatorDashboard() {
   useEffect(() => {
     if (roles.includes("creator") && activeRole !== "creator") setActiveRole("creator");
   }, [roles, activeRole, setActiveRole]);
-  return <DashboardComponent />;
+  return <DashboardView />;
 }
