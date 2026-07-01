@@ -13,6 +13,10 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthVerifyEmailRouteImport } from './routes/auth.verify-email'
+import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
+import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedNotificationsRouteImport } from './routes/_authenticated/notifications'
 import { Route as AuthenticatedMessagesRouteImport } from './routes/_authenticated/messages'
@@ -20,6 +24,8 @@ import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCampaignsIndexRouteImport } from './routes/_authenticated/campaigns.index'
 import { Route as AuthenticatedMessagesThreadIdRouteImport } from './routes/_authenticated/messages.$threadId'
+import { Route as AuthenticatedDashboardCreatorRouteImport } from './routes/_authenticated/dashboard.creator'
+import { Route as AuthenticatedDashboardAdvertiserRouteImport } from './routes/_authenticated/dashboard.advertiser'
 import { Route as AuthenticatedCreatorsIdRouteImport } from './routes/_authenticated/creators.$id'
 import { Route as AuthenticatedCampaignsNewRouteImport } from './routes/_authenticated/campaigns.new'
 import { Route as AuthenticatedCampaignsIdRouteImport } from './routes/_authenticated/campaigns.$id'
@@ -42,6 +48,26 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthVerifyEmailRoute = AuthVerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => AuthRoute,
 } as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   id: '/settings',
@@ -81,6 +107,18 @@ const AuthenticatedMessagesThreadIdRoute =
     path: '/$threadId',
     getParentRoute: () => AuthenticatedMessagesRoute,
   } as any)
+const AuthenticatedDashboardCreatorRoute =
+  AuthenticatedDashboardCreatorRouteImport.update({
+    id: '/creator',
+    path: '/creator',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
+const AuthenticatedDashboardAdvertiserRoute =
+  AuthenticatedDashboardAdvertiserRouteImport.update({
+    id: '/advertiser',
+    path: '/advertiser',
+    getParentRoute: () => AuthenticatedDashboardRoute,
+  } as any)
 const AuthenticatedCreatorsIdRoute = AuthenticatedCreatorsIdRouteImport.update({
   id: '/creators/$id',
   path: '/creators/$id',
@@ -101,31 +139,43 @@ const AuthenticatedCampaignsIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/onboarding': typeof OnboardingRoute
-  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/discover': typeof AuthenticatedDiscoverRoute
   '/messages': typeof AuthenticatedMessagesRouteWithChildren
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/campaigns/$id': typeof AuthenticatedCampaignsIdRoute
   '/campaigns/new': typeof AuthenticatedCampaignsNewRoute
   '/creators/$id': typeof AuthenticatedCreatorsIdRoute
+  '/dashboard/advertiser': typeof AuthenticatedDashboardAdvertiserRoute
+  '/dashboard/creator': typeof AuthenticatedDashboardCreatorRoute
   '/messages/$threadId': typeof AuthenticatedMessagesThreadIdRoute
   '/campaigns/': typeof AuthenticatedCampaignsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/onboarding': typeof OnboardingRoute
-  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/discover': typeof AuthenticatedDiscoverRoute
   '/messages': typeof AuthenticatedMessagesRouteWithChildren
   '/notifications': typeof AuthenticatedNotificationsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/campaigns/$id': typeof AuthenticatedCampaignsIdRoute
   '/campaigns/new': typeof AuthenticatedCampaignsNewRoute
   '/creators/$id': typeof AuthenticatedCreatorsIdRoute
+  '/dashboard/advertiser': typeof AuthenticatedDashboardAdvertiserRoute
+  '/dashboard/creator': typeof AuthenticatedDashboardCreatorRoute
   '/messages/$threadId': typeof AuthenticatedMessagesThreadIdRoute
   '/campaigns': typeof AuthenticatedCampaignsIndexRoute
 }
@@ -133,16 +183,22 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/onboarding': typeof OnboardingRoute
-  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/_authenticated/discover': typeof AuthenticatedDiscoverRoute
   '/_authenticated/messages': typeof AuthenticatedMessagesRouteWithChildren
   '/_authenticated/notifications': typeof AuthenticatedNotificationsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/_authenticated/campaigns/$id': typeof AuthenticatedCampaignsIdRoute
   '/_authenticated/campaigns/new': typeof AuthenticatedCampaignsNewRoute
   '/_authenticated/creators/$id': typeof AuthenticatedCreatorsIdRoute
+  '/_authenticated/dashboard/advertiser': typeof AuthenticatedDashboardAdvertiserRoute
+  '/_authenticated/dashboard/creator': typeof AuthenticatedDashboardCreatorRoute
   '/_authenticated/messages/$threadId': typeof AuthenticatedMessagesThreadIdRoute
   '/_authenticated/campaigns/': typeof AuthenticatedCampaignsIndexRoute
 }
@@ -157,9 +213,15 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/settings'
+    | '/auth/callback'
+    | '/auth/forgot-password'
+    | '/auth/reset-password'
+    | '/auth/verify-email'
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/creators/$id'
+    | '/dashboard/advertiser'
+    | '/dashboard/creator'
     | '/messages/$threadId'
     | '/campaigns/'
   fileRoutesByTo: FileRoutesByTo
@@ -172,9 +234,15 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/settings'
+    | '/auth/callback'
+    | '/auth/forgot-password'
+    | '/auth/reset-password'
+    | '/auth/verify-email'
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/creators/$id'
+    | '/dashboard/advertiser'
+    | '/dashboard/creator'
     | '/messages/$threadId'
     | '/campaigns'
   id:
@@ -188,9 +256,15 @@ export interface FileRouteTypes {
     | '/_authenticated/messages'
     | '/_authenticated/notifications'
     | '/_authenticated/settings'
+    | '/auth/callback'
+    | '/auth/forgot-password'
+    | '/auth/reset-password'
+    | '/auth/verify-email'
     | '/_authenticated/campaigns/$id'
     | '/_authenticated/campaigns/new'
     | '/_authenticated/creators/$id'
+    | '/_authenticated/dashboard/advertiser'
+    | '/_authenticated/dashboard/creator'
     | '/_authenticated/messages/$threadId'
     | '/_authenticated/campaigns/'
   fileRoutesById: FileRoutesById
@@ -198,7 +272,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  AuthRoute: typeof AuthRoute
+  AuthRoute: typeof AuthRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
 }
 
@@ -231,6 +305,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/auth/verify-email': {
+      id: '/auth/verify-email'
+      path: '/verify-email'
+      fullPath: '/auth/verify-email'
+      preLoaderRoute: typeof AuthVerifyEmailRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/forgot-password': {
+      id: '/auth/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/auth/forgot-password'
+      preLoaderRoute: typeof AuthForgotPasswordRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof AuthRoute
     }
     '/_authenticated/settings': {
       id: '/_authenticated/settings'
@@ -281,6 +383,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMessagesThreadIdRouteImport
       parentRoute: typeof AuthenticatedMessagesRoute
     }
+    '/_authenticated/dashboard/creator': {
+      id: '/_authenticated/dashboard/creator'
+      path: '/creator'
+      fullPath: '/dashboard/creator'
+      preLoaderRoute: typeof AuthenticatedDashboardCreatorRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/dashboard/advertiser': {
+      id: '/_authenticated/dashboard/advertiser'
+      path: '/advertiser'
+      fullPath: '/dashboard/advertiser'
+      preLoaderRoute: typeof AuthenticatedDashboardAdvertiserRouteImport
+      parentRoute: typeof AuthenticatedDashboardRoute
+    }
     '/_authenticated/creators/$id': {
       id: '/_authenticated/creators/$id'
       path: '/creators/$id'
@@ -305,6 +421,23 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedDashboardRouteChildren {
+  AuthenticatedDashboardAdvertiserRoute: typeof AuthenticatedDashboardAdvertiserRoute
+  AuthenticatedDashboardCreatorRoute: typeof AuthenticatedDashboardCreatorRoute
+}
+
+const AuthenticatedDashboardRouteChildren: AuthenticatedDashboardRouteChildren =
+  {
+    AuthenticatedDashboardAdvertiserRoute:
+      AuthenticatedDashboardAdvertiserRoute,
+    AuthenticatedDashboardCreatorRoute: AuthenticatedDashboardCreatorRoute,
+  }
+
+const AuthenticatedDashboardRouteWithChildren =
+  AuthenticatedDashboardRoute._addFileChildren(
+    AuthenticatedDashboardRouteChildren,
+  )
+
 interface AuthenticatedMessagesRouteChildren {
   AuthenticatedMessagesThreadIdRoute: typeof AuthenticatedMessagesThreadIdRoute
 }
@@ -319,7 +452,7 @@ const AuthenticatedMessagesRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRouteWithChildren
   AuthenticatedDiscoverRoute: typeof AuthenticatedDiscoverRoute
   AuthenticatedMessagesRoute: typeof AuthenticatedMessagesRouteWithChildren
   AuthenticatedNotificationsRoute: typeof AuthenticatedNotificationsRoute
@@ -331,7 +464,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRouteWithChildren,
   AuthenticatedDiscoverRoute: AuthenticatedDiscoverRoute,
   AuthenticatedMessagesRoute: AuthenticatedMessagesRouteWithChildren,
   AuthenticatedNotificationsRoute: AuthenticatedNotificationsRoute,
@@ -345,22 +478,28 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface AuthRouteChildren {
+  AuthCallbackRoute: typeof AuthCallbackRoute
+  AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
+  AuthVerifyEmailRoute: typeof AuthVerifyEmailRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthCallbackRoute: AuthCallbackRoute,
+  AuthForgotPasswordRoute: AuthForgotPasswordRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
+  AuthVerifyEmailRoute: AuthVerifyEmailRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  AuthRoute: AuthRoute,
+  AuthRoute: AuthRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
