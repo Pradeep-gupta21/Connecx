@@ -9,9 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace, type AppRole } from "@/hooks/useWorkspace";
 import { supabase } from "@/integrations/supabase/client";
+import { COUNTRIES, dialFor } from "@/lib/countries";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_authenticated/settings")({
@@ -27,6 +29,8 @@ function SettingsPage() {
   const [displayName, setDisplayName] = useState("");
   const [location, setLocation] = useState("");
   const [bio, setBio] = useState("");
+  const [country, setCountry] = useState("");
+  const [phone, setPhone] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
@@ -34,6 +38,8 @@ function SettingsPage() {
       setDisplayName(profile.display_name ?? "");
       setLocation(profile.location ?? "");
       setBio(profile.bio ?? "");
+      setCountry(profile.country ?? "");
+      setPhone(profile.phone ?? "");
     }
   }, [profile]);
 
@@ -42,7 +48,7 @@ function SettingsPage() {
     setSavingProfile(true);
     const { error } = await supabase
       .from("profiles")
-      .update({ display_name: displayName, location, bio })
+      .update({ display_name: displayName, location, bio, country, phone })
       .eq("id", user.id);
     setSavingProfile(false);
     if (error) return toast.error(error.message);
