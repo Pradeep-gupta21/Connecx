@@ -90,6 +90,25 @@ function MessagesLayout() {
     });
   }, [conversations, q, user?.id]);
 
+  // Keyboard: Alt + ArrowUp/Down to cycle conversations
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey) return;
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+      const list = filtered;
+      if (!list.length) return;
+      e.preventDefault();
+      const idx = list.findIndex((c: any) => c.id === activeThread);
+      const nextIdx = e.key === "ArrowDown"
+        ? (idx < 0 ? 0 : Math.min(list.length - 1, idx + 1))
+        : (idx <= 0 ? 0 : idx - 1);
+      const next = list[nextIdx] as any;
+      if (next) navigate({ to: "/messages/$threadId", params: { threadId: next.id } });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   return (
     <div className="h-[calc(100vh-9rem)] -my-4 flex rounded-2xl border border-border overflow-hidden bg-card">
       <aside className={cn("w-full md:w-[340px] border-r border-border flex flex-col", activeThread && "hidden md:flex")}>
