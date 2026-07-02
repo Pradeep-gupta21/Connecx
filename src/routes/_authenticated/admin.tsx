@@ -1,9 +1,9 @@
-import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { Loader2, Shield, Users, CheckSquare, Megaphone, CreditCard, Flag, LifeBuoy, ScrollText, Activity, Banknote } from "lucide-react";
+import { Loader2, Shield, ShieldAlert, Users, CheckSquare, Megaphone, CreditCard, Flag, LifeBuoy, ScrollText, Activity, Banknote } from "lucide-react";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -27,18 +27,36 @@ const tabs = [
 function AdminLayout() {
   const isAdmin = useIsAdmin();
   const { loading } = useWorkspace();
-  const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  useEffect(() => {
-    if (!loading && !isAdmin) navigate({ to: "/dashboard", replace: true });
-  }, [loading, isAdmin, navigate]);
-
-  if (loading || !isAdmin) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mx-auto max-w-lg text-center py-24 space-y-6"
+      >
+        <div className="mx-auto h-14 w-14 rounded-2xl bg-destructive/10 text-destructive flex items-center justify-center">
+          <ShieldAlert className="h-6 w-6" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="font-display text-2xl font-semibold tracking-tight">Access denied</h1>
+          <p className="text-sm text-muted-foreground">
+            You don't have permission to view the admin console. If you think this is a mistake, contact a platform administrator.
+          </p>
+        </div>
+        <Button asChild variant="outline">
+          <Link to="/dashboard">Back to dashboard</Link>
+        </Button>
+      </motion.div>
     );
   }
 

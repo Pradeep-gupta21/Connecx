@@ -21,13 +21,7 @@ function VerifyEmailPage() {
   useEffect(() => {
     if (loading) return;
     if (user?.email_confirmed_at) {
-      const role =
-        (user.user_metadata?.role as "creator" | "advertiser" | undefined) ??
-        "creator";
-      navigate({
-        to: role === "advertiser" ? "/dashboard/advertiser" : "/dashboard/creator",
-        replace: true,
-      });
+      navigate({ to: "/dashboard", replace: true });
     }
   }, [user, loading, navigate]);
 

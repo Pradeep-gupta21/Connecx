@@ -1,0 +1,1 @@
+ALTER VIEW public.audit_logs SET (security_invoker = true);

@@ -64,6 +64,24 @@ export type Database = {
           },
         ]
       }
+      admin_bootstrap_emails: {
+        Row: {
+          created_at: string
+          email: string
+          note: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          note?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          note?: string | null
+        }
+        Relationships: []
+      }
       advertiser_profiles: {
         Row: {
           about: string | null
@@ -1882,7 +1900,50 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      audit_logs: {
+        Row: {
+          action: string | null
+          admin_id: string | null
+          id: string | null
+          ip_address: unknown
+          metadata: Json | null
+          target_id: string | null
+          target_type: string | null
+          timestamp: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action?: string | null
+          admin_id?: string | null
+          id?: string | null
+          ip_address?: unknown
+          metadata?: Json | null
+          target_id?: string | null
+          target_type?: string | null
+          timestamp?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string | null
+          admin_id?: string | null
+          id?: string | null
+          ip_address?: unknown
+          metadata?: Json | null
+          target_id?: string | null
+          target_type?: string | null
+          timestamp?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_user_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       admin_set_approval: {
@@ -1936,7 +1997,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "advertiser" | "creator" | "admin"
+      app_role: "advertiser" | "creator" | "admin" | "moderator"
       application_status: "pending" | "accepted" | "rejected" | "withdrawn"
       approval_status: "pending" | "approved" | "rejected"
       campaign_status: "draft" | "open" | "closed" | "archived" | "paused"
@@ -2149,7 +2210,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["advertiser", "creator", "admin"],
+      app_role: ["advertiser", "creator", "admin", "moderator"],
       application_status: ["pending", "accepted", "rejected", "withdrawn"],
       approval_status: ["pending", "approved", "rejected"],
       campaign_status: ["draft", "open", "closed", "archived", "paused"],

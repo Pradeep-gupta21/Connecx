@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import type { Database } from "@/integrations/supabase/types";
 
-export type AppRole = "advertiser" | "creator" | "admin";
+export type AppRole = "advertiser" | "creator" | "admin" | "moderator";
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 type WorkspaceContextValue = {

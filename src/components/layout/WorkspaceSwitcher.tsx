@@ -1,4 +1,4 @@
-import { Building2, ChevronsUpDown, Shield, Sparkles } from "lucide-react";
+import { Building2, ChevronsUpDown, Shield, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ const roleMeta: Record<AppRole, { label: string; icon: typeof Sparkles; descript
   advertiser: { label: "Advertiser", icon: Building2, description: "Brand workspace" },
   creator: { label: "Creator", icon: Sparkles, description: "Creator workspace" },
   admin: { label: "Admin", icon: Shield, description: "Platform operations" },
+  moderator: { label: "Moderator", icon: ShieldCheck, description: "Trust & safety" },
 };
 
 export function WorkspaceSwitcher() {
