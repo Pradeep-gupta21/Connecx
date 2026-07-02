@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { Loader2, Shield, Users, CheckSquare, Megaphone, CreditCard, Flag, LifeBuoy, ScrollText, Activity } from "lucide-react";
+import { Loader2, Shield, Users, CheckSquare, Megaphone, CreditCard, Flag, LifeBuoy, ScrollText, Activity, Banknote } from "lucide-react";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,8 @@ const tabs = [
   { to: "/admin/approvals", label: "Approvals", icon: CheckSquare },
   { to: "/admin/campaigns", label: "Campaigns", icon: Megaphone },
   { to: "/admin/payments", label: "Payments", icon: CreditCard },
+  { to: "/admin/withdrawals", label: "Withdrawals", icon: Banknote },
+
   { to: "/admin/reports", label: "Reports", icon: Flag },
   { to: "/admin/tickets", label: "Support", icon: LifeBuoy },
   { to: "/admin/audit", label: "Audit Log", icon: ScrollText },

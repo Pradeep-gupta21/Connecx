@@ -239,10 +239,16 @@ export type Database = {
           deadline: string | null
           deleted_at: string | null
           deliverables: string | null
+          funded: boolean
+          funded_amount: number | null
+          funded_at: string | null
+          funded_payment_id: string | null
+          gst_pct: number
           id: string
           languages: string[] | null
           location: string | null
           platform: string | null
+          platform_fee_pct: number
           requirements: string | null
           status: Database["public"]["Enums"]["campaign_status"]
           title: string
@@ -261,10 +267,16 @@ export type Database = {
           deadline?: string | null
           deleted_at?: string | null
           deliverables?: string | null
+          funded?: boolean
+          funded_amount?: number | null
+          funded_at?: string | null
+          funded_payment_id?: string | null
+          gst_pct?: number
           id?: string
           languages?: string[] | null
           location?: string | null
           platform?: string | null
+          platform_fee_pct?: number
           requirements?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
           title: string
@@ -283,10 +295,16 @@ export type Database = {
           deadline?: string | null
           deleted_at?: string | null
           deliverables?: string | null
+          funded?: boolean
+          funded_amount?: number | null
+          funded_at?: string | null
+          funded_payment_id?: string | null
+          gst_pct?: number
           id?: string
           languages?: string[] | null
           location?: string | null
           platform?: string | null
+          platform_fee_pct?: number
           requirements?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
           title?: string
@@ -298,6 +316,13 @@ export type Database = {
             columns: ["advertiser_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_funded_payment_id_fkey"
+            columns: ["funded_payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
             referencedColumns: ["id"]
           },
         ]
@@ -312,13 +337,20 @@ export type Database = {
           creator_id: string
           currency: string
           deleted_at: string | null
+          deliverable_urls: Json
           end_date: string | null
           id: string
           metadata: Json
+          payment_id: string | null
+          reviewed_at: string | null
+          revision_count: number
+          revision_notes: string | null
           signed_by_advertiser_at: string | null
           signed_by_creator_at: string | null
           start_date: string | null
           status: Database["public"]["Enums"]["contract_status"]
+          submission_notes: string | null
+          submitted_at: string | null
           terms: string | null
           title: string
           updated_at: string
@@ -332,13 +364,20 @@ export type Database = {
           creator_id: string
           currency?: string
           deleted_at?: string | null
+          deliverable_urls?: Json
           end_date?: string | null
           id?: string
           metadata?: Json
+          payment_id?: string | null
+          reviewed_at?: string | null
+          revision_count?: number
+          revision_notes?: string | null
           signed_by_advertiser_at?: string | null
           signed_by_creator_at?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["contract_status"]
+          submission_notes?: string | null
+          submitted_at?: string | null
           terms?: string | null
           title: string
           updated_at?: string
@@ -352,13 +391,20 @@ export type Database = {
           creator_id?: string
           currency?: string
           deleted_at?: string | null
+          deliverable_urls?: Json
           end_date?: string | null
           id?: string
           metadata?: Json
+          payment_id?: string | null
+          reviewed_at?: string | null
+          revision_count?: number
+          revision_notes?: string | null
           signed_by_advertiser_at?: string | null
           signed_by_creator_at?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["contract_status"]
+          submission_notes?: string | null
+          submitted_at?: string | null
           terms?: string | null
           title?: string
           updated_at?: string
@@ -390,6 +436,13 @@ export type Database = {
             columns: ["creator_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
             referencedColumns: ["id"]
           },
         ]
@@ -833,23 +886,30 @@ export type Database = {
       payments: {
         Row: {
           amount: number
+          campaign_id: string | null
           contract_id: string
           created_at: string
+          creator_earnings: number | null
           currency: string
           deleted_at: string | null
           failure_reason: string | null
           fee: number | null
+          gross_amount: number | null
+          gst: number | null
           id: string
+          invoice_number: string | null
           metadata: Json
           notes: Json | null
           payee_id: string
           payer_id: string
+          platform_fee: number | null
           processed_at: string | null
           provider: string | null
           provider_ref: string | null
           razorpay_order_id: string | null
           razorpay_payment_id: string | null
           razorpay_signature: string | null
+          receipt_number: string | null
           status: Database["public"]["Enums"]["payment_status"]
           status_v2: Database["public"]["Enums"]["payment_status"] | null
           tax: number | null
@@ -858,23 +918,30 @@ export type Database = {
         }
         Insert: {
           amount: number
+          campaign_id?: string | null
           contract_id: string
           created_at?: string
+          creator_earnings?: number | null
           currency?: string
           deleted_at?: string | null
           failure_reason?: string | null
           fee?: number | null
+          gross_amount?: number | null
+          gst?: number | null
           id?: string
+          invoice_number?: string | null
           metadata?: Json
           notes?: Json | null
           payee_id: string
           payer_id: string
+          platform_fee?: number | null
           processed_at?: string | null
           provider?: string | null
           provider_ref?: string | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
           razorpay_signature?: string | null
+          receipt_number?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
           status_v2?: Database["public"]["Enums"]["payment_status"] | null
           tax?: number | null
@@ -883,23 +950,30 @@ export type Database = {
         }
         Update: {
           amount?: number
+          campaign_id?: string | null
           contract_id?: string
           created_at?: string
+          creator_earnings?: number | null
           currency?: string
           deleted_at?: string | null
           failure_reason?: string | null
           fee?: number | null
+          gross_amount?: number | null
+          gst?: number | null
           id?: string
+          invoice_number?: string | null
           metadata?: Json
           notes?: Json | null
           payee_id?: string
           payer_id?: string
+          platform_fee?: number | null
           processed_at?: string | null
           provider?: string | null
           provider_ref?: string | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
           razorpay_signature?: string | null
+          receipt_number?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
           status_v2?: Database["public"]["Enums"]["payment_status"] | null
           tax?: number | null
@@ -907,6 +981,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payments_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_contract_id_fkey"
             columns: ["contract_id"]
@@ -1715,7 +1796,11 @@ export type Database = {
       }
       withdrawals: {
         Row: {
+          admin_notes: string | null
           amount: number
+          approved_at: string | null
+          approved_by: string | null
+          completed_at: string | null
           created_at: string
           created_by: string | null
           currency: string
@@ -1725,6 +1810,8 @@ export type Database = {
           fee: number
           id: string
           method: string
+          payout_id: string | null
+          payout_ref: string | null
           processed_at: string | null
           razorpay_payout_id: string | null
           status: Database["public"]["Enums"]["withdrawal_status"]
@@ -1734,7 +1821,11 @@ export type Database = {
           wallet_id: string
         }
         Insert: {
+          admin_notes?: string | null
           amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_at?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string
@@ -1744,6 +1835,8 @@ export type Database = {
           fee?: number
           id?: string
           method?: string
+          payout_id?: string | null
+          payout_ref?: string | null
           processed_at?: string | null
           razorpay_payout_id?: string | null
           status?: Database["public"]["Enums"]["withdrawal_status"]
@@ -1753,7 +1846,11 @@ export type Database = {
           wallet_id: string
         }
         Update: {
+          admin_notes?: string | null
           amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_at?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string
@@ -1763,6 +1860,8 @@ export type Database = {
           fee?: number
           id?: string
           method?: string
+          payout_id?: string | null
+          payout_ref?: string | null
           processed_at?: string | null
           razorpay_payout_id?: string | null
           status?: Database["public"]["Enums"]["withdrawal_status"]
@@ -1819,6 +1918,22 @@ export type Database = {
         }
         Returns: boolean
       }
+      next_invoice_number: { Args: never; Returns: string }
+      next_receipt_number: { Args: never; Returns: string }
+      notify_user: {
+        Args: {
+          _body?: string
+          _payload?: Json
+          _title: string
+          _type: Database["public"]["Enums"]["notification_type"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      upsert_campaign_payment_summary: {
+        Args: { _campaign_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "advertiser" | "creator" | "admin"
@@ -1833,6 +1948,9 @@ export type Database = {
         | "completed"
         | "cancelled"
         | "disputed"
+        | "submitted"
+        | "revision_requested"
+        | "approved"
       media_kind: "image" | "video" | "audio" | "document"
       notification_type:
         | "application_received"
@@ -1842,6 +1960,15 @@ export type Database = {
         | "system"
         | "mention"
         | "pin_update"
+        | "payment_success"
+        | "campaign_funded"
+        | "creator_accepted"
+        | "deliverables_uploaded"
+        | "revision_requested"
+        | "payment_released"
+        | "withdrawal_approved"
+        | "withdrawal_completed"
+        | "refund_completed"
       payment_status:
         | "pending"
         | "processing"
@@ -1849,7 +1976,20 @@ export type Database = {
         | "failed"
         | "refunded"
         | "cancelled"
-      payment_type: "deposit" | "milestone" | "final" | "bonus" | "refund"
+        | "held"
+        | "released"
+        | "revision_requested"
+        | "withdrawal_requested"
+        | "withdrawn"
+        | "refund_pending"
+        | "paid"
+      payment_type:
+        | "deposit"
+        | "milestone"
+        | "final"
+        | "bonus"
+        | "refund"
+        | "campaign_payment"
       refund_status: "pending" | "processing" | "completed" | "failed"
       report_status: "open" | "reviewing" | "resolved" | "dismissed"
       social_platform:
@@ -1880,6 +2020,8 @@ export type Database = {
         | "completed"
         | "failed"
         | "cancelled"
+        | "approved"
+        | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2019,6 +2161,9 @@ export const Constants = {
         "completed",
         "cancelled",
         "disputed",
+        "submitted",
+        "revision_requested",
+        "approved",
       ],
       media_kind: ["image", "video", "audio", "document"],
       notification_type: [
@@ -2029,6 +2174,15 @@ export const Constants = {
         "system",
         "mention",
         "pin_update",
+        "payment_success",
+        "campaign_funded",
+        "creator_accepted",
+        "deliverables_uploaded",
+        "revision_requested",
+        "payment_released",
+        "withdrawal_approved",
+        "withdrawal_completed",
+        "refund_completed",
       ],
       payment_status: [
         "pending",
@@ -2037,8 +2191,22 @@ export const Constants = {
         "failed",
         "refunded",
         "cancelled",
+        "held",
+        "released",
+        "revision_requested",
+        "withdrawal_requested",
+        "withdrawn",
+        "refund_pending",
+        "paid",
       ],
-      payment_type: ["deposit", "milestone", "final", "bonus", "refund"],
+      payment_type: [
+        "deposit",
+        "milestone",
+        "final",
+        "bonus",
+        "refund",
+        "campaign_payment",
+      ],
       refund_status: ["pending", "processing", "completed", "failed"],
       report_status: ["open", "reviewing", "resolved", "dismissed"],
       social_platform: [
@@ -2071,6 +2239,8 @@ export const Constants = {
         "completed",
         "failed",
         "cancelled",
+        "approved",
+        "rejected",
       ],
     },
   },
