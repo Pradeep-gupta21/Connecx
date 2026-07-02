@@ -412,7 +412,107 @@ export function CreatorDashboardView() {
   );
 }
 
+/* ---------- Campaign invites (accept / decline) ---------- */
+
+function CampaignInvites({ appsData }: { appsData: any[] }) {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const invites = appsData.filter((a) => a.status === "accepted");
+
+  const decline = useMutation({
+    mutationFn: async (appId: string) => {
+      const { error } = await supabase.from("applications").update({ status: "withdrawn" }).eq("id", appId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast("Invite declined", { description: "The advertiser has been notified." });
+      qc.invalidateQueries({ queryKey: ["creator-apps", user?.id] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const accept = useMutation({
+    mutationFn: async (invite: any) => {
+      // Ensure a conversation exists between the two parties for this campaign.
+      const advertiserId = invite.campaigns?.profiles ? undefined : undefined;
+      // We need the advertiser id — fetch it from the campaign row.
+      const { data: camp } = await supabase.from("campaigns").select("advertiser_id").eq("id", invite.campaign_id).maybeSingle();
+      if (!camp) throw new Error("Campaign not found");
+      const { data: existing } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("advertiser_id", camp.advertiser_id)
+        .eq("creator_id", user!.id)
+        .eq("campaign_id", invite.campaign_id)
+        .maybeSingle();
+      if (existing?.id) return existing.id;
+      const { data: created, error } = await supabase
+        .from("conversations")
+        .insert({ advertiser_id: camp.advertiser_id, creator_id: user!.id, campaign_id: invite.campaign_id })
+        .select("id")
+        .single();
+      if (error) throw error;
+      return created.id;
+    },
+    onSuccess: (threadId) => {
+      toast.success("Invite accepted", { description: "A conversation has been opened with the brand." });
+      qc.invalidateQueries({ queryKey: ["creator-messages", user?.id] });
+      if (threadId) navigate({ to: "/messages/$threadId", params: { threadId } });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  if (invites.length === 0) return null;
+
+  return (
+    <section className="surface-card p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Inbox className="h-4 w-4 text-accent" />
+          <h2 className="font-display text-base font-semibold">Campaign invites</h2>
+          <Badge className="bg-accent text-accent-foreground text-[10px]">{invites.length}</Badge>
+        </div>
+        <p className="text-xs text-muted-foreground">Brands accepted your pitch — confirm to start.</p>
+      </div>
+      <ul className="divide-y divide-border -mx-2">
+        {invites.map((a) => (
+          <li key={a.id} className="flex items-center gap-4 px-2 py-3">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={a.campaigns?.profiles?.avatar_url ?? undefined} />
+              <AvatarFallback className="text-[10px]">
+                {(a.campaigns?.profiles?.display_name ?? "?").slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium truncate">{a.campaigns?.title ?? "Campaign"}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {a.campaigns?.profiles?.display_name ?? "Brand"}
+                {(a.campaigns?.budget_min || a.campaigns?.budget_max) &&
+                  ` · $${a.campaigns.budget_min ?? "?"}–$${a.campaigns.budget_max ?? "?"}`}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={decline.isPending}
+              onClick={() => decline.mutate(a.id)}
+            >
+              <X className="h-3.5 w-3.5 mr-1" /> Decline
+            </Button>
+            <Button size="sm" disabled={accept.isPending} onClick={() => accept.mutate(a)}>
+              <Check className="h-3.5 w-3.5 mr-1" /> Accept
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /* ---------- helpers ---------- */
+
+
 
 function greeting() {
   const h = new Date().getHours();
