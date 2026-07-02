@@ -61,11 +61,7 @@ function AuthPage() {
       navigate({ to: "/auth/verify-email", replace: true });
       return;
     }
-    const role = (user.user_metadata?.role as "creator" | "advertiser" | undefined) ?? "creator";
-    navigate({
-      to: role === "advertiser" ? "/dashboard/advertiser" : "/dashboard/creator",
-      replace: true,
-    });
+    navigate({ to: "/dashboard", replace: true });
   }, [user, loading, navigate]);
 
   return (
