@@ -379,13 +379,20 @@ export type Database = {
       }
       creator_profiles: {
         Row: {
+          analytics: Json
+          audience_demographics: Json
+          availability_status: string
           available: boolean
           categories: string[]
           created_at: string
           deleted_at: string | null
           follower_count: number | null
           headline: string | null
+          languages: string[]
+          past_collaborations: Json
           portfolio_media: Json
+          pricing: Json
+          profile_slug: string | null
           rate_max: number | null
           rate_min: number | null
           socials: Json
@@ -393,13 +400,20 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          analytics?: Json
+          audience_demographics?: Json
+          availability_status?: string
           available?: boolean
           categories?: string[]
           created_at?: string
           deleted_at?: string | null
           follower_count?: number | null
           headline?: string | null
+          languages?: string[]
+          past_collaborations?: Json
           portfolio_media?: Json
+          pricing?: Json
+          profile_slug?: string | null
           rate_max?: number | null
           rate_min?: number | null
           socials?: Json
@@ -407,13 +421,20 @@ export type Database = {
           user_id: string
         }
         Update: {
+          analytics?: Json
+          audience_demographics?: Json
+          availability_status?: string
           available?: boolean
           categories?: string[]
           created_at?: string
           deleted_at?: string | null
           follower_count?: number | null
           headline?: string | null
+          languages?: string[]
+          past_collaborations?: Json
           portfolio_media?: Json
+          pricing?: Json
+          profile_slug?: string | null
           rate_max?: number | null
           rate_min?: number | null
           socials?: Json
@@ -492,31 +513,82 @@ export type Database = {
           },
         ]
       }
+      message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
+          attachments: Json
           body: string
           conversation_id: string
           created_at: string
           deleted_at: string | null
           id: string
+          message_type: string
+          pinned: boolean
+          pinned_at: string | null
           read_at: string | null
           sender_id: string
         }
         Insert: {
+          attachments?: Json
           body: string
           conversation_id: string
           created_at?: string
           deleted_at?: string | null
           id?: string
+          message_type?: string
+          pinned?: boolean
+          pinned_at?: string | null
           read_at?: string | null
           sender_id: string
         }
         Update: {
+          attachments?: Json
           body?: string
           conversation_id?: string
           created_at?: string
           deleted_at?: string | null
           id?: string
+          message_type?: string
+          pinned?: boolean
+          pinned_at?: string | null
           read_at?: string | null
           sender_id?: string
         }
