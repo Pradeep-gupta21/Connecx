@@ -14,8 +14,12 @@ function DashboardRedirect() {
 
   useEffect(() => {
     if (loading) return;
+    if (roles.includes("admin")) {
+      navigate({ to: "/admin", replace: true });
+      return;
+    }
     const target =
-      activeRole ??
+      (activeRole && activeRole !== "admin" ? activeRole : null) ??
       (roles.includes("advertiser") ? "advertiser" : "creator");
     navigate({
       to: target === "advertiser" ? "/dashboard/advertiser" : "/dashboard/creator",
