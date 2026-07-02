@@ -56,21 +56,40 @@ function Thread() {
     },
   });
 
+  // Mark unread messages as read (from the other party) whenever the thread
+  // opens or new messages arrive. This drives realtime unread badges everywhere.
+  const markRead = async () => {
+    if (!user) return;
+    await supabase
+      .from("messages")
+      .update({ read_at: new Date().toISOString() })
+      .eq("conversation_id", threadId)
+      .neq("sender_id", user.id)
+      .is("read_at", null);
+  };
+
   useEffect(() => {
     const channel = supabase
       .channel(`messages-${threadId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${threadId}` },
-        () => qc.invalidateQueries({ queryKey: ["messages", threadId] })
+        { event: "*", schema: "public", table: "messages", filter: `conversation_id=eq.${threadId}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ["messages", threadId] });
+        }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [threadId, qc]);
 
+  // Mark read on open + whenever the message list changes.
   useEffect(() => {
+    if (!messagesQuery.data || !user) return;
+    const hasUnread = messagesQuery.data.some((m) => !m.read_at && m.sender_id !== user.id);
+    if (hasUnread) void markRead();
     if (scrollerRef.current) scrollerRef.current.scrollTop = scrollerRef.current.scrollHeight;
-  }, [messagesQuery.data?.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messagesQuery.data?.length, user?.id]);
 
   const send = async () => {
     if (!user || !text.trim()) return;

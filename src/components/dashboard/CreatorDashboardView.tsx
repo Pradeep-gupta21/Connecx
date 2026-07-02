@@ -1,8 +1,9 @@
 import { useEffect } from "react";
-import { Link } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
+  Check,
   DollarSign,
   Clock,
   Inbox,
@@ -11,6 +12,7 @@ import {
   Sparkles,
   TrendingUp,
   CheckCircle2,
+  X,
 } from "lucide-react";
 import { format, subDays } from "date-fns";
 import {
@@ -24,6 +26,7 @@ import {
   BarChart,
   Bar,
 } from "recharts";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -47,31 +50,65 @@ export function CreatorDashboardView() {
   const { user } = useAuth();
   const { profile } = useWorkspace();
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
-  // -------- Realtime: refresh dashboard slices on data change --------
+  // -------- Realtime: refresh dashboard slices + premium toasts --------
   useEffect(() => {
     if (!user) return;
     const channel = supabase
       .channel(`creator-dashboard-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "applications", filter: `creator_id=eq.${user.id}` }, () => {
+      // Applications: invite state changes → toast
+      .on("postgres_changes", { event: "*", schema: "public", table: "applications", filter: `creator_id=eq.${user.id}` }, (payload: any) => {
         qc.invalidateQueries({ queryKey: ["creator-apps", user.id] });
-        qc.invalidateQueries({ queryKey: ["creator-stats", user.id] });
+        if (payload.eventType === "UPDATE" && payload.old?.status !== payload.new?.status) {
+          const s = payload.new.status;
+          if (s === "accepted") toast.success("You've been invited to a campaign", { description: "Open Applications to accept or decline." });
+          else if (s === "rejected") toast("Application update", { description: "An advertiser passed on one of your pitches." });
+        }
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "payments", filter: `payee_id=eq.${user.id}` }, () => {
+      // Payments: status transitions → toast
+      .on("postgres_changes", { event: "*", schema: "public", table: "payments", filter: `payee_id=eq.${user.id}` }, (payload: any) => {
         qc.invalidateQueries({ queryKey: ["creator-payments", user.id] });
+        if (payload.eventType === "UPDATE" && payload.old?.status !== payload.new?.status) {
+          const s = payload.new.status;
+          const amount = `$${Number(payload.new.amount).toLocaleString()}`;
+          if (s === "succeeded") toast.success(`${amount} paid out`, { description: "Funds have been released to your account." });
+          else if (s === "processing") toast(`${amount} processing`, { description: "Your payout is on the way." });
+          else if (s === "failed") toast.error(`${amount} payout failed`, { description: "Please review your payout details." });
+        } else if (payload.eventType === "INSERT") {
+          toast(`New payment pending`, { description: `$${Number(payload.new.amount).toLocaleString()} is being prepared.` });
+        }
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
+      // Messages: new inbound message → toast
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload: any) => {
         qc.invalidateQueries({ queryKey: ["creator-messages", user.id] });
-        qc.invalidateQueries({ queryKey: ["creator-stats", user.id] });
+        if (payload.new?.sender_id && payload.new.sender_id !== user.id) {
+          toast("New message", {
+            description: (payload.new.body ?? "").slice(0, 80),
+            action: {
+              label: "Open",
+              onClick: () => navigate({ to: "/messages/$threadId", params: { threadId: payload.new.conversation_id } }),
+            },
+          });
+        }
       })
+      // Messages read/update → refresh unread counts
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, () => {
+        qc.invalidateQueries({ queryKey: ["creator-messages", user.id] });
+      })
+      // New open campaigns → refresh opportunities
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "campaigns" }, () => {
         qc.invalidateQueries({ queryKey: ["creator-opps"] });
+      })
+      // Profile updates → refresh completion checklist
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${user.id}` }, () => {
+        qc.invalidateQueries({ queryKey: ["profile", user.id] });
       })
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, qc]);
+  }, [user, qc, navigate]);
 
   // -------- Payments (earnings + pending) --------
   const paymentsQuery = useQuery({
@@ -240,6 +277,11 @@ export function CreatorDashboardView() {
         </div>
       </div>
 
+      {/* Campaign invites — accepted applications awaiting creator confirmation */}
+      <CampaignInvites appsData={(appsQuery.data ?? []) as any[]} />
+
+
+
       {/* Application status + messages */}
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="surface-card p-6">
@@ -370,7 +412,107 @@ export function CreatorDashboardView() {
   );
 }
 
+/* ---------- Campaign invites (accept / decline) ---------- */
+
+function CampaignInvites({ appsData }: { appsData: any[] }) {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const invites = appsData.filter((a) => a.status === "accepted");
+
+  const decline = useMutation({
+    mutationFn: async (appId: string) => {
+      const { error } = await supabase.from("applications").update({ status: "withdrawn" }).eq("id", appId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast("Invite declined", { description: "The advertiser has been notified." });
+      qc.invalidateQueries({ queryKey: ["creator-apps", user?.id] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const accept = useMutation({
+    mutationFn: async (invite: any) => {
+      // Ensure a conversation exists between the two parties for this campaign.
+      const advertiserId = invite.campaigns?.profiles ? undefined : undefined;
+      // We need the advertiser id — fetch it from the campaign row.
+      const { data: camp } = await supabase.from("campaigns").select("advertiser_id").eq("id", invite.campaign_id).maybeSingle();
+      if (!camp) throw new Error("Campaign not found");
+      const { data: existing } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("advertiser_id", camp.advertiser_id)
+        .eq("creator_id", user!.id)
+        .eq("campaign_id", invite.campaign_id)
+        .maybeSingle();
+      if (existing?.id) return existing.id;
+      const { data: created, error } = await supabase
+        .from("conversations")
+        .insert({ advertiser_id: camp.advertiser_id, creator_id: user!.id, campaign_id: invite.campaign_id })
+        .select("id")
+        .single();
+      if (error) throw error;
+      return created.id;
+    },
+    onSuccess: (threadId) => {
+      toast.success("Invite accepted", { description: "A conversation has been opened with the brand." });
+      qc.invalidateQueries({ queryKey: ["creator-messages", user?.id] });
+      if (threadId) navigate({ to: "/messages/$threadId", params: { threadId } });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  if (invites.length === 0) return null;
+
+  return (
+    <section className="surface-card p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Inbox className="h-4 w-4 text-accent" />
+          <h2 className="font-display text-base font-semibold">Campaign invites</h2>
+          <Badge className="bg-accent text-accent-foreground text-[10px]">{invites.length}</Badge>
+        </div>
+        <p className="text-xs text-muted-foreground">Brands accepted your pitch — confirm to start.</p>
+      </div>
+      <ul className="divide-y divide-border -mx-2">
+        {invites.map((a) => (
+          <li key={a.id} className="flex items-center gap-4 px-2 py-3">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={a.campaigns?.profiles?.avatar_url ?? undefined} />
+              <AvatarFallback className="text-[10px]">
+                {(a.campaigns?.profiles?.display_name ?? "?").slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium truncate">{a.campaigns?.title ?? "Campaign"}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {a.campaigns?.profiles?.display_name ?? "Brand"}
+                {(a.campaigns?.budget_min || a.campaigns?.budget_max) &&
+                  ` · $${a.campaigns.budget_min ?? "?"}–$${a.campaigns.budget_max ?? "?"}`}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={decline.isPending}
+              onClick={() => decline.mutate(a.id)}
+            >
+              <X className="h-3.5 w-3.5 mr-1" /> Decline
+            </Button>
+            <Button size="sm" disabled={accept.isPending} onClick={() => accept.mutate(a)}>
+              <Check className="h-3.5 w-3.5 mr-1" /> Accept
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /* ---------- helpers ---------- */
+
+
 
 function greeting() {
   const h = new Date().getHours();
