@@ -85,6 +85,24 @@ function CampaignDetail() {
     },
   });
 
+  const contractsQuery = useQuery({
+    queryKey: ["campaign-contracts", id, user?.id],
+    enabled: !!user && !!campaignQuery.data,
+    queryFn: async () => {
+      let q = supabase
+        .from("contracts")
+        .select("id, status, advertiser_id, creator_id, deliverable_urls, submission_notes, submitted_at, reviewed_at, revision_notes, revision_count, amount, currency, profiles:creator_id(display_name, avatar_url)")
+        .eq("campaign_id", id)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+      if (!isOwner) q = q.eq("creator_id", user!.id);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+
   useEffect(() => {
     if (!campaignQuery.data) return;
     const channel = supabase
