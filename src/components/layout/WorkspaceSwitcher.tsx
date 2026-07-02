@@ -1,4 +1,4 @@
-import { Building2, ChevronsUpDown, Sparkles } from "lucide-react";
+import { Building2, ChevronsUpDown, Shield, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import { useNavigate } from "@tanstack/react-router";
 const roleMeta: Record<AppRole, { label: string; icon: typeof Sparkles; description: string }> = {
   advertiser: { label: "Advertiser", icon: Building2, description: "Brand workspace" },
   creator: { label: "Creator", icon: Sparkles, description: "Creator workspace" },
+  admin: { label: "Admin", icon: Shield, description: "Platform operations" },
 };
 
 export function WorkspaceSwitcher() {
