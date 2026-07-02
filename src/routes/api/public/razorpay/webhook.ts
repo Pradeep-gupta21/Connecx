@@ -10,10 +10,10 @@ export const Route = createFileRoute("/api/public/razorpay/webhook")({
         const signature = request.headers.get("x-razorpay-signature");
 
         const { razorpay } = await import("@/lib/payments/razorpay.server");
-        const { admin } = await import("@/integrations/supabase/client.server");
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { PaymentService } = await import("@/lib/payments/service.server");
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const admin: any = admin;
+        const admin: any = supabaseAdmin;
 
         let valid = false;
         try {
