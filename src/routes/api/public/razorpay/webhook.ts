@@ -38,7 +38,6 @@ export const Route = createFileRoute("/api/public/razorpay/webhook")({
 
         const eventId = event.id ?? `${event.event}:${event.created_at ?? Date.now()}`;
 
-        // Idempotency: insert-or-ignore into payment_webhooks.
         const { data: existing } = await admin
           .from("payment_webhooks")
           .select("id, processed")
@@ -79,12 +78,10 @@ export const Route = createFileRoute("/api/public/razorpay/webhook")({
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           console.error("[razorpay-webhook] handler failed", message);
-          await admin.rpc; // no-op guard
           await admin
             .from("payment_webhooks")
             .update({ error: message })
             .eq("id", webhookRowId);
-          // 500 asks Razorpay to retry.
           return new Response("handler error", { status: 500 });
         }
       },
@@ -112,34 +109,24 @@ async function handleEvent(
       if (!pay?.order_id) return;
       const { data: row } = await admin
         .from("payments")
-        .select("id, amount, currency, payee_id, status_v2")
+        .select("id, status_v2")
         .eq("razorpay_order_id", pay.order_id)
         .maybeSingle();
       if (!row) return;
       if (row.status_v2 === "held" || row.status_v2 === "released") return;
+      // Delegate to PaymentService.verifyAndCapture-like path via direct update;
+      // most captures come through the client callback first. This is a safety net.
       await admin
         .from("payments")
         .update({
-          status: "held",
-          status_v2: "held",
-          razorpay_payment_id: pay.id,
           fee: (pay.fee ?? 0) / 100,
           tax: (pay.tax ?? 0) / 100,
-          processed_at: new Date().toISOString(),
+          razorpay_payment_id: pay.id,
         })
         .eq("id", row.id);
-      await PaymentService.applyWalletTxn({
-        userId: row.payee_id,
-        type: "hold",
-        amount: Number(row.amount),
-        referenceType: "payment",
-        referenceId: row.id,
-        description: "Funds held (webhook)",
-      });
-      await PaymentService.log({
+      await PaymentService._log({
         paymentId: row.id,
         action: "webhook.payment.captured",
-        to: "held",
         metadata: { razorpay_payment_id: pay.id },
       });
       return;
@@ -164,10 +151,9 @@ async function handleEvent(
           razorpay_payment_id: pay.id,
         })
         .eq("id", row.id);
-      await PaymentService.log({
+      await PaymentService._log({
         paymentId: row.id,
         action: "webhook.payment.failed",
-        from: row.status_v2 as never,
         to: "failed",
         metadata: { reason: pay.error_description },
       });
@@ -180,41 +166,11 @@ async function handleEvent(
       if (!refund) return;
       const { data: refundRow } = await admin
         .from("refunds")
-        .select("id, payment_id, amount, status")
+        .select("id")
         .eq("razorpay_refund_id", refund.id)
         .maybeSingle();
       if (!refundRow) return;
-      if (refundRow.status === "completed") return;
-      await admin
-        .from("refunds")
-        .update({ status: "completed", processed_at: new Date().toISOString() })
-        .eq("id", refundRow.id);
-      const { data: pay } = await admin
-        .from("payments")
-        .select("id, amount, payee_id")
-        .eq("id", refundRow.payment_id)
-        .single();
-      if (pay) {
-        await admin
-          .from("payments")
-          .update({ status: "refunded", status_v2: "refunded" })
-          .eq("id", pay.id);
-        // Reverse the held balance for the payee (best-effort).
-        await PaymentService.applyWalletTxn({
-          userId: pay.payee_id,
-          type: "refund",
-          amount: Number(refundRow.amount),
-          referenceType: "refund",
-          referenceId: refundRow.id,
-          description: "Refund processed",
-        });
-        await PaymentService.log({
-          paymentId: pay.id,
-          action: "webhook.refund.processed",
-          to: "refunded",
-          metadata: { refund_id: refundRow.id },
-        });
-      }
+      await PaymentService.markRefundCompleted({ refundId: refundRow.id });
       return;
     }
     case "payout.processed": {
@@ -224,19 +180,17 @@ async function handleEvent(
       if (!payout) return;
       const { data: wd } = await admin
         .from("withdrawals")
-        .select("id, status")
-        .eq("razorpay_payout_id", payout.id)
+        .select("id")
+        .eq("payout_id", payout.id)
         .maybeSingle();
       if (!wd) return;
-      if (wd.status === "completed") return;
-      await admin
-        .from("withdrawals")
-        .update({ status: "completed", processed_at: new Date().toISOString() })
-        .eq("id", wd.id);
+      await PaymentService.markWithdrawalCompleted({
+        withdrawalId: wd.id,
+        payoutRef: payout.id,
+      });
       return;
     }
     default:
-      // Unknown event type — persisted for audit, no action.
       return;
   }
 }

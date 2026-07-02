@@ -35,6 +35,7 @@ import { Route as AuthenticatedDashboardCreatorRouteImport } from './routes/_aut
 import { Route as AuthenticatedDashboardAdvertiserRouteImport } from './routes/_authenticated/dashboard.advertiser'
 import { Route as AuthenticatedCampaignsNewRouteImport } from './routes/_authenticated/campaigns.new'
 import { Route as AuthenticatedCampaignsIdRouteImport } from './routes/_authenticated/campaigns.$id'
+import { Route as AuthenticatedAdminWithdrawalsRouteImport } from './routes/_authenticated/admin.withdrawals'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminTicketsRouteImport } from './routes/_authenticated/admin.tickets'
 import { Route as AuthenticatedAdminReportsRouteImport } from './routes/_authenticated/admin.reports'
@@ -183,6 +184,12 @@ const AuthenticatedCampaignsIdRoute =
     path: '/campaigns/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminWithdrawalsRoute =
+  AuthenticatedAdminWithdrawalsRouteImport.update({
+    id: '/withdrawals',
+    path: '/withdrawals',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -269,6 +276,7 @@ export interface FileRoutesByFullPath {
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/admin/tickets': typeof AuthenticatedAdminTicketsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/admin/withdrawals': typeof AuthenticatedAdminWithdrawalsRoute
   '/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/campaigns/new': typeof AuthenticatedCampaignsNewRoute
   '/dashboard/advertiser': typeof AuthenticatedDashboardAdvertiserRoute
@@ -305,6 +313,7 @@ export interface FileRoutesByTo {
   '/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/admin/tickets': typeof AuthenticatedAdminTicketsRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/admin/withdrawals': typeof AuthenticatedAdminWithdrawalsRoute
   '/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/campaigns/new': typeof AuthenticatedCampaignsNewRoute
   '/dashboard/advertiser': typeof AuthenticatedDashboardAdvertiserRoute
@@ -344,6 +353,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/reports': typeof AuthenticatedAdminReportsRoute
   '/_authenticated/admin/tickets': typeof AuthenticatedAdminTicketsRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/_authenticated/admin/withdrawals': typeof AuthenticatedAdminWithdrawalsRoute
   '/_authenticated/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/_authenticated/campaigns/new': typeof AuthenticatedCampaignsNewRoute
   '/_authenticated/dashboard/advertiser': typeof AuthenticatedDashboardAdvertiserRoute
@@ -383,6 +393,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/tickets'
     | '/admin/users'
+    | '/admin/withdrawals'
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/dashboard/advertiser'
@@ -419,6 +430,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/tickets'
     | '/admin/users'
+    | '/admin/withdrawals'
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/dashboard/advertiser'
@@ -457,6 +469,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/reports'
     | '/_authenticated/admin/tickets'
     | '/_authenticated/admin/users'
+    | '/_authenticated/admin/withdrawals'
     | '/_authenticated/campaigns/$id'
     | '/_authenticated/campaigns/new'
     | '/_authenticated/dashboard/advertiser'
@@ -661,6 +674,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCampaignsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/withdrawals': {
+      id: '/_authenticated/admin/withdrawals'
+      path: '/withdrawals'
+      fullPath: '/admin/withdrawals'
+      preLoaderRoute: typeof AuthenticatedAdminWithdrawalsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/users': {
       id: '/_authenticated/admin/users'
       path: '/users'
@@ -743,6 +763,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminReportsRoute: typeof AuthenticatedAdminReportsRoute
   AuthenticatedAdminTicketsRoute: typeof AuthenticatedAdminTicketsRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
+  AuthenticatedAdminWithdrawalsRoute: typeof AuthenticatedAdminWithdrawalsRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
@@ -755,6 +776,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminReportsRoute: AuthenticatedAdminReportsRoute,
   AuthenticatedAdminTicketsRoute: AuthenticatedAdminTicketsRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
+  AuthenticatedAdminWithdrawalsRoute: AuthenticatedAdminWithdrawalsRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
 

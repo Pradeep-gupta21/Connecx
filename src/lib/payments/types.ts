@@ -64,3 +64,15 @@ export interface WalletSnapshot {
   withdrawn_balance: number;
   lifetime_earned: number;
 }
+
+export interface FeeBreakdown {
+  subtotal: number;
+  platform_fee: number;
+  gst: number;
+  creator_earnings: number;
+  total_payable: number;
+  platform_fee_pct: number;
+  gst_pct: number;
+  currency: string;
+}
+

@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
-  ArrowLeft, Loader2, MessageSquare, Pencil, Pause, Play, Archive, XCircle, Trash2, Bookmark, BookmarkCheck, Paperclip,
+  ArrowLeft, Loader2, MessageSquare, Pencil, Pause, Play, Archive, XCircle, Trash2, Bookmark, BookmarkCheck, Paperclip, ShieldCheck, Wallet,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -13,7 +13,6 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -22,11 +21,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { supabase } from "@/integrations/supabase/client";
 import { CREATOR_TIERS } from "@/components/campaigns/CampaignForm";
+import { FundCampaignDialog } from "@/components/payments/FundCampaignDialog";
+import { DeliverablesPanel } from "@/components/payments/DeliverablesPanel";
+import { useAcceptCreator } from "@/hooks/usePayments";
 
 export const Route = createFileRoute("/_authenticated/campaigns/$id")({
   head: () => ({ meta: [{ title: "Campaign · BrandBridge" }] }),
   component: CampaignDetail,
 });
+
 
 function statusLabel(s: string) {
   if (s === "open") return "Published";
@@ -282,7 +285,14 @@ function CampaignDetail() {
                           </Link>
                           <p className="text-xs text-muted-foreground">{format(new Date(a.created_at), "MMM d, h:mm a")}</p>
                         </div>
-                        <ApplicationStatusSelect applicationId={a.id} status={a.status} campaignId={id} />
+                        <ApplicationStatusSelect
+                          applicationId={a.id}
+                          status={a.status}
+                          campaignId={id}
+                          creatorId={a.creator_id}
+                          canAccept={!!c.funded}
+                        />
+
                       </div>
                       {a.pitch && <p className="mt-3 text-sm text-muted-foreground whitespace-pre-line">{a.pitch}</p>}
                       <div className="mt-3">
@@ -417,30 +427,54 @@ function ApplyDialog({ campaignId }: { campaignId: string }) {
   );
 }
 
-function ApplicationStatusSelect({ applicationId, status, campaignId }: { applicationId: string; status: string; campaignId: string }) {
+function ApplicationStatusSelect({
+  applicationId, status, campaignId, creatorId, canAccept,
+}: {
+  applicationId: string;
+  status: string;
+  campaignId: string;
+  creatorId: string;
+  canAccept: boolean;
+}) {
   const qc = useQueryClient();
-  const m = useMutation({
-    mutationFn: async (s: "pending" | "accepted" | "rejected" | "withdrawn") => {
-      const { error } = await supabase.from("applications").update({ status: s }).eq("id", applicationId);
+  const accept = useAcceptCreator();
+  const reject = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("applications").update({ status: "rejected" }).eq("id", applicationId);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["campaign-apps", campaignId] });
-      toast.success("Status updated");
+      toast.success("Application rejected");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  if (status === "accepted") {
+    return <Badge variant="secondary" className="bg-success/10 text-success border-success/20">Accepted</Badge>;
+  }
+  if (status === "rejected") {
+    return <Badge variant="secondary">Rejected</Badge>;
+  }
+  if (status === "withdrawn") {
+    return <Badge variant="secondary">Withdrawn</Badge>;
+  }
   return (
-    <Select value={status} onValueChange={(v) => m.mutate(v as any)}>
-      <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
-      <SelectContent>
-        <SelectItem value="pending">Pending</SelectItem>
-        <SelectItem value="accepted">Accepted</SelectItem>
-        <SelectItem value="rejected">Rejected</SelectItem>
-      </SelectContent>
-    </Select>
+    <div className="flex items-center gap-2">
+      <Button
+        size="sm"
+        className="h-8 gap-1.5"
+        disabled={!canAccept || accept.isPending}
+        title={canAccept ? "Accept and hold funds in escrow" : "Fund this campaign to accept creators"}
+        onClick={() => accept.mutate({ campaignId, applicationId, creatorId })}
+      >
+        {accept.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Accept"}
+      </Button>
+      <Button size="sm" variant="ghost" className="h-8" onClick={() => reject.mutate()}>Reject</Button>
+    </div>
   );
 }
+
 
 async function startConvoFromApp(a: any, campaignId: string): Promise<string | null> {
   const { data: userRes } = await supabase.auth.getUser();
