@@ -1,10 +1,11 @@
-import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { MessageSquare, Search } from "lucide-react";
+import { MessageSquare, Search, SearchCode } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ListSkeleton } from "@/components/common/Skeletons";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/_authenticated/messages")({
 
 function MessagesLayout() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const activeThread = pathname.startsWith("/messages/") ? pathname.split("/")[2] || null : null;
   const [q, setQ] = useState("");
@@ -88,20 +90,53 @@ function MessagesLayout() {
     });
   }, [conversations, q, user?.id]);
 
+  // Keyboard: Alt + ArrowUp/Down to cycle conversations
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey) return;
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+      const list = filtered;
+      if (!list.length) return;
+      e.preventDefault();
+      const idx = list.findIndex((c: any) => c.id === activeThread);
+      const nextIdx = e.key === "ArrowDown"
+        ? (idx < 0 ? 0 : Math.min(list.length - 1, idx + 1))
+        : (idx <= 0 ? 0 : idx - 1);
+      const next = list[nextIdx] as any;
+      if (next) navigate({ to: "/messages/$threadId", params: { threadId: next.id } });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   return (
     <div className="h-[calc(100vh-9rem)] -my-4 flex rounded-2xl border border-border overflow-hidden bg-card">
       <aside className={cn("w-full md:w-[340px] border-r border-border flex flex-col", activeThread && "hidden md:flex")}>
         <div className="p-4 border-b border-border space-y-3">
-          <h2 className="font-display text-lg font-semibold">Messages</h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-display text-lg font-semibold">Messages</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 text-xs"
+              onClick={() => window.dispatchEvent(new Event("brandbridge:open-message-search"))}
+              title="Search all messages (⌘⇧F)"
+            >
+              <SearchCode className="h-3.5 w-3.5" />
+              Search all
+              <kbd className="ml-1 text-[9px] font-mono rounded border border-border bg-background px-1 py-0.5">⌘⇧F</kbd>
+            </Button>
+          </div>
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search conversations…"
+              placeholder="Filter conversations…"
               className="h-8 pl-8 text-sm"
             />
           </div>
+          <p className="text-[10px] text-muted-foreground">⌥↑ / ⌥↓ to navigate</p>
         </div>
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
