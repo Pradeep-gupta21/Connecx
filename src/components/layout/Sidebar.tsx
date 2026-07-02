@@ -32,12 +32,16 @@ const creatorItems: NavItem[] = [
 
 const advertiserItems: NavItem[] = [
   { to: "/dashboard/advertiser", label: "Dashboard", icon: LayoutDashboard, shortcut: "G D" },
-  { to: "/discover", label: "Discover creators", icon: Compass, shortcut: "G C" },
   { to: "/campaigns", label: "Campaigns", icon: Megaphone, shortcut: "G P" },
+  { to: "/discover", label: "Creators", icon: Compass, shortcut: "G C" },
+  { to: "/applications", label: "Applications", icon: Briefcase, shortcut: "G A" },
   { to: "/messages", label: "Messages", icon: MessageSquare, shortcut: "G M" },
-  { to: "/notifications", label: "Notifications", icon: Bell, shortcut: "G N" },
+  { to: "/payments", label: "Payments", icon: CreditCard, shortcut: "G $" },
+  { to: "/analytics", label: "Analytics", icon: BarChart3, shortcut: "G Y" },
   { to: "/settings", label: "Settings", icon: Settings, shortcut: "G S" },
 ];
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _unused = Bell;
 
 export function Sidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
