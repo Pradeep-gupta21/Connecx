@@ -113,16 +113,30 @@ function MessagesLayout() {
     <div className="h-[calc(100vh-9rem)] -my-4 flex rounded-2xl border border-border overflow-hidden bg-card">
       <aside className={cn("w-full md:w-[340px] border-r border-border flex flex-col", activeThread && "hidden md:flex")}>
         <div className="p-4 border-b border-border space-y-3">
-          <h2 className="font-display text-lg font-semibold">Messages</h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-display text-lg font-semibold">Messages</h2>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 text-xs"
+              onClick={() => window.dispatchEvent(new Event("brandbridge:open-message-search"))}
+              title="Search all messages (⌘⇧F)"
+            >
+              <SearchCode className="h-3.5 w-3.5" />
+              Search all
+              <kbd className="ml-1 text-[9px] font-mono rounded border border-border bg-background px-1 py-0.5">⌘⇧F</kbd>
+            </Button>
+          </div>
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search conversations…"
+              placeholder="Filter conversations…"
               className="h-8 pl-8 text-sm"
             />
           </div>
+          <p className="text-[10px] text-muted-foreground">⌥↑ / ⌥↓ to navigate</p>
         </div>
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
