@@ -175,6 +175,56 @@ export type Database = {
           },
         ]
       }
+      campaign_payment_summary: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          currency: string
+          deleted_at: string | null
+          id: string
+          last_payment_at: string | null
+          total_held: number
+          total_paid: number
+          total_refunded: number
+          total_released: number
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          currency?: string
+          deleted_at?: string | null
+          id?: string
+          last_payment_at?: string | null
+          total_held?: number
+          total_paid?: number
+          total_refunded?: number
+          total_released?: number
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          currency?: string
+          deleted_at?: string | null
+          id?: string
+          last_payment_at?: string | null
+          total_held?: number
+          total_paid?: number
+          total_refunded?: number
+          total_released?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_payment_summary_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           advertiser_id: string
@@ -682,6 +732,104 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_logs: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          deleted_at: string | null
+          from_status: Database["public"]["Enums"]["payment_status"] | null
+          id: string
+          message: string | null
+          metadata: Json | null
+          payment_id: string | null
+          to_status: Database["public"]["Enums"]["payment_status"] | null
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          from_status?: Database["public"]["Enums"]["payment_status"] | null
+          id?: string
+          message?: string | null
+          metadata?: Json | null
+          payment_id?: string | null
+          to_status?: Database["public"]["Enums"]["payment_status"] | null
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          from_status?: Database["public"]["Enums"]["payment_status"] | null
+          id?: string
+          message?: string | null
+          metadata?: Json | null
+          payment_id?: string | null
+          to_status?: Database["public"]["Enums"]["payment_status"] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_logs_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_webhooks: {
+        Row: {
+          attempts: number
+          created_at: string
+          deleted_at: string | null
+          error: string | null
+          event_id: string
+          event_type: string
+          id: string
+          payload: Json
+          processed: boolean
+          processed_at: string | null
+          provider: string
+          signature: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          deleted_at?: string | null
+          error?: string | null
+          event_id: string
+          event_type: string
+          id?: string
+          payload: Json
+          processed?: boolean
+          processed_at?: string | null
+          provider?: string
+          signature?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          deleted_at?: string | null
+          error?: string | null
+          event_id?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          processed?: boolean
+          processed_at?: string | null
+          provider?: string
+          signature?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -689,14 +837,22 @@ export type Database = {
           created_at: string
           currency: string
           deleted_at: string | null
+          failure_reason: string | null
+          fee: number | null
           id: string
           metadata: Json
+          notes: Json | null
           payee_id: string
           payer_id: string
           processed_at: string | null
           provider: string | null
           provider_ref: string | null
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          razorpay_signature: string | null
           status: Database["public"]["Enums"]["payment_status"]
+          status_v2: Database["public"]["Enums"]["payment_status"] | null
+          tax: number | null
           type: Database["public"]["Enums"]["payment_type"]
           updated_at: string
         }
@@ -706,14 +862,22 @@ export type Database = {
           created_at?: string
           currency?: string
           deleted_at?: string | null
+          failure_reason?: string | null
+          fee?: number | null
           id?: string
           metadata?: Json
+          notes?: Json | null
           payee_id: string
           payer_id: string
           processed_at?: string | null
           provider?: string | null
           provider_ref?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
+          status_v2?: Database["public"]["Enums"]["payment_status"] | null
+          tax?: number | null
           type?: Database["public"]["Enums"]["payment_type"]
           updated_at?: string
         }
@@ -723,14 +887,22 @@ export type Database = {
           created_at?: string
           currency?: string
           deleted_at?: string | null
+          failure_reason?: string | null
+          fee?: number | null
           id?: string
           metadata?: Json
+          notes?: Json | null
           payee_id?: string
           payer_id?: string
           processed_at?: string | null
           provider?: string | null
           provider_ref?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
+          status_v2?: Database["public"]["Enums"]["payment_status"] | null
+          tax?: number | null
           type?: Database["public"]["Enums"]["payment_type"]
           updated_at?: string
         }
@@ -868,6 +1040,71 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      refunds: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          deleted_at: string | null
+          failure_reason: string | null
+          id: string
+          metadata: Json | null
+          payment_id: string
+          processed_at: string | null
+          razorpay_refund_id: string | null
+          reason: string | null
+          requested_by: string | null
+          status: Database["public"]["Enums"]["refund_status"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          metadata?: Json | null
+          payment_id: string
+          processed_at?: string | null
+          razorpay_refund_id?: string | null
+          reason?: string | null
+          requested_by?: string | null
+          status?: Database["public"]["Enums"]["refund_status"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          metadata?: Json | null
+          payment_id?: string
+          processed_at?: string | null
+          razorpay_refund_id?: string | null
+          reason?: string | null
+          requested_by?: string | null
+          status?: Database["public"]["Enums"]["refund_status"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refunds_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reports: {
         Row: {
@@ -1203,6 +1440,88 @@ export type Database = {
           },
         ]
       }
+      transactions: {
+        Row: {
+          amount: number
+          campaign_id: string | null
+          contract_id: string | null
+          counterparty_id: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          deleted_at: string | null
+          description: string | null
+          direction: string
+          id: string
+          metadata: Json | null
+          payment_id: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          updated_at: string
+          updated_by: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          campaign_id?: string | null
+          contract_id?: string | null
+          counterparty_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          description?: string | null
+          direction: string
+          id?: string
+          metadata?: Json | null
+          payment_id?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          campaign_id?: string | null
+          contract_id?: string | null
+          counterparty_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          description?: string | null
+          direction?: string
+          id?: string
+          metadata?: Json | null
+          payment_id?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1284,6 +1603,184 @@ export type Database = {
           },
         ]
       }
+      wallet_transactions: {
+        Row: {
+          amount: number
+          balance_after: number | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          deleted_at: string | null
+          description: string | null
+          id: string
+          metadata: Json | null
+          reference_id: string | null
+          reference_type: string | null
+          type: Database["public"]["Enums"]["wallet_txn_type"]
+          updated_at: string
+          user_id: string
+          wallet_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after?: number | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          reference_id?: string | null
+          reference_type?: string | null
+          type: Database["public"]["Enums"]["wallet_txn_type"]
+          updated_at?: string
+          user_id: string
+          wallet_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          reference_id?: string | null
+          reference_type?: string | null
+          type?: Database["public"]["Enums"]["wallet_txn_type"]
+          updated_at?: string
+          user_id?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transactions_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallets: {
+        Row: {
+          available_balance: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          deleted_at: string | null
+          held_balance: number
+          id: string
+          lifetime_earned: number
+          pending_balance: number
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+          withdrawn_balance: number
+        }
+        Insert: {
+          available_balance?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          held_balance?: number
+          id?: string
+          lifetime_earned?: number
+          pending_balance?: number
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+          withdrawn_balance?: number
+        }
+        Update: {
+          available_balance?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          held_balance?: number
+          id?: string
+          lifetime_earned?: number
+          pending_balance?: number
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+          withdrawn_balance?: number
+        }
+        Relationships: []
+      }
+      withdrawals: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          deleted_at: string | null
+          destination: Json
+          failure_reason: string | null
+          fee: number
+          id: string
+          method: string
+          processed_at: string | null
+          razorpay_payout_id: string | null
+          status: Database["public"]["Enums"]["withdrawal_status"]
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+          wallet_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          destination?: Json
+          failure_reason?: string | null
+          fee?: number
+          id?: string
+          method?: string
+          processed_at?: string | null
+          razorpay_payout_id?: string | null
+          status?: Database["public"]["Enums"]["withdrawal_status"]
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+          wallet_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          destination?: Json
+          failure_reason?: string | null
+          fee?: number
+          id?: string
+          method?: string
+          processed_at?: string | null
+          razorpay_payout_id?: string | null
+          status?: Database["public"]["Enums"]["withdrawal_status"]
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawals_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1302,6 +1799,19 @@ export type Database = {
         Args: { _reason?: string; _suspend: boolean; _user_id: string }
         Returns: undefined
       }
+      apply_wallet_txn: {
+        Args: {
+          _amount: number
+          _description?: string
+          _metadata?: Json
+          _reference_id?: string
+          _reference_type?: string
+          _type: Database["public"]["Enums"]["wallet_txn_type"]
+          _user_id: string
+        }
+        Returns: string
+      }
+      ensure_wallet: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1340,6 +1850,7 @@ export type Database = {
         | "refunded"
         | "cancelled"
       payment_type: "deposit" | "milestone" | "final" | "bonus" | "refund"
+      refund_status: "pending" | "processing" | "completed" | "failed"
       report_status: "open" | "reviewing" | "resolved" | "dismissed"
       social_platform:
         | "instagram"
@@ -1354,6 +1865,21 @@ export type Database = {
       ticket_status: "open" | "in_progress" | "waiting" | "resolved" | "closed"
       verification_kind: "identity" | "brand" | "social" | "payout"
       verification_status: "pending" | "approved" | "rejected"
+      wallet_txn_type:
+        | "credit"
+        | "debit"
+        | "hold"
+        | "release"
+        | "withdrawal"
+        | "refund"
+        | "fee"
+        | "adjustment"
+      withdrawal_status:
+        | "requested"
+        | "processing"
+        | "completed"
+        | "failed"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1513,6 +2039,7 @@ export const Constants = {
         "cancelled",
       ],
       payment_type: ["deposit", "milestone", "final", "bonus", "refund"],
+      refund_status: ["pending", "processing", "completed", "failed"],
       report_status: ["open", "reviewing", "resolved", "dismissed"],
       social_platform: [
         "instagram",
@@ -1528,6 +2055,23 @@ export const Constants = {
       ticket_status: ["open", "in_progress", "waiting", "resolved", "closed"],
       verification_kind: ["identity", "brand", "social", "payout"],
       verification_status: ["pending", "approved", "rejected"],
+      wallet_txn_type: [
+        "credit",
+        "debit",
+        "hold",
+        "release",
+        "withdrawal",
+        "refund",
+        "fee",
+        "adjustment",
+      ],
+      withdrawal_status: [
+        "requested",
+        "processing",
+        "completed",
+        "failed",
+        "cancelled",
+      ],
     },
   },
 } as const
