@@ -1,7 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   BarChart3,
-  Bell,
   Briefcase,
   Compass,
   CreditCard,
