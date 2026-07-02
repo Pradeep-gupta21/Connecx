@@ -67,38 +67,57 @@ export type Database = {
       advertiser_profiles: {
         Row: {
           about: string | null
+          approval_status: Database["public"]["Enums"]["approval_status"]
+          approved_at: string | null
+          approved_by: string | null
           brand_name: string | null
           created_at: string
           deleted_at: string | null
           industry: string | null
           logo_url: string | null
+          rejection_reason: string | null
           updated_at: string
           user_id: string
           website: string | null
         }
         Insert: {
           about?: string | null
+          approval_status?: Database["public"]["Enums"]["approval_status"]
+          approved_at?: string | null
+          approved_by?: string | null
           brand_name?: string | null
           created_at?: string
           deleted_at?: string | null
           industry?: string | null
           logo_url?: string | null
+          rejection_reason?: string | null
           updated_at?: string
           user_id: string
           website?: string | null
         }
         Update: {
           about?: string | null
+          approval_status?: Database["public"]["Enums"]["approval_status"]
+          approved_at?: string | null
+          approved_by?: string | null
           brand_name?: string | null
           created_at?: string
           deleted_at?: string | null
           industry?: string | null
           logo_url?: string | null
+          rejection_reason?: string | null
           updated_at?: string
           user_id?: string
           website?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "advertiser_profiles_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "advertiser_profiles_profile_fkey"
             columns: ["user_id"]
@@ -380,6 +399,9 @@ export type Database = {
       creator_profiles: {
         Row: {
           analytics: Json
+          approval_status: Database["public"]["Enums"]["approval_status"]
+          approved_at: string | null
+          approved_by: string | null
           audience_demographics: Json
           availability_status: string
           available: boolean
@@ -395,12 +417,16 @@ export type Database = {
           profile_slug: string | null
           rate_max: number | null
           rate_min: number | null
+          rejection_reason: string | null
           socials: Json
           updated_at: string
           user_id: string
         }
         Insert: {
           analytics?: Json
+          approval_status?: Database["public"]["Enums"]["approval_status"]
+          approved_at?: string | null
+          approved_by?: string | null
           audience_demographics?: Json
           availability_status?: string
           available?: boolean
@@ -416,12 +442,16 @@ export type Database = {
           profile_slug?: string | null
           rate_max?: number | null
           rate_min?: number | null
+          rejection_reason?: string | null
           socials?: Json
           updated_at?: string
           user_id: string
         }
         Update: {
           analytics?: Json
+          approval_status?: Database["public"]["Enums"]["approval_status"]
+          approved_at?: string | null
+          approved_by?: string | null
           audience_demographics?: Json
           availability_status?: string
           available?: boolean
@@ -437,11 +467,19 @@ export type Database = {
           profile_slug?: string | null
           rate_max?: number | null
           rate_min?: number | null
+          rejection_reason?: string | null
           socials?: Json
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "creator_profiles_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "creator_profiles_profile_fkey"
             columns: ["user_id"]
@@ -793,6 +831,8 @@ export type Database = {
           location: string | null
           onboarded: boolean
           phone: string | null
+          suspended_at: string | null
+          suspended_reason: string | null
           updated_at: string
         }
         Insert: {
@@ -807,6 +847,8 @@ export type Database = {
           location?: string | null
           onboarded?: boolean
           phone?: string | null
+          suspended_at?: string | null
+          suspended_reason?: string | null
           updated_at?: string
         }
         Update: {
@@ -821,9 +863,71 @@ export type Database = {
           location?: string | null
           onboarded?: boolean
           phone?: string | null
+          suspended_at?: string | null
+          suspended_reason?: string | null
           updated_at?: string
         }
         Relationships: []
+      }
+      reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          reason: string
+          reporter_id: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolver_id: string | null
+          status: Database["public"]["Enums"]["report_status"]
+          target_id: string
+          target_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: string
+          reporter_id: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolver_id?: string | null
+          status?: Database["public"]["Enums"]["report_status"]
+          target_id: string
+          target_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: string
+          reporter_id?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolver_id?: string | null
+          status?: Database["public"]["Enums"]["report_status"]
+          target_id?: string
+          target_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_resolver_id_fkey"
+            columns: ["resolver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reviews: {
         Row: {
@@ -1042,6 +1146,63 @@ export type Database = {
           },
         ]
       }
+      support_tickets: {
+        Row: {
+          assignee_id: string | null
+          body: string
+          category: string | null
+          created_at: string
+          id: string
+          priority: Database["public"]["Enums"]["ticket_priority"]
+          resolution: string | null
+          status: Database["public"]["Enums"]["ticket_status"]
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          body: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          priority?: Database["public"]["Enums"]["ticket_priority"]
+          resolution?: string | null
+          status?: Database["public"]["Enums"]["ticket_status"]
+          subject: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assignee_id?: string | null
+          body?: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          priority?: Database["public"]["Enums"]["ticket_priority"]
+          resolution?: string | null
+          status?: Database["public"]["Enums"]["ticket_status"]
+          subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1128,6 +1289,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_set_approval: {
+        Args: {
+          _kind: string
+          _reason?: string
+          _status: Database["public"]["Enums"]["approval_status"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
+      admin_set_suspension: {
+        Args: { _reason?: string; _suspend: boolean; _user_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1137,8 +1311,9 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "advertiser" | "creator"
+      app_role: "advertiser" | "creator" | "admin"
       application_status: "pending" | "accepted" | "rejected" | "withdrawn"
+      approval_status: "pending" | "approved" | "rejected"
       campaign_status: "draft" | "open" | "closed" | "archived" | "paused"
       contract_status:
         | "draft"
@@ -1165,6 +1340,7 @@ export type Database = {
         | "refunded"
         | "cancelled"
       payment_type: "deposit" | "milestone" | "final" | "bonus" | "refund"
+      report_status: "open" | "reviewing" | "resolved" | "dismissed"
       social_platform:
         | "instagram"
         | "tiktok"
@@ -1174,6 +1350,8 @@ export type Database = {
         | "linkedin"
         | "facebook"
         | "other"
+      ticket_priority: "low" | "normal" | "high" | "urgent"
+      ticket_status: "open" | "in_progress" | "waiting" | "resolved" | "closed"
       verification_kind: "identity" | "brand" | "social" | "payout"
       verification_status: "pending" | "approved" | "rejected"
     }
@@ -1303,8 +1481,9 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["advertiser", "creator"],
+      app_role: ["advertiser", "creator", "admin"],
       application_status: ["pending", "accepted", "rejected", "withdrawn"],
+      approval_status: ["pending", "approved", "rejected"],
       campaign_status: ["draft", "open", "closed", "archived", "paused"],
       contract_status: [
         "draft",
@@ -1334,6 +1513,7 @@ export const Constants = {
         "cancelled",
       ],
       payment_type: ["deposit", "milestone", "final", "bonus", "refund"],
+      report_status: ["open", "reviewing", "resolved", "dismissed"],
       social_platform: [
         "instagram",
         "tiktok",
@@ -1344,6 +1524,8 @@ export const Constants = {
         "facebook",
         "other",
       ],
+      ticket_priority: ["low", "normal", "high", "urgent"],
+      ticket_status: ["open", "in_progress", "waiting", "resolved", "closed"],
       verification_kind: ["identity", "brand", "social", "payout"],
       verification_status: ["pending", "approved", "rejected"],
     },
