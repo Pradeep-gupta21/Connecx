@@ -1,7 +1,7 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ArrowLeft, Send, Loader2, Search, Circle } from "lucide-react";
+import { ArrowLeft, Send, Loader2, Search, Pin as PinIcon } from "lucide-react";
 import { format, isSameDay } from "date-fns";
 import { AnimatePresence } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -35,8 +35,11 @@ function Thread() {
   const [showSearch, setShowSearch] = useState(false);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastTypingSentRef = useRef(0);
+  const pinIndexRef = useRef(0);
+  const hash = useRouterState({ select: (s) => s.location.hash });
 
   const convoQuery = useQuery({
     queryKey: ["conversation", threadId],
@@ -212,6 +215,24 @@ function Thread() {
     else qc.invalidateQueries({ queryKey: ["messages", threadId] });
   };
 
+  const editMessage = async (messageId: string, body: string) => {
+    const { error } = await supabase.from("messages").update({ body }).eq("id", messageId);
+    if (error) toast.error(error.message);
+    else qc.invalidateQueries({ queryKey: ["messages", threadId] });
+  };
+
+  const deleteMessage = async (messageId: string) => {
+    const { error } = await supabase
+      .from("messages")
+      .update({ deleted_at: new Date().toISOString(), body: "", attachments: [], pinned: false })
+      .eq("id", messageId);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Message deleted");
+      qc.invalidateQueries({ queryKey: ["messages", threadId] });
+    }
+  };
+
   const jumpTo = (id: string) => {
     const el = messageRefs.current[id];
     if (el) {
@@ -224,8 +245,48 @@ function Thread() {
   };
 
   const messages = messagesQuery.data ?? [];
-  const pinned = messages.filter((m) => m.pinned);
+  const pinned = messages.filter((m) => m.pinned && !m.deleted_at);
   const reactions = reactionsQuery.data ?? [];
+
+  // Jump-to-message from URL hash (e.g. from notification or global search)
+  useEffect(() => {
+    if (!hash || !messages.length) return;
+    const id = hash.replace(/^m-/, "");
+    if (messages.some((m) => m.id === id)) {
+      setTimeout(() => jumpTo(id), 100);
+    }
+  }, [hash, messages.length]);
+
+  // Keyboard shortcuts: focus composer / cycle pinned
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const inField = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+      const mod = e.metaKey || e.ctrlKey;
+      // Cmd/Ctrl + / → focus composer
+      if (mod && e.key === "/") {
+        e.preventDefault();
+        composerRef.current?.focus();
+        return;
+      }
+      // Cmd/Ctrl + P → cycle through pinned messages
+      if (mod && e.key.toLowerCase() === "p" && !e.shiftKey) {
+        if (pinned.length === 0) return;
+        e.preventDefault();
+        const idx = pinIndexRef.current % pinned.length;
+        jumpTo(pinned[idx].id);
+        pinIndexRef.current = (idx + 1) % pinned.length;
+        return;
+      }
+      // Esc → blur composer / close search
+      if (e.key === "Escape" && !inField) {
+        setShowSearch(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pinned]);
+
 
   return (
     <>
@@ -309,6 +370,8 @@ function Thread() {
                     onReact={react}
                     onUnreact={unreact}
                     onTogglePin={togglePin}
+                    onEdit={editMessage}
+                    onDelete={deleteMessage}
                     isOwnerAction
                   />
                 </div>
@@ -325,32 +388,40 @@ function Thread() {
 
       <PendingAttachments attachments={pending} onRemove={(i) => setPending(pending.filter((_, x) => x !== i))} />
 
-      <div className="border-t border-border p-3 flex items-end gap-1.5">
-        <AttachmentPicker conversationId={threadId} pending={pending} setPending={setPending} />
-        <Textarea
-          value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-            sendTyping();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              send();
-            }
-          }}
-          placeholder="Write a message…"
-          rows={1}
-          className="resize-none min-h-[40px] max-h-32"
-        />
-        <Button
-          onClick={send}
-          disabled={sending || (!text.trim() && pending.length === 0)}
-          size="icon"
-          className="h-10 w-10 shrink-0"
-        >
-          <Send className="h-4 w-4" />
-        </Button>
+      <div className="border-t border-border p-3">
+        <div className="flex items-end gap-1.5">
+          <AttachmentPicker conversationId={threadId} pending={pending} setPending={setPending} />
+          <Textarea
+            ref={composerRef}
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              sendTyping();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send();
+              }
+            }}
+            placeholder="Write a message…  (⌘/ to focus · ⌘P for pinned · ⌘⇧F to search all)"
+            rows={1}
+            className="resize-none min-h-[40px] max-h-32"
+          />
+          <Button
+            onClick={send}
+            disabled={sending || (!text.trim() && pending.length === 0)}
+            size="icon"
+            className="h-10 w-10 shrink-0"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+        {pinned.length > 0 && (
+          <p className="text-[10px] text-muted-foreground mt-1.5 flex items-center gap-1">
+            <PinIcon className="h-2.5 w-2.5" /> {pinned.length} pinned — press ⌘P to jump
+          </p>
+        )}
       </div>
     </>
   );

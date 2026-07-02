@@ -559,6 +559,8 @@ export type Database = {
           conversation_id: string
           created_at: string
           deleted_at: string | null
+          edit_count: number
+          edited_at: string | null
           id: string
           message_type: string
           pinned: boolean
@@ -572,6 +574,8 @@ export type Database = {
           conversation_id: string
           created_at?: string
           deleted_at?: string | null
+          edit_count?: number
+          edited_at?: string | null
           id?: string
           message_type?: string
           pinned?: boolean
@@ -585,6 +589,8 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           deleted_at?: string | null
+          edit_count?: number
+          edited_at?: string | null
           id?: string
           message_type?: string
           pinned?: boolean
@@ -1149,6 +1155,8 @@ export type Database = {
         | "new_message"
         | "campaign_update"
         | "system"
+        | "mention"
+        | "pin_update"
       payment_status:
         | "pending"
         | "processing"
@@ -1314,6 +1322,8 @@ export const Constants = {
         "new_message",
         "campaign_update",
         "system",
+        "mention",
+        "pin_update",
       ],
       payment_status: [
         "pending",
