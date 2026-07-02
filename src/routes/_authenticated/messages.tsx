@@ -19,6 +19,7 @@ export const Route = createFileRoute("/_authenticated/messages")({
 
 function MessagesLayout() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const activeThread = pathname.startsWith("/messages/") ? pathname.split("/")[2] || null : null;
   const [q, setQ] = useState("");
