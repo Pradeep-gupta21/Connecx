@@ -14,11 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action: string
+          created_at: string
+          deleted_at: string | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: unknown
+          metadata: Json
+          updated_at: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          deleted_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: unknown
+          metadata?: Json
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          deleted_at?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: unknown
+          metadata?: Json
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       advertiser_profiles: {
         Row: {
           about: string | null
           brand_name: string | null
           created_at: string
+          deleted_at: string | null
           industry: string | null
           logo_url: string | null
           updated_at: string
@@ -29,6 +80,7 @@ export type Database = {
           about?: string | null
           brand_name?: string | null
           created_at?: string
+          deleted_at?: string | null
           industry?: string | null
           logo_url?: string | null
           updated_at?: string
@@ -39,6 +91,7 @@ export type Database = {
           about?: string | null
           brand_name?: string | null
           created_at?: string
+          deleted_at?: string | null
           industry?: string | null
           logo_url?: string | null
           updated_at?: string
@@ -60,6 +113,7 @@ export type Database = {
           campaign_id: string
           created_at: string
           creator_id: string
+          deleted_at: string | null
           id: string
           pitch: string | null
           status: Database["public"]["Enums"]["application_status"]
@@ -69,6 +123,7 @@ export type Database = {
           campaign_id: string
           created_at?: string
           creator_id: string
+          deleted_at?: string | null
           id?: string
           pitch?: string | null
           status?: Database["public"]["Enums"]["application_status"]
@@ -78,6 +133,7 @@ export type Database = {
           campaign_id?: string
           created_at?: string
           creator_id?: string
+          deleted_at?: string | null
           id?: string
           pitch?: string | null
           status?: Database["public"]["Enums"]["application_status"]
@@ -110,6 +166,7 @@ export type Database = {
           cover_url: string | null
           created_at: string
           deadline: string | null
+          deleted_at: string | null
           id: string
           status: Database["public"]["Enums"]["campaign_status"]
           title: string
@@ -124,6 +181,7 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           deadline?: string | null
+          deleted_at?: string | null
           id?: string
           status?: Database["public"]["Enums"]["campaign_status"]
           title: string
@@ -138,6 +196,7 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           deadline?: string | null
+          deleted_at?: string | null
           id?: string
           status?: Database["public"]["Enums"]["campaign_status"]
           title?: string
@@ -153,12 +212,105 @@ export type Database = {
           },
         ]
       }
+      contracts: {
+        Row: {
+          advertiser_id: string
+          amount: number
+          application_id: string | null
+          campaign_id: string
+          created_at: string
+          creator_id: string
+          currency: string
+          deleted_at: string | null
+          end_date: string | null
+          id: string
+          metadata: Json
+          signed_by_advertiser_at: string | null
+          signed_by_creator_at: string | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["contract_status"]
+          terms: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          advertiser_id: string
+          amount: number
+          application_id?: string | null
+          campaign_id: string
+          created_at?: string
+          creator_id: string
+          currency?: string
+          deleted_at?: string | null
+          end_date?: string | null
+          id?: string
+          metadata?: Json
+          signed_by_advertiser_at?: string | null
+          signed_by_creator_at?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["contract_status"]
+          terms?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          advertiser_id?: string
+          amount?: number
+          application_id?: string | null
+          campaign_id?: string
+          created_at?: string
+          creator_id?: string
+          currency?: string
+          deleted_at?: string | null
+          end_date?: string | null
+          id?: string
+          metadata?: Json
+          signed_by_advertiser_at?: string | null
+          signed_by_creator_at?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["contract_status"]
+          terms?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_advertiser_id_fkey"
+            columns: ["advertiser_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           advertiser_id: string
           campaign_id: string | null
           created_at: string
           creator_id: string
+          deleted_at: string | null
           id: string
           last_message_at: string
         }
@@ -167,6 +319,7 @@ export type Database = {
           campaign_id?: string | null
           created_at?: string
           creator_id: string
+          deleted_at?: string | null
           id?: string
           last_message_at?: string
         }
@@ -175,6 +328,7 @@ export type Database = {
           campaign_id?: string | null
           created_at?: string
           creator_id?: string
+          deleted_at?: string | null
           id?: string
           last_message_at?: string
         }
@@ -207,6 +361,7 @@ export type Database = {
           available: boolean
           categories: string[]
           created_at: string
+          deleted_at: string | null
           follower_count: number | null
           headline: string | null
           portfolio_media: Json
@@ -220,6 +375,7 @@ export type Database = {
           available?: boolean
           categories?: string[]
           created_at?: string
+          deleted_at?: string | null
           follower_count?: number | null
           headline?: string | null
           portfolio_media?: Json
@@ -233,6 +389,7 @@ export type Database = {
           available?: boolean
           categories?: string[]
           created_at?: string
+          deleted_at?: string | null
           follower_count?: number | null
           headline?: string | null
           portfolio_media?: Json
@@ -252,11 +409,74 @@ export type Database = {
           },
         ]
       }
+      media_files: {
+        Row: {
+          bucket: string
+          created_at: string
+          deleted_at: string | null
+          duration_ms: number | null
+          height: number | null
+          id: string
+          is_public: boolean
+          kind: Database["public"]["Enums"]["media_kind"]
+          metadata: Json
+          mime_type: string | null
+          owner_id: string
+          path: string
+          size_bytes: number | null
+          updated_at: string
+          width: number | null
+        }
+        Insert: {
+          bucket: string
+          created_at?: string
+          deleted_at?: string | null
+          duration_ms?: number | null
+          height?: number | null
+          id?: string
+          is_public?: boolean
+          kind?: Database["public"]["Enums"]["media_kind"]
+          metadata?: Json
+          mime_type?: string | null
+          owner_id: string
+          path: string
+          size_bytes?: number | null
+          updated_at?: string
+          width?: number | null
+        }
+        Update: {
+          bucket?: string
+          created_at?: string
+          deleted_at?: string | null
+          duration_ms?: number | null
+          height?: number | null
+          id?: string
+          is_public?: boolean
+          kind?: Database["public"]["Enums"]["media_kind"]
+          metadata?: Json
+          mime_type?: string | null
+          owner_id?: string
+          path?: string
+          size_bytes?: number | null
+          updated_at?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_files_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           body: string
           conversation_id: string
           created_at: string
+          deleted_at: string | null
           id: string
           read_at: string | null
           sender_id: string
@@ -265,6 +485,7 @@ export type Database = {
           body: string
           conversation_id: string
           created_at?: string
+          deleted_at?: string | null
           id?: string
           read_at?: string | null
           sender_id: string
@@ -273,6 +494,7 @@ export type Database = {
           body?: string
           conversation_id?: string
           created_at?: string
+          deleted_at?: string | null
           id?: string
           read_at?: string | null
           sender_id?: string
@@ -291,6 +513,7 @@ export type Database = {
         Row: {
           body: string | null
           created_at: string
+          deleted_at: string | null
           id: string
           payload: Json
           read_at: string | null
@@ -301,6 +524,7 @@ export type Database = {
         Insert: {
           body?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           payload?: Json
           read_at?: string | null
@@ -311,6 +535,7 @@ export type Database = {
         Update: {
           body?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           payload?: Json
           read_at?: string | null
@@ -320,6 +545,142 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          contract_id: string
+          created_at: string
+          currency: string
+          deleted_at: string | null
+          id: string
+          metadata: Json
+          payee_id: string
+          payer_id: string
+          processed_at: string | null
+          provider: string | null
+          provider_ref: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          type: Database["public"]["Enums"]["payment_type"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          contract_id: string
+          created_at?: string
+          currency?: string
+          deleted_at?: string | null
+          id?: string
+          metadata?: Json
+          payee_id: string
+          payer_id: string
+          processed_at?: string | null
+          provider?: string | null
+          provider_ref?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          type?: Database["public"]["Enums"]["payment_type"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          contract_id?: string
+          created_at?: string
+          currency?: string
+          deleted_at?: string | null
+          id?: string
+          metadata?: Json
+          payee_id?: string
+          payer_id?: string
+          processed_at?: string | null
+          provider?: string | null
+          provider_ref?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          type?: Database["public"]["Enums"]["payment_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_payee_id_fkey"
+            columns: ["payee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_payer_id_fkey"
+            columns: ["payer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portfolio: {
+        Row: {
+          cover_media_id: string | null
+          created_at: string
+          creator_id: string
+          deleted_at: string | null
+          description: string | null
+          external_url: string | null
+          id: string
+          is_public: boolean
+          position: number
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          cover_media_id?: string | null
+          created_at?: string
+          creator_id: string
+          deleted_at?: string | null
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          is_public?: boolean
+          position?: number
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          cover_media_id?: string | null
+          created_at?: string
+          creator_id?: string
+          deleted_at?: string | null
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          is_public?: boolean
+          position?: number
+          tags?: string[]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_cover_media_id_fkey"
+            columns: ["cover_media_id"]
+            isOneToOne: false
+            referencedRelation: "media_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portfolio_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           active_role: Database["public"]["Enums"]["app_role"] | null
@@ -327,6 +688,7 @@ export type Database = {
           bio: string | null
           country: string | null
           created_at: string
+          deleted_at: string | null
           display_name: string | null
           id: string
           location: string | null
@@ -340,6 +702,7 @@ export type Database = {
           bio?: string | null
           country?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_name?: string | null
           id: string
           location?: string | null
@@ -353,6 +716,7 @@ export type Database = {
           bio?: string | null
           country?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_name?: string | null
           id?: string
           location?: string | null
@@ -362,26 +726,303 @@ export type Database = {
         }
         Relationships: []
       }
+      reviews: {
+        Row: {
+          body: string | null
+          campaign_id: string | null
+          contract_id: string | null
+          created_at: string
+          deleted_at: string | null
+          id: string
+          is_public: boolean
+          rating: number
+          reviewee_id: string
+          reviewer_id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          body?: string | null
+          campaign_id?: string | null
+          contract_id?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_public?: boolean
+          rating: number
+          reviewee_id: string
+          reviewer_id: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string | null
+          campaign_id?: string | null
+          contract_id?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_public?: boolean
+          rating?: number
+          reviewee_id?: string
+          reviewer_id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_reviewee_id_fkey"
+            columns: ["reviewee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saved_campaigns: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          note: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          note?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          note?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_campaigns_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_campaigns_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saved_creators: {
+        Row: {
+          created_at: string
+          creator_id: string
+          deleted_at: string | null
+          id: string
+          note: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          deleted_at?: string | null
+          id?: string
+          note?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          deleted_at?: string | null
+          id?: string
+          note?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_creators_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_creators_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_accounts: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          engagement_rate: number | null
+          follower_count: number | null
+          handle: string
+          id: string
+          metadata: Json
+          platform: Database["public"]["Enums"]["social_platform"]
+          updated_at: string
+          url: string | null
+          user_id: string
+          verified: boolean
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          engagement_rate?: number | null
+          follower_count?: number | null
+          handle: string
+          id?: string
+          metadata?: Json
+          platform: Database["public"]["Enums"]["social_platform"]
+          updated_at?: string
+          url?: string | null
+          user_id: string
+          verified?: boolean
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          engagement_rate?: number | null
+          follower_count?: number | null
+          handle?: string
+          id?: string
+          metadata?: Json
+          platform?: Database["public"]["Enums"]["social_platform"]
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+          verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
         Relationships: []
+      }
+      verification_requests: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          evidence: Json
+          id: string
+          kind: Database["public"]["Enums"]["verification_kind"]
+          reviewed_at: string | null
+          reviewer_id: string | null
+          reviewer_notes: string | null
+          status: Database["public"]["Enums"]["verification_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          evidence?: Json
+          id?: string
+          kind: Database["public"]["Enums"]["verification_kind"]
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          reviewer_notes?: string | null
+          status?: Database["public"]["Enums"]["verification_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          evidence?: Json
+          id?: string
+          kind?: Database["public"]["Enums"]["verification_kind"]
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          reviewer_notes?: string | null
+          status?: Database["public"]["Enums"]["verification_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_requests_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -400,12 +1041,40 @@ export type Database = {
       app_role: "advertiser" | "creator"
       application_status: "pending" | "accepted" | "rejected" | "withdrawn"
       campaign_status: "draft" | "open" | "closed" | "archived"
+      contract_status:
+        | "draft"
+        | "sent"
+        | "signed"
+        | "active"
+        | "completed"
+        | "cancelled"
+        | "disputed"
+      media_kind: "image" | "video" | "audio" | "document"
       notification_type:
         | "application_received"
         | "application_status"
         | "new_message"
         | "campaign_update"
         | "system"
+      payment_status:
+        | "pending"
+        | "processing"
+        | "succeeded"
+        | "failed"
+        | "refunded"
+        | "cancelled"
+      payment_type: "deposit" | "milestone" | "final" | "bonus" | "refund"
+      social_platform:
+        | "instagram"
+        | "tiktok"
+        | "youtube"
+        | "twitter"
+        | "twitch"
+        | "linkedin"
+        | "facebook"
+        | "other"
+      verification_kind: "identity" | "brand" | "social" | "payout"
+      verification_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -536,6 +1205,16 @@ export const Constants = {
       app_role: ["advertiser", "creator"],
       application_status: ["pending", "accepted", "rejected", "withdrawn"],
       campaign_status: ["draft", "open", "closed", "archived"],
+      contract_status: [
+        "draft",
+        "sent",
+        "signed",
+        "active",
+        "completed",
+        "cancelled",
+        "disputed",
+      ],
+      media_kind: ["image", "video", "audio", "document"],
       notification_type: [
         "application_received",
         "application_status",
@@ -543,6 +1222,27 @@ export const Constants = {
         "campaign_update",
         "system",
       ],
+      payment_status: [
+        "pending",
+        "processing",
+        "succeeded",
+        "failed",
+        "refunded",
+        "cancelled",
+      ],
+      payment_type: ["deposit", "milestone", "final", "bonus", "refund"],
+      social_platform: [
+        "instagram",
+        "tiktok",
+        "youtube",
+        "twitter",
+        "twitch",
+        "linkedin",
+        "facebook",
+        "other",
+      ],
+      verification_kind: ["identity", "brand", "social", "payout"],
+      verification_status: ["pending", "approved", "rejected"],
     },
   },
 } as const
