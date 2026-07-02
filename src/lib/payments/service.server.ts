@@ -896,15 +896,31 @@ export const PaymentService = {
       admin_notes: args.reason ?? null,
     }).eq("id", wd.id);
 
-    // Refund the reserved amount back to available balance
-    await applyWalletTxn({
-      userId: wd.user_id,
-      type: "adjustment",
-      amount: Number(wd.amount),
-      referenceType: "withdrawal",
-      referenceId: wd.id,
-      description: "Withdrawal rejected — funds restored",
-    });
+    // Restore the reserved amount to available AND unwind the withdrawn_balance
+    // that requestWithdrawal bumped (otherwise "lifetime withdrawn" drifts up on every reject).
+    const amt = Number(wd.amount);
+    await admin.rpc("ensure_wallet", { _user_id: wd.user_id });
+    const { data: wallet } = await admin
+      .from("wallets")
+      .select("id, available_balance, withdrawn_balance")
+      .eq("user_id", wd.user_id)
+      .single();
+    if (wallet) {
+      await admin.from("wallets").update({
+        available_balance: Number(wallet.available_balance) + amt,
+        withdrawn_balance: Math.max(Number(wallet.withdrawn_balance) - amt, 0),
+      }).eq("id", wallet.id);
+      await admin.from("wallet_transactions").insert({
+        wallet_id: wallet.id,
+        user_id: wd.user_id,
+        type: "adjustment",
+        amount: amt,
+        balance_after: Number(wallet.available_balance) + amt,
+        reference_type: "withdrawal",
+        reference_id: wd.id,
+        description: "Withdrawal rejected — funds restored",
+      });
+    }
 
     await notify({
       userId: wd.user_id,
