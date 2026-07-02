@@ -580,6 +580,7 @@ export const PaymentService = {
       .eq("id", paymentId)
       .single();
     if (error || !pay) throw new Error("Payment not found");
+    if (!pay.status_v2) throw new Error("Payment has no captured status — cannot release");
     if (!["held", "revision_requested"].includes(pay.status_v2)) {
       throw new Error(`Cannot release from ${pay.status_v2}`);
     }
