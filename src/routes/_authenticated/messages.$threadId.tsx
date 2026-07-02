@@ -171,7 +171,7 @@ function Thread() {
     const { error } = await supabase.from("messages").insert({
       conversation_id: threadId,
       sender_id: user.id,
-      body: body || null,
+      body: body || "",
       attachments: attachments as any,
     });
     setSending(false);
@@ -300,7 +300,7 @@ function Thread() {
                     <div className="flex-1 h-px bg-border" />
                   </div>
                 )}
-                <div ref={(el) => (messageRefs.current[m.id] = el)} className="transition-shadow">
+                <div ref={(el) => { messageRefs.current[m.id] = el; }} className="transition-shadow">
                   <MessageBubble
                     msg={m}
                     mine={m.sender_id === user?.id}
