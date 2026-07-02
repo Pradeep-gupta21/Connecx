@@ -38,7 +38,7 @@ async function fetchOverview() {
   return {
     userCount: users.count ?? 0,
     campaignCount: campaigns.count ?? 0,
-    activeCampaigns: (campaigns.data ?? []).filter((c) => c.status === "published").length,
+    activeCampaigns: (campaigns.data ?? []).filter((c) => c.status === "open").length,
     suspendedCount: (users.data ?? []).filter((u) => u.suspended_at).length,
     reportsOpen: reports.count ?? 0,
     ticketsOpen: tickets.count ?? 0,

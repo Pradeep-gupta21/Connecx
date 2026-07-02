@@ -43,7 +43,7 @@ function AdminApprovals() {
 
   const act = useMutation({
     mutationFn: async ({ kind, id, status, reason }: { kind: "creator" | "advertiser"; id: string; status: "approved" | "rejected"; reason?: string }) => {
-      const { error } = await supabase.rpc("admin_set_approval", { _kind: kind, _user_id: id, _status: status, _reason: reason ?? null });
+      const { error } = await supabase.rpc("admin_set_approval", { _kind: kind, _user_id: id, _status: status, _reason: reason || undefined });
       if (error) throw error;
     },
     onSuccess: (_, v) => {

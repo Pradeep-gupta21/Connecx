@@ -41,7 +41,7 @@ function AdminUsers() {
 
   const suspend = useMutation({
     mutationFn: async ({ id, suspend, reason }: { id: string; suspend: boolean; reason?: string }) => {
-      const { error } = await supabase.rpc("admin_set_suspension", { _user_id: id, _suspend: suspend, _reason: reason ?? null });
+      const { error } = await supabase.rpc("admin_set_suspension", { _user_id: id, _suspend: suspend, _reason: reason || undefined });
       if (error) throw error;
     },
     onSuccess: (_, v) => {
