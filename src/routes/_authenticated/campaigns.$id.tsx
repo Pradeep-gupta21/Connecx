@@ -113,9 +113,13 @@ function CampaignDetail() {
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "campaigns", filter: `id=eq.${id}` },
         () => qc.invalidateQueries({ queryKey: ["campaign", id] })
       )
+      .on("postgres_changes", { event: "*", schema: "public", table: "contracts", filter: `campaign_id=eq.${id}` },
+        () => qc.invalidateQueries({ queryKey: ["campaign-contracts", id, user?.id] })
+      )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [id, qc, campaignQuery.data]);
+  }, [id, qc, campaignQuery.data, user?.id]);
+
 
   const statusMut = useMutation({
     mutationFn: async (status: "draft" | "open" | "paused" | "closed" | "archived") => {
