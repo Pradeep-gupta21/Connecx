@@ -93,7 +93,8 @@ export const Route = createFileRoute("/api/public/razorpay/webhook")({
 });
 
 type Deps = {
-  admin: typeof import("@/integrations/supabase/client.server").admin;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any;
   PaymentService: typeof import("@/lib/payments/service.server").PaymentService;
 };
 
