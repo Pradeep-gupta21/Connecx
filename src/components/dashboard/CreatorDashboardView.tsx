@@ -277,6 +277,11 @@ export function CreatorDashboardView() {
         </div>
       </div>
 
+      {/* Campaign invites — accepted applications awaiting creator confirmation */}
+      <CampaignInvites appsData={(appsQuery.data ?? []) as any[]} />
+
+
+
       {/* Application status + messages */}
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="surface-card p-6">
