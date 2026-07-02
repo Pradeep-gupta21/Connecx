@@ -1,0 +1,66 @@
+// Payment domain types. Safe to import from client or server.
+
+export type PaymentStatus =
+  | "pending"
+  | "paid"
+  | "held"
+  | "revision_requested"
+  | "released"
+  | "withdrawal_requested"
+  | "withdrawn"
+  | "refund_pending"
+  | "refunded"
+  | "cancelled"
+  | "failed";
+
+export type WalletTxnType =
+  | "credit"
+  | "debit"
+  | "hold"
+  | "release"
+  | "withdrawal"
+  | "refund"
+  | "fee"
+  | "adjustment";
+
+export type WithdrawalStatus =
+  | "requested"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export type RefundStatus = "pending" | "processing" | "completed" | "failed";
+
+export interface CreateOrderInput {
+  amount: number; // in major unit (e.g. INR rupees)
+  currency?: string;
+  contractId?: string;
+  campaignId?: string;
+  payeeId: string;
+  notes?: Record<string, string>;
+}
+
+export interface CreateOrderResult {
+  orderId: string; // razorpay order id
+  paymentId: string; // internal payments.id
+  amount: number; // minor unit (paise)
+  currency: string;
+  keyId: string; // public razorpay key
+}
+
+export interface VerifyPaymentInput {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
+
+export interface WalletSnapshot {
+  id: string;
+  currency: string;
+  available_balance: number;
+  held_balance: number;
+  pending_balance: number;
+  withdrawn_balance: number;
+  lifetime_earned: number;
+}
