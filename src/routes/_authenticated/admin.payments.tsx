@@ -46,7 +46,7 @@ function AdminPayments() {
       const { data, error } = await supabase
         .from("payments")
         .select(
-          "id, amount, currency, status_v2, type, provider, provider_payment_id, created_at, processed_at, contract_id, campaign_id, payer_id, payee_id, platform_fee, gst, creator_earnings, receipt_number, invoice_number",
+          "id, amount, currency, status_v2, type, provider, razorpay_payment_id, created_at, processed_at, contract_id, campaign_id, payer_id, payee_id, platform_fee, gst, creator_earnings, receipt_number, invoice_number",
         )
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
@@ -132,7 +132,7 @@ function AdminPayments() {
         r.receipt_number,
         r.invoice_number,
         r.id,
-        r.provider_payment_id,
+        r.razorpay_payment_id,
         r.payer_id,
         r.payee_id,
       ]

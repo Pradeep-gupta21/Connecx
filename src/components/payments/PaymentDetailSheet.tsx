@@ -108,10 +108,10 @@ export function PaymentDetailSheet({
                 <IdRow label="Invoice" value={payment.invoice_number} onCopy={copy} />
                 <IdRow label="Payment ID" value={payment.id} onCopy={copy} mono />
                 <IdRow label="Gateway" value={payment.provider} />
-                {payment.provider_payment_id && (
+                {payment.razorpay_payment_id && (
                   <IdRow
                     label="Gateway txn"
-                    value={payment.provider_payment_id}
+                    value={payment.razorpay_payment_id}
                     onCopy={copy}
                     mono
                   />
