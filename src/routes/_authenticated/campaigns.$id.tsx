@@ -148,7 +148,7 @@ function CampaignDetail() {
   const myApplication = applicationsQuery.data?.find((a) => a.creator_id === user?.id);
   const canApply = !isOwner && activeRole === "creator" && c.status === "open";
   const languages = (c.languages ?? []) as string[];
-  const attachments = ((c.attachments ?? []) as { name: string; url: string }[]) ?? [];
+  const attachments = ((c.attachments ?? []) as { name: string; url: string }[]);
   const tierLabel = CREATOR_TIERS.find((t) => t.value === c.creator_tier)?.label ?? c.creator_tier;
 
   return (
