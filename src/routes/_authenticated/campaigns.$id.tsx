@@ -169,14 +169,29 @@ function CampaignDetail() {
       </div>
 
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant={c.status === "open" ? "default" : "secondary"} className="capitalize">{statusLabel(c.status)}</Badge>
             {c.category && <Badge variant="secondary">{c.category}</Badge>}
             {c.platform && <Badge variant="secondary">{c.platform}</Badge>}
+            {c.funded && (
+              <Badge variant="secondary" className="bg-success/10 text-success border-success/20 gap-1">
+                <ShieldCheck className="h-3 w-3" /> Funded · escrowed
+              </Badge>
+            )}
           </div>
-          {isOwner && <OwnerActions status={c.status} onStatus={(s) => statusMut.mutate(s)} onDelete={() => deleteMut.mutate()} id={id} />}
+          <div className="flex items-center gap-2">
+            {isOwner && !c.funded && c.status !== "archived" && (
+              <FundCampaignDialog
+                campaignId={id}
+                budget={Number(c.budget_max ?? c.budget_min ?? 0)}
+                trigger={<Button className="gap-2"><Wallet className="h-4 w-4" /> Fund campaign</Button>}
+              />
+            )}
+            {isOwner && <OwnerActions status={c.status} onStatus={(s) => statusMut.mutate(s)} onDelete={() => deleteMut.mutate()} id={id} />}
+          </div>
         </div>
+
         <h1 className="font-display text-4xl font-semibold tracking-tight">{c.title}</h1>
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9">
