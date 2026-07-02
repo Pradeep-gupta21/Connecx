@@ -552,15 +552,14 @@ export const PaymentService = {
       .single();
     if (error || !contract) throw new Error("Contract not found");
     if (contract.advertiser_id !== args.actorId) throw new Error("Only the advertiser can approve");
+    if (!contract.payment_id) throw new Error("Contract has no linked escrow payment — cannot release funds");
 
     await admin.from("contracts").update({
       status: "approved",
       reviewed_at: new Date().toISOString(),
     }).eq("id", args.contractId);
 
-    if (contract.payment_id) {
-      await this.releasePayment(contract.payment_id, args.actorId);
-    }
+    await this.releasePayment(contract.payment_id, args.actorId);
 
     await admin.from("contracts").update({ status: "completed" }).eq("id", args.contractId);
 
@@ -581,6 +580,7 @@ export const PaymentService = {
       .eq("id", paymentId)
       .single();
     if (error || !pay) throw new Error("Payment not found");
+    if (!pay.status_v2) throw new Error("Payment has no captured status — cannot release");
     if (!["held", "revision_requested"].includes(pay.status_v2)) {
       throw new Error(`Cannot release from ${pay.status_v2}`);
     }
@@ -689,28 +689,66 @@ export const PaymentService = {
       .update({ status: "completed", processed_at: new Date().toISOString() })
       .eq("id", refund.id);
     const { data: pay } = await admin
-      .from("payments").select("id, payer_id, payee_id, campaign_id")
+      .from("payments").select("id, payer_id, payee_id, campaign_id, status_v2, creator_earnings, amount")
       .eq("id", refund.payment_id).single();
     if (!pay) return;
+
+    const prevStatus = pay.status_v2 as string | null;
     await admin.from("payments")
       .update({ status: "refunded", status_v2: "refunded" }).eq("id", pay.id);
-    // Reverse the creator hold if any
+
+    // Reverse creator-side balances.
+    // - If still HELD/revision_requested: unwind the hold (held & pending).
+    // - If already RELEASED: debit available_balance (creator was paid, now clawed back).
+    // - Otherwise: no creator wallet impact (payee was never credited).
+    const refundAmt = Number(refund.amount);
+    const creatorAmt = Number(pay.creator_earnings ?? pay.amount ?? refundAmt);
     try {
-      await applyWalletTxn({
-        userId: pay.payee_id,
-        type: "refund",
-        amount: Number(refund.amount),
-        referenceType: "refund",
-        referenceId: refund.id,
-        description: "Held funds refunded to advertiser",
-      });
-    } catch { /* payee may have never received hold */ }
-    await log({ paymentId: pay.id, action: "refund.completed", to: "refunded" });
+      if (prevStatus === "held" || prevStatus === "revision_requested") {
+        const unwind = Math.min(creatorAmt, refundAmt);
+        await admin.rpc("ensure_wallet", { _user_id: pay.payee_id });
+        const { data: wallet } = await admin
+          .from("wallets")
+          .select("id, held_balance, pending_balance")
+          .eq("user_id", pay.payee_id)
+          .single();
+        if (wallet) {
+          const newHeld = Math.max(Number(wallet.held_balance) - unwind, 0);
+          const newPending = Math.max(Number(wallet.pending_balance) - unwind, 0);
+          await admin.from("wallets")
+            .update({ held_balance: newHeld, pending_balance: newPending })
+            .eq("id", wallet.id);
+          await admin.from("wallet_transactions").insert({
+            wallet_id: wallet.id,
+            user_id: pay.payee_id,
+            type: "refund",
+            amount: unwind,
+            balance_after: null,
+            reference_type: "refund",
+            reference_id: refund.id,
+            description: "Held funds released back to advertiser (refund)",
+            metadata: { payment_id: pay.id, from_status: prevStatus },
+          });
+        }
+      } else if (prevStatus === "released") {
+        await applyWalletTxn({
+          userId: pay.payee_id,
+          type: "refund",
+          amount: refundAmt,
+          referenceType: "refund",
+          referenceId: refund.id,
+          description: "Refund clawback from available balance",
+        });
+      }
+    } catch (e) {
+      console.error("[refund] wallet reversal failed", e);
+    }
+    await log({ paymentId: pay.id, action: "refund.completed", to: "refunded", metadata: { from_status: prevStatus } });
     await notify({
       userId: pay.payer_id,
       type: "refund_completed",
       title: "Refund completed",
-      body: `₹${Number(refund.amount).toLocaleString("en-IN")} refunded to your source account.`,
+      body: `₹${refundAmt.toLocaleString("en-IN")} refunded to your source account.`,
       payload: { payment_id: pay.id, refund_id: refund.id },
     });
   },
@@ -858,15 +896,31 @@ export const PaymentService = {
       admin_notes: args.reason ?? null,
     }).eq("id", wd.id);
 
-    // Refund the reserved amount back to available balance
-    await applyWalletTxn({
-      userId: wd.user_id,
-      type: "adjustment",
-      amount: Number(wd.amount),
-      referenceType: "withdrawal",
-      referenceId: wd.id,
-      description: "Withdrawal rejected — funds restored",
-    });
+    // Restore the reserved amount to available AND unwind the withdrawn_balance
+    // that requestWithdrawal bumped (otherwise "lifetime withdrawn" drifts up on every reject).
+    const amt = Number(wd.amount);
+    await admin.rpc("ensure_wallet", { _user_id: wd.user_id });
+    const { data: wallet } = await admin
+      .from("wallets")
+      .select("id, available_balance, withdrawn_balance")
+      .eq("user_id", wd.user_id)
+      .single();
+    if (wallet) {
+      await admin.from("wallets").update({
+        available_balance: Number(wallet.available_balance) + amt,
+        withdrawn_balance: Math.max(Number(wallet.withdrawn_balance) - amt, 0),
+      }).eq("id", wallet.id);
+      await admin.from("wallet_transactions").insert({
+        wallet_id: wallet.id,
+        user_id: wd.user_id,
+        type: "adjustment",
+        amount: amt,
+        balance_after: Number(wallet.available_balance) + amt,
+        reference_type: "withdrawal",
+        reference_id: wd.id,
+        description: "Withdrawal rejected — funds restored",
+      });
+    }
 
     await notify({
       userId: wd.user_id,

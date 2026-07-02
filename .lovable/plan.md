@@ -1,90 +1,51 @@
-## Auth upgrade plan
+## Payment flow audit — findings
 
-Extend the current auth with signup fields (country, phone, primary role), required email verification, forgot password, role-based redirect, and a profile-completion flow. Keep the existing dual-role workspace model — signup picks the *primary* role, users can add the second role later in Settings.
+I traced the full escrow lifecycle (fund → verify → accept creator → deliverables → approve → release → withdraw / refund) against the actual DB schema. Three real blockers and a few smaller issues:
 
-### 1. Database
+### Blockers
 
-Migration adds two columns to `profiles`:
-- `country text`
-- `phone text`
+1. **Campaign funding always fails at DB insert.**
+   `public.payments.contract_id` is `NOT NULL`, but `PaymentService.createCampaignOrder` inserts the escrow row before any contract exists (contract is only created when a creator is accepted). Every "Fund campaign" click will error at `payments.insert(...)`.
+   Fix: migration to make `payments.contract_id` nullable (keep FK + `ON DELETE CASCADE`).
 
-No other schema changes (roles already live in `user_roles`, primary role tracked in `profiles.active_role`, `onboarded` flag already exists).
+2. **Refunds corrupt the creator wallet when the payment is still HELD.**
+   `markRefundCompleted` calls `applyWalletTxn({ type: "refund" })`, which the SQL fn implements as `available_balance -= amount`. But at HELD the creator only has `held_balance`/`pending_balance` from the earlier `hold` — never any `available_balance`. Result: creator's available balance goes negative and the hold is never released.
+   Fix: reverse the hold with a direct wallet update (decrement `held_balance` and `pending_balance` by the held amount) inside `markRefundCompleted`, only when the payment was still held. If already released, keep the current `refund` debit against `available_balance`.
 
-### 2. Signup form (`/auth`)
+3. **`adminRejectWithdrawal` double-credits the creator.**
+   `requestWithdrawal` already debits `available_balance` via `type: "withdrawal"` (which also increments `withdrawn_balance`). On rejection we run `type: "adjustment"` (which credits `available_balance`) — good — but we never decrement the `withdrawn_balance` that was bumped at request time. Lifetime "withdrawn" totals drift up forever on every rejection.
+   Fix: on reject, restore `available_balance` and decrement `withdrawn_balance` by the same amount in a single wallet update, and log a `wallet_transactions` row for audit.
 
-Replace current sign-up tab fields with:
-- Full name
-- Email
-- Password (+ confirm)
-- Primary role — segmented control: Creator / Advertiser
-- Country — searchable select (ISO country list)
-- Phone — input with country dial-code prefix based on selected country (stored E.164-ish, no SMS)
+### Smaller correctness / hygiene fixes
 
-On submit:
-1. `supabase.auth.signUp` with `emailRedirectTo: ${origin}/auth/callback`, metadata carries `full_name`, `role`, `country`, `phone`.
-2. Show "Check your inbox" screen — do NOT navigate into the app.
+4. **`WithdrawalStatus` union in `src/lib/payments/types.ts` is missing `approved` and `rejected`** (both exist in the DB enum and are set by `adminApproveWithdrawal` / `adminRejectWithdrawal`). Widen the type so status badges and filters render them.
 
-Update the `handle_new_user` trigger to also copy `country`, `phone`, `active_role` from `raw_user_meta_data` into `profiles`, and insert the chosen role into `user_roles`.
+5. **`releasePayment` narrows `status_v2` with a string array but the DB value can be `null`** on legacy rows — throws `Cannot release from null` even when the payment is valid. Treat `null` as "not releasable" with a clearer error, and add a guard in `approveDeliverables` when `contract.payment_id` is null (currently silently skips release and marks the contract completed).
 
-### 3. Email verification (required)
+6. **`verifyAndCapture` early-returns `{ status: pay.status_v2 }` when already captured** but does not include `orderId`, so the client `useFundCampaign` hook throws on retry after a double-submit. Make the return shape consistent (`{ paymentId, status }` on both branches — the hook already only reads `paymentId`, but confirm the toast path).
 
-- New public route `/auth/callback` — parses Supabase hash tokens, calls `setSession`, then routes based on `active_role`.
-- Managed `_authenticated` gate additionally checks `user.email_confirmed_at`. If null → redirect to `/auth/verify-email` (public route showing "Verify your inbox" + "Resend email" button using `supabase.auth.resend`).
-- Enable Supabase auth email templates via the email-templates scaffold so the confirmation email is branded.
+### Out of scope for this pass
 
-### 4. Forgot password
+- Razorpay webhook signature + idempotency path already looks correct; not changing.
+- UI dashboards render correctly against the current data; no UI changes needed for these fixes.
 
-- Link on sign-in tab → `/auth/forgot-password` (public): email input → `resetPasswordForEmail(email, { redirectTo: ${origin}/auth/reset-password })`.
-- `/auth/reset-password` (public): detects `type=recovery` in URL hash, shows new-password form, calls `supabase.auth.updateUser({ password })`, then redirects to sign-in.
+## Changes
 
-### 5. Role-based redirect
+1. **Migration** (single call):
+   - `ALTER TABLE public.payments ALTER COLUMN contract_id DROP NOT NULL;`
+   - No data backfill needed (existing rows already satisfy the constraint).
 
-Add two thin layout routes:
-- `src/routes/_authenticated/dashboard.creator.tsx` → `/dashboard/creator`
-- `src/routes/_authenticated/dashboard.advertiser.tsx` → `/dashboard/advertiser`
+2. **`src/lib/payments/service.server.ts`**
+   - `markRefundCompleted`: branch on payment `status_v2` — if `held`/`revision_requested`, reverse the hold directly on `wallets` (decrement `held_balance` and `pending_balance`); if already `released`, keep the `available_balance` debit. Insert a `wallet_transactions` row in both cases for audit.
+   - `adminRejectWithdrawal`: replace the `adjustment` call with an atomic wallet update that both credits `available_balance` and debits `withdrawn_balance`, plus a `wallet_transactions` log row.
+   - `releasePayment` / `approveDeliverables`: tighten status guards and surface a clear error when `payment_id` is missing.
 
-Each renders the existing role-aware dashboard filtered to that role. The generic `/dashboard` becomes a redirector that sends the user to `/dashboard/<active_role>`. `WorkspaceSwitcher` navigates between the two.
+3. **`src/lib/payments/types.ts`**
+   - Extend `WithdrawalStatus` to include `"approved" | "rejected"`.
 
-Post-login/verification/callback redirect target:
-```
-active_role === 'advertiser' → /dashboard/advertiser
-otherwise                    → /dashboard/creator
-```
+4. **Verification**
+   - `tsgo` typecheck.
+   - `psql` sanity: insert-then-rollback a payment row without `contract_id` to confirm the constraint is gone.
+   - Manual click-through of "Fund campaign" in the preview to confirm the Razorpay order is created and the payment row lands with `status_v2 = 'pending'`.
 
-### 6. Profile completion flow
-
-`onboarding.tsx` becomes the *profile completion* gate. Trigger conditions (checked in `_authenticated` layout, in order):
-1. No email confirmation → `/auth/verify-email`
-2. `profile.onboarded === false` → `/onboarding`
-3. Missing role-specific required fields (creator: categories + rate; advertiser: brand_name + industry) → `/onboarding?step=profile`
-4. Otherwise → requested route.
-
-Onboarding is trimmed since signup now collects role/country/phone:
-- Step 1: confirm/adjust display name + bio + avatar upload.
-- Step 2: role-specific fields (creator categories & rate, or advertiser brand & industry).
-- Sets `onboarded=true` and routes to `/dashboard/<active_role>`.
-
-Settings gains an "Add second role" action that upserts into `user_roles` and, if missing, opens the corresponding role-specific profile form.
-
-### 7. Route protection & session persistence
-
-Already handled by `_authenticated/route.tsx` (Supabase persisted session + `getUser()` gate). We extend it with the email-verified + onboarded checks above. Public routes: `/`, `/auth`, `/auth/callback`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/verify-email`.
-
-Google OAuth button stays (uses `lovable.auth.signInWithOAuth`). OAuth users skip email verification but are routed through `/onboarding` because they won't have `country`/`phone`/role yet.
-
-### 8. Technical notes
-
-- Country list: local constant array (name + ISO2 + dial code), no external dep.
-- Phone stored as `+<dial><digits>`; validated with a light regex (`^\+\d{6,15}$`).
-- All new forms use `react-hook-form` + `zod` (already installed) matching existing style.
-- No Edge Functions; all reads/writes go through the browser Supabase client.
-- Confirmation & recovery emails: scaffold branded templates via the email-templates tool.
-- Toast feedback on every auth action; loading states on every submit button.
-
-### Files touched / added
-
-Added: `src/routes/auth.callback.tsx`, `src/routes/auth.forgot-password.tsx`, `src/routes/auth.reset-password.tsx`, `src/routes/auth.verify-email.tsx`, `src/routes/_authenticated/dashboard.creator.tsx`, `src/routes/_authenticated/dashboard.advertiser.tsx`, `src/lib/countries.ts`.
-
-Modified: `src/routes/auth.tsx` (new signup fields + forgot link), `src/routes/onboarding.tsx` (profile completion only), `src/routes/_authenticated/route.tsx` (verify + completion gates), `src/routes/_authenticated/dashboard.tsx` (becomes redirector), `src/components/layout/WorkspaceSwitcher.tsx` (route on switch), `src/routes/_authenticated/settings.tsx` (country/phone editing + add-second-role).
-
-Migration: add `country`, `phone` to `profiles`; update `handle_new_user` to persist metadata + insert primary role into `user_roles`.
+No UI files change. No new dependencies.

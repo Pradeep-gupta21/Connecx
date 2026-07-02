@@ -887,7 +887,7 @@ export type Database = {
         Row: {
           amount: number
           campaign_id: string | null
-          contract_id: string
+          contract_id: string | null
           created_at: string
           creator_earnings: number | null
           currency: string
@@ -919,7 +919,7 @@ export type Database = {
         Insert: {
           amount: number
           campaign_id?: string | null
-          contract_id: string
+          contract_id?: string | null
           created_at?: string
           creator_earnings?: number | null
           currency?: string
@@ -951,7 +951,7 @@ export type Database = {
         Update: {
           amount?: number
           campaign_id?: string | null
-          contract_id?: string
+          contract_id?: string | null
           created_at?: string
           creator_earnings?: number | null
           currency?: string
