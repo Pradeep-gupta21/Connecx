@@ -294,6 +294,40 @@ function CampaignDetail() {
         </div>
       )}
 
+      {user && (contractsQuery.data ?? []).length > 0 && (
+        <section className="space-y-4">
+          <h2 className="font-display text-xl font-semibold">
+            {isOwner ? "Active contracts" : "Your contract"}
+          </h2>
+          {(contractsQuery.data ?? []).map((ct: any) => (
+            <div key={ct.id} className="space-y-2">
+              {isOwner && (
+                <p className="text-sm text-muted-foreground">
+                  with <span className="font-medium text-foreground">{ct.profiles?.display_name ?? "Creator"}</span>
+                </p>
+              )}
+              <DeliverablesPanel
+                contract={{
+                  id: ct.id,
+                  status: ct.status,
+                  advertiser_id: ct.advertiser_id,
+                  creator_id: ct.creator_id,
+                  deliverable_urls: (ct.deliverable_urls ?? []) as { name: string; url: string }[],
+                  submission_notes: ct.submission_notes,
+                  submitted_at: ct.submitted_at,
+                  reviewed_at: ct.reviewed_at,
+                  revision_notes: ct.revision_notes,
+                  revision_count: ct.revision_count ?? 0,
+                  amount: Number(ct.amount ?? 0),
+                  currency: ct.currency ?? "INR",
+                }}
+                currentUserId={user.id}
+              />
+            </div>
+          ))}
+        </section>
+      )}
+
       {isOwner && (
         <section>
           <div className="flex items-center justify-between mb-4">
