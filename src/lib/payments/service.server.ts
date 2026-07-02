@@ -552,15 +552,14 @@ export const PaymentService = {
       .single();
     if (error || !contract) throw new Error("Contract not found");
     if (contract.advertiser_id !== args.actorId) throw new Error("Only the advertiser can approve");
+    if (!contract.payment_id) throw new Error("Contract has no linked escrow payment — cannot release funds");
 
     await admin.from("contracts").update({
       status: "approved",
       reviewed_at: new Date().toISOString(),
     }).eq("id", args.contractId);
 
-    if (contract.payment_id) {
-      await this.releasePayment(contract.payment_id, args.actorId);
-    }
+    await this.releasePayment(contract.payment_id, args.actorId);
 
     await admin.from("contracts").update({ status: "completed" }).eq("id", args.contractId);
 

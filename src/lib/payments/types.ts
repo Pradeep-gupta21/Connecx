@@ -25,6 +25,8 @@ export type WalletTxnType =
 
 export type WithdrawalStatus =
   | "requested"
+  | "approved"
+  | "rejected"
   | "processing"
   | "completed"
   | "failed"
