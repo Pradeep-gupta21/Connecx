@@ -9,12 +9,15 @@ import {
   Megaphone,
   MessageSquare,
   Settings,
+  Shield,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { motion } from "framer-motion";
 
 type NavItem = { to: string; label: string; icon: LucideIcon; shortcut?: string };
 
@@ -43,6 +46,7 @@ const advertiserItems: NavItem[] = [
 export function Sidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { activeRole } = useWorkspace();
+  const isAdmin = useIsAdmin();
 
   const items = activeRole === "advertiser" ? advertiserItems : creatorItems;
 
@@ -63,22 +67,56 @@ export function Sidebar() {
               key={it.to}
               to={it.to}
               className={cn(
-                "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                 active
-                  ? "bg-secondary text-foreground font-medium"
+                  ? "text-foreground font-medium"
                   : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
               )}
             >
-              <Icon className={cn("h-4 w-4 shrink-0", active && "text-foreground")} />
-              <span className="flex-1">{it.label}</span>
+              {active && (
+                <motion.span
+                  layoutId="sidebar-active"
+                  className="absolute inset-0 rounded-lg bg-secondary"
+                  transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                />
+              )}
+              <Icon className={cn("relative z-10 h-4 w-4 shrink-0", active && "text-foreground")} />
+              <span className="relative z-10 flex-1">{it.label}</span>
               {it.shortcut && (
-                <kbd className="hidden lg:inline-flex h-5 items-center rounded border border-border bg-background px-1.5 text-[10px] font-mono text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                <kbd className="relative z-10 hidden lg:inline-flex h-5 items-center rounded border border-border bg-background px-1.5 text-[10px] font-mono text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                   {it.shortcut}
                 </kbd>
               )}
             </Link>
           );
         })}
+
+        {isAdmin && (
+          <>
+            <div className="px-3 pt-5 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+              Admin
+            </div>
+            <Link
+              to="/admin"
+              className={cn(
+                "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                pathname.startsWith("/admin")
+                  ? "text-foreground font-medium"
+                  : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+              )}
+            >
+              {pathname.startsWith("/admin") && (
+                <motion.span
+                  layoutId="sidebar-active"
+                  className="absolute inset-0 rounded-lg bg-gradient-to-r from-primary/15 via-primary/8 to-transparent"
+                  transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                />
+              )}
+              <Shield className="relative z-10 h-4 w-4 shrink-0" />
+              <span className="relative z-10 flex-1">Admin Console</span>
+            </Link>
+          </>
+        )}
       </nav>
 
       <div className="p-4 border-t border-border">
