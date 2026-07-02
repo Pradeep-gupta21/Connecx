@@ -159,45 +159,66 @@ export type Database = {
       campaigns: {
         Row: {
           advertiser_id: string
+          attachments: Json | null
           brief: string | null
           budget_max: number | null
           budget_min: number | null
           category: string | null
           cover_url: string | null
           created_at: string
+          creator_tier: string | null
           deadline: string | null
           deleted_at: string | null
+          deliverables: string | null
           id: string
+          languages: string[] | null
+          location: string | null
+          platform: string | null
+          requirements: string | null
           status: Database["public"]["Enums"]["campaign_status"]
           title: string
           updated_at: string
         }
         Insert: {
           advertiser_id: string
+          attachments?: Json | null
           brief?: string | null
           budget_max?: number | null
           budget_min?: number | null
           category?: string | null
           cover_url?: string | null
           created_at?: string
+          creator_tier?: string | null
           deadline?: string | null
           deleted_at?: string | null
+          deliverables?: string | null
           id?: string
+          languages?: string[] | null
+          location?: string | null
+          platform?: string | null
+          requirements?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
           title: string
           updated_at?: string
         }
         Update: {
           advertiser_id?: string
+          attachments?: Json | null
           brief?: string | null
           budget_max?: number | null
           budget_min?: number | null
           category?: string | null
           cover_url?: string | null
           created_at?: string
+          creator_tier?: string | null
           deadline?: string | null
           deleted_at?: string | null
+          deliverables?: string | null
           id?: string
+          languages?: string[] | null
+          location?: string | null
+          platform?: string | null
+          requirements?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
           title?: string
           updated_at?: string
@@ -1040,7 +1061,7 @@ export type Database = {
     Enums: {
       app_role: "advertiser" | "creator"
       application_status: "pending" | "accepted" | "rejected" | "withdrawn"
-      campaign_status: "draft" | "open" | "closed" | "archived"
+      campaign_status: "draft" | "open" | "closed" | "archived" | "paused"
       contract_status:
         | "draft"
         | "sent"
@@ -1204,7 +1225,7 @@ export const Constants = {
     Enums: {
       app_role: ["advertiser", "creator"],
       application_status: ["pending", "accepted", "rejected", "withdrawn"],
-      campaign_status: ["draft", "open", "closed", "archived"],
+      campaign_status: ["draft", "open", "closed", "archived", "paused"],
       contract_status: [
         "draft",
         "sent",
