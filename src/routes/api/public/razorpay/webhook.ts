@@ -10,10 +10,10 @@ export const Route = createFileRoute("/api/public/razorpay/webhook")({
         const signature = request.headers.get("x-razorpay-signature");
 
         const { razorpay } = await import("@/lib/payments/razorpay.server");
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { admin } = await import("@/integrations/supabase/client.server");
         const { PaymentService } = await import("@/lib/payments/service.server");
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const admin: any = supabaseAdmin;
+        const admin: any = admin;
 
         let valid = false;
         try {
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/api/public/razorpay/webhook")({
         const eventId = event.id ?? `${event.event}:${event.created_at ?? Date.now()}`;
 
         // Idempotency: insert-or-ignore into payment_webhooks.
-        const { data: existing } = await supabaseAdmin
+        const { data: existing } = await admin
           .from("payment_webhooks")
           .select("id, processed")
           .eq("provider", "razorpay")
@@ -51,7 +51,7 @@ export const Route = createFileRoute("/api/public/razorpay/webhook")({
           if (existing.processed) return new Response("ok", { status: 200 });
           webhookRowId = existing.id;
         } else {
-          const { data: inserted, error: insErr } = await supabaseAdmin
+          const { data: inserted, error: insErr } = await admin
             .from("payment_webhooks")
             .insert({
               provider: "razorpay",
@@ -70,8 +70,8 @@ export const Route = createFileRoute("/api/public/razorpay/webhook")({
         }
 
         try {
-          await handleEvent(event, { supabaseAdmin, PaymentService });
-          await supabaseAdmin
+          await handleEvent(event, { admin, PaymentService });
+          await admin
             .from("payment_webhooks")
             .update({ processed: true, processed_at: new Date().toISOString(), attempts: 1 })
             .eq("id", webhookRowId);
@@ -80,7 +80,7 @@ export const Route = createFileRoute("/api/public/razorpay/webhook")({
           const message = err instanceof Error ? err.message : String(err);
           console.error("[razorpay-webhook] handler failed", message);
           await admin.rpc; // no-op guard
-          await supabaseAdmin
+          await admin
             .from("payment_webhooks")
             .update({ error: message })
             .eq("id", webhookRowId);
@@ -93,13 +93,13 @@ export const Route = createFileRoute("/api/public/razorpay/webhook")({
 });
 
 type Deps = {
-  supabaseAdmin: typeof import("@/integrations/supabase/client.server").supabaseAdmin;
+  admin: typeof import("@/integrations/supabase/client.server").admin;
   PaymentService: typeof import("@/lib/payments/service.server").PaymentService;
 };
 
 async function handleEvent(
   event: { event: string; payload?: Record<string, unknown> },
-  { supabaseAdmin, PaymentService }: Deps,
+  { admin, PaymentService }: Deps,
 ) {
   const payload = (event.payload ?? {}) as Record<string, { entity?: Record<string, unknown> }>;
 
@@ -109,14 +109,14 @@ async function handleEvent(
         | { id: string; order_id: string; amount: number; fee?: number; tax?: number }
         | undefined;
       if (!pay?.order_id) return;
-      const { data: row } = await supabaseAdmin
+      const { data: row } = await admin
         .from("payments")
         .select("id, amount, currency, payee_id, status_v2")
         .eq("razorpay_order_id", pay.order_id)
         .maybeSingle();
       if (!row) return;
       if (row.status_v2 === "held" || row.status_v2 === "released") return;
-      await supabaseAdmin
+      await admin
         .from("payments")
         .update({
           status: "held",
@@ -148,13 +148,13 @@ async function handleEvent(
         | { id: string; order_id: string; error_description?: string }
         | undefined;
       if (!pay?.order_id) return;
-      const { data: row } = await supabaseAdmin
+      const { data: row } = await admin
         .from("payments")
         .select("id, status_v2")
         .eq("razorpay_order_id", pay.order_id)
         .maybeSingle();
       if (!row) return;
-      await supabaseAdmin
+      await admin
         .from("payments")
         .update({
           status: "failed",
@@ -177,24 +177,24 @@ async function handleEvent(
         | { id: string; payment_id: string; amount: number }
         | undefined;
       if (!refund) return;
-      const { data: refundRow } = await supabaseAdmin
+      const { data: refundRow } = await admin
         .from("refunds")
         .select("id, payment_id, amount, status")
         .eq("razorpay_refund_id", refund.id)
         .maybeSingle();
       if (!refundRow) return;
       if (refundRow.status === "completed") return;
-      await supabaseAdmin
+      await admin
         .from("refunds")
         .update({ status: "completed", processed_at: new Date().toISOString() })
         .eq("id", refundRow.id);
-      const { data: pay } = await supabaseAdmin
+      const { data: pay } = await admin
         .from("payments")
         .select("id, amount, payee_id")
         .eq("id", refundRow.payment_id)
         .single();
       if (pay) {
-        await supabaseAdmin
+        await admin
           .from("payments")
           .update({ status: "refunded", status_v2: "refunded" })
           .eq("id", pay.id);
@@ -221,14 +221,14 @@ async function handleEvent(
         | { id: string; amount: number; reference_id?: string; status: string }
         | undefined;
       if (!payout) return;
-      const { data: wd } = await supabaseAdmin
+      const { data: wd } = await admin
         .from("withdrawals")
         .select("id, status")
         .eq("razorpay_payout_id", payout.id)
         .maybeSingle();
       if (!wd) return;
       if (wd.status === "completed") return;
-      await supabaseAdmin
+      await admin
         .from("withdrawals")
         .update({ status: "completed", processed_at: new Date().toISOString() })
         .eq("id", wd.id);
