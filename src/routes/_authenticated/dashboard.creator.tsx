@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { DashboardView } from "@/components/dashboard/DashboardView";
+import { CreatorDashboardView } from "@/components/dashboard/CreatorDashboardView";
 import { useWorkspace } from "@/hooks/useWorkspace";
 
 export const Route = createFileRoute("/_authenticated/dashboard/creator")({
@@ -13,5 +13,5 @@ function CreatorDashboard() {
   useEffect(() => {
     if (roles.includes("creator") && activeRole !== "creator") setActiveRole("creator");
   }, [roles, activeRole, setActiveRole]);
-  return <DashboardView />;
+  return <CreatorDashboardView />;
 }
