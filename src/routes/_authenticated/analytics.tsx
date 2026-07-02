@@ -149,21 +149,22 @@ function AnalyticsPage() {
   );
 }
 
-function bucketSum<T extends { created_at: string }>(rows: T[], value: (r: T) => number) {
+function bucketSum<T extends { created_at: string }>(rows: T[], value: (r: T) => number, days: number) {
   const b: Record<string, number> = {};
-  for (let i = 29; i >= 0; i--) b[format(subDays(new Date(), i), "MMM d")] = 0;
+  for (let i = days - 1; i >= 0; i--) b[format(subDays(new Date(), i), "MMM d")] = 0;
   for (const r of rows) {
     const d = format(new Date(r.created_at), "MMM d");
     if (d in b) b[d] += value(r);
   }
   return Object.entries(b).map(([day, value]) => ({ day, value }));
 }
-function bucketCount(ts: string[]) {
+function bucketCount(ts: string[], days: number) {
   const b: Record<string, number> = {};
-  for (let i = 29; i >= 0; i--) b[format(subDays(new Date(), i), "MMM d")] = 0;
+  for (let i = days - 1; i >= 0; i--) b[format(subDays(new Date(), i), "MMM d")] = 0;
   for (const t of ts) {
     const d = format(new Date(t), "MMM d");
     if (d in b) b[d]++;
   }
   return Object.entries(b).map(([day, value]) => ({ day, value }));
 }
+
