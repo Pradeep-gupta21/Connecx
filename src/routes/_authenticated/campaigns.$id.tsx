@@ -1,23 +1,37 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2, MessageSquare } from "lucide-react";
+import {
+  ArrowLeft, Loader2, MessageSquare, Pencil, Pause, Play, Archive, XCircle, Trash2, Bookmark, BookmarkCheck, Paperclip,
+} from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { supabase } from "@/integrations/supabase/client";
+import { CREATOR_TIERS } from "@/components/campaigns/CampaignForm";
 
 export const Route = createFileRoute("/_authenticated/campaigns/$id")({
   head: () => ({ meta: [{ title: "Campaign · BrandBridge" }] }),
   component: CampaignDetail,
 });
+
+function statusLabel(s: string) {
+  if (s === "open") return "Published";
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 function CampaignDetail() {
   const { id } = Route.useParams();
@@ -54,16 +68,69 @@ function CampaignDetail() {
     },
   });
 
+  const savedQuery = useQuery({
+    queryKey: ["saved-campaign", id, user?.id],
+    enabled: !!user && !isOwner,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("saved_campaigns")
+        .select("id")
+        .eq("user_id", user!.id)
+        .eq("campaign_id", id)
+        .maybeSingle();
+      return data;
+    },
+  });
+
   useEffect(() => {
     if (!campaignQuery.data) return;
     const channel = supabase
-      .channel(`apps-${id}`)
+      .channel(`camp-${id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "applications", filter: `campaign_id=eq.${id}` },
         () => qc.invalidateQueries({ queryKey: ["campaign-apps", id] })
+      )
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "campaigns", filter: `id=eq.${id}` },
+        () => qc.invalidateQueries({ queryKey: ["campaign", id] })
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [id, qc, campaignQuery.data]);
+
+  const statusMut = useMutation({
+    mutationFn: async (status: "draft" | "open" | "paused" | "closed" | "archived") => {
+      const { error } = await supabase.from("campaigns").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, s) => {
+      toast.success(`Campaign ${statusLabel(s).toLowerCase()}`);
+      qc.invalidateQueries({ queryKey: ["campaign", id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("campaigns").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Campaign deleted");
+      navigate({ to: "/campaigns" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const toggleSave = useMutation({
+    mutationFn: async () => {
+      if (!user) return;
+      if (savedQuery.data?.id) {
+        await supabase.from("saved_campaigns").delete().eq("id", savedQuery.data.id);
+      } else {
+        await supabase.from("saved_campaigns").insert({ user_id: user.id, campaign_id: id });
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["saved-campaign", id, user?.id] }),
+  });
 
   if (campaignQuery.isLoading) {
     return <div className="flex justify-center py-20"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
@@ -79,17 +146,33 @@ function CampaignDetail() {
   }
 
   const myApplication = applicationsQuery.data?.find((a) => a.creator_id === user?.id);
+  const canApply = !isOwner && activeRole === "creator" && c.status === "open";
+  const languages = (c.languages ?? []) as string[];
+  const attachments = ((c.attachments ?? []) as { name: string; url: string }[]) ?? [];
+  const tierLabel = CREATOR_TIERS.find((t) => t.value === c.creator_tier)?.label ?? c.creator_tier;
 
   return (
     <div className="max-w-4xl mx-auto space-y-10">
-      <Link to="/campaigns" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" /> All campaigns
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link to="/campaigns" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> All campaigns
+        </Link>
+        {!isOwner && user && (
+          <Button variant="ghost" size="sm" className="gap-2" onClick={() => toggleSave.mutate()}>
+            {savedQuery.data?.id ? <BookmarkCheck className="h-4 w-4 text-accent" /> : <Bookmark className="h-4 w-4" />}
+            {savedQuery.data?.id ? "Saved" : "Save"}
+          </Button>
+        )}
+      </div>
 
       <div className="flex flex-col gap-6">
-        <div className="flex items-center gap-3">
-          <Badge variant={c.status === "open" ? "default" : "secondary"} className="capitalize">{c.status}</Badge>
-          {c.category && <Badge variant="secondary">{c.category}</Badge>}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant={c.status === "open" ? "default" : "secondary"} className="capitalize">{statusLabel(c.status)}</Badge>
+            {c.category && <Badge variant="secondary">{c.category}</Badge>}
+            {c.platform && <Badge variant="secondary">{c.platform}</Badge>}
+          </div>
+          {isOwner && <OwnerActions status={c.status} onStatus={(s) => statusMut.mutate(s)} onDelete={() => deleteMut.mutate()} id={id} />}
         </div>
         <h1 className="font-display text-4xl font-semibold tracking-tight">{c.title}</h1>
         <div className="flex items-center gap-3">
@@ -114,15 +197,55 @@ function CampaignDetail() {
       <div className="grid sm:grid-cols-3 gap-4">
         <Stat label="Budget" value={c.budget_min || c.budget_max ? `$${c.budget_min ?? "?"} – $${c.budget_max ?? "?"}` : "—"} />
         <Stat label="Deadline" value={c.deadline ? format(new Date(c.deadline), "MMM d, yyyy") : "Open"} />
-        <Stat label="Posted" value={format(new Date(c.created_at), "MMM d, yyyy")} />
+        <Stat label="Creator size" value={tierLabel ?? "Any"} />
       </div>
 
-      {!isOwner && activeRole === "creator" && c.status === "open" && (
+      {(c.deliverables || c.requirements || c.location || languages.length > 0) && (
+        <div className="grid md:grid-cols-2 gap-4">
+          {c.deliverables && <InfoCard label="Deliverables" text={c.deliverables} />}
+          {c.requirements && <InfoCard label="Requirements" text={c.requirements} />}
+          {c.location && <InfoCard label="Location" text={c.location} />}
+          {languages.length > 0 && (
+            <div className="surface-card p-5">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Languages</p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {languages.map((l) => <Badge key={l} variant="secondary">{l}</Badge>)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {attachments.length > 0 && (
+        <div className="surface-card p-6">
+          <h2 className="font-display text-sm font-semibold mb-3">Attachments</h2>
+          <ul className="space-y-2">
+            {attachments.map((a, i) => (
+              <li key={i}>
+                <a href={a.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm hover:text-accent">
+                  <Paperclip className="h-3.5 w-3.5" /> {a.name}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {canApply && (
         <div>
           {myApplication ? (
-            <div className="surface-card p-6">
-              <p className="text-sm">Your application is <Badge variant="secondary" className="capitalize ml-1">{myApplication.status}</Badge></p>
-              {myApplication.pitch && <p className="mt-3 text-sm text-muted-foreground whitespace-pre-line">"{myApplication.pitch}"</p>}
+            <div className="surface-card p-6 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm">Your application is <Badge variant="secondary" className="capitalize ml-1">{myApplication.status}</Badge></p>
+                {myApplication.pitch && <p className="mt-3 text-sm text-muted-foreground whitespace-pre-line">"{myApplication.pitch}"</p>}
+              </div>
+              {myApplication.status !== "withdrawn" && (
+                <Button variant="outline" size="sm" onClick={async () => {
+                  await supabase.from("applications").update({ status: "withdrawn" }).eq("id", myApplication.id);
+                  qc.invalidateQueries({ queryKey: ["campaign-apps", id] });
+                  toast.success("Application withdrawn");
+                }}>Withdraw</Button>
+              )}
             </div>
           ) : (
             <ApplyDialog campaignId={id} />
@@ -187,11 +310,76 @@ function CampaignDetail() {
   );
 }
 
+function OwnerActions({
+  status, onStatus, onDelete, id,
+}: {
+  status: string;
+  onStatus: (s: "draft" | "open" | "paused" | "closed" | "archived") => void;
+  onDelete: () => void;
+  id: string;
+}) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  return (
+    <div className="flex items-center gap-2">
+      <Link to="/campaigns/$id/edit" params={{ id }}>
+        <Button variant="outline" size="sm" className="gap-2"><Pencil className="h-3.5 w-3.5" /> Edit</Button>
+      </Link>
+      {status === "open" ? (
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => onStatus("paused")}>
+          <Pause className="h-3.5 w-3.5" /> Pause
+        </Button>
+      ) : status === "paused" || status === "draft" ? (
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => onStatus("open")}>
+          <Play className="h-3.5 w-3.5" /> Publish
+        </Button>
+      ) : null}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-9 w-9"><MoreHorizontal className="h-4 w-4" /></Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {status !== "closed" && (
+            <DropdownMenuItem onClick={() => onStatus("closed")}><XCircle className="h-4 w-4 mr-2" /> Close campaign</DropdownMenuItem>
+          )}
+          {status !== "archived" && (
+            <DropdownMenuItem onClick={() => onStatus("archived")}><Archive className="h-4 w-4 mr-2" /> Archive</DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setConfirmDelete(true)}>
+            <Trash2 className="h-4 w-4 mr-2" /> Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete campaign?</DialogTitle>
+            <DialogDescription>This is a soft delete — the brief will disappear from the marketplace and dashboards.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => { setConfirmDelete(false); onDelete(); }}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="surface-card p-5">
       <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-2 font-display text-xl font-semibold">{value}</p>
+    </div>
+  );
+}
+function InfoCard({ label, text }: { label: string; text: string }) {
+  return (
+    <div className="surface-card p-5">
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-2 text-sm whitespace-pre-line text-foreground/90">{text}</p>
     </div>
   );
 }
@@ -205,9 +393,7 @@ function ApplyDialog({ campaignId }: { campaignId: string }) {
   const submit = async () => {
     if (!user) return;
     setBusy(true);
-    const { error } = await supabase.from("applications").insert({
-      campaign_id: campaignId, creator_id: user.id, pitch,
-    });
+    const { error } = await supabase.from("applications").insert({ campaign_id: campaignId, creator_id: user.id, pitch });
     setBusy(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Pitch sent");
@@ -245,7 +431,7 @@ function ApplicationStatusSelect({ applicationId, status, campaignId }: { applic
     onError: (e: Error) => toast.error(e.message),
   });
   return (
-    <Select value={status} onValueChange={(v) => m.mutate(v as "pending" | "accepted" | "rejected" | "withdrawn")}>
+    <Select value={status} onValueChange={(v) => m.mutate(v as any)}>
       <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
       <SelectContent>
         <SelectItem value="pending">Pending</SelectItem>
@@ -257,18 +443,20 @@ function ApplicationStatusSelect({ applicationId, status, campaignId }: { applic
 }
 
 async function startConvoFromApp(a: any, campaignId: string): Promise<string | null> {
+  const { data: userRes } = await supabase.auth.getUser();
+  const uid = userRes.user?.id;
+  if (!uid) return null;
   const { data: existing } = await supabase
     .from("conversations")
     .select("id")
-    .eq("advertiser_id", a.campaigns?.advertiser_id ?? (await supabase.auth.getUser()).data.user?.id ?? "")
+    .eq("advertiser_id", uid)
     .eq("creator_id", a.creator_id)
     .eq("campaign_id", campaignId)
     .maybeSingle();
   if (existing?.id) return existing.id;
-  const { data: user } = await supabase.auth.getUser();
   const { data: created, error } = await supabase
     .from("conversations")
-    .insert({ advertiser_id: user.user!.id, creator_id: a.creator_id, campaign_id: campaignId })
+    .insert({ advertiser_id: uid, creator_id: a.creator_id, campaign_id: campaignId })
     .select("id")
     .single();
   if (error) { toast.error(error.message); return null; }

@@ -33,6 +33,7 @@ import { Route as AuthenticatedDashboardAdvertiserRouteImport } from './routes/_
 import { Route as AuthenticatedCreatorsIdRouteImport } from './routes/_authenticated/creators.$id'
 import { Route as AuthenticatedCampaignsNewRouteImport } from './routes/_authenticated/campaigns.new'
 import { Route as AuthenticatedCampaignsIdRouteImport } from './routes/_authenticated/campaigns.$id'
+import { Route as AuthenticatedCampaignsIdEditRouteImport } from './routes/_authenticated/campaigns.$id.edit'
 
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
@@ -161,6 +162,12 @@ const AuthenticatedCampaignsIdRoute =
     path: '/campaigns/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCampaignsIdEditRoute =
+  AuthenticatedCampaignsIdEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => AuthenticatedCampaignsIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -179,13 +186,14 @@ export interface FileRoutesByFullPath {
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/verify-email': typeof AuthVerifyEmailRoute
-  '/campaigns/$id': typeof AuthenticatedCampaignsIdRoute
+  '/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/campaigns/new': typeof AuthenticatedCampaignsNewRoute
   '/creators/$id': typeof AuthenticatedCreatorsIdRoute
   '/dashboard/advertiser': typeof AuthenticatedDashboardAdvertiserRoute
   '/dashboard/creator': typeof AuthenticatedDashboardCreatorRoute
   '/messages/$threadId': typeof AuthenticatedMessagesThreadIdRoute
   '/campaigns/': typeof AuthenticatedCampaignsIndexRoute
+  '/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -204,13 +212,14 @@ export interface FileRoutesByTo {
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/verify-email': typeof AuthVerifyEmailRoute
-  '/campaigns/$id': typeof AuthenticatedCampaignsIdRoute
+  '/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/campaigns/new': typeof AuthenticatedCampaignsNewRoute
   '/creators/$id': typeof AuthenticatedCreatorsIdRoute
   '/dashboard/advertiser': typeof AuthenticatedDashboardAdvertiserRoute
   '/dashboard/creator': typeof AuthenticatedDashboardCreatorRoute
   '/messages/$threadId': typeof AuthenticatedMessagesThreadIdRoute
   '/campaigns': typeof AuthenticatedCampaignsIndexRoute
+  '/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -231,13 +240,14 @@ export interface FileRoutesById {
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/verify-email': typeof AuthVerifyEmailRoute
-  '/_authenticated/campaigns/$id': typeof AuthenticatedCampaignsIdRoute
+  '/_authenticated/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/_authenticated/campaigns/new': typeof AuthenticatedCampaignsNewRoute
   '/_authenticated/creators/$id': typeof AuthenticatedCreatorsIdRoute
   '/_authenticated/dashboard/advertiser': typeof AuthenticatedDashboardAdvertiserRoute
   '/_authenticated/dashboard/creator': typeof AuthenticatedDashboardCreatorRoute
   '/_authenticated/messages/$threadId': typeof AuthenticatedMessagesThreadIdRoute
   '/_authenticated/campaigns/': typeof AuthenticatedCampaignsIndexRoute
+  '/_authenticated/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -265,6 +275,7 @@ export interface FileRouteTypes {
     | '/dashboard/creator'
     | '/messages/$threadId'
     | '/campaigns/'
+    | '/campaigns/$id/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -290,6 +301,7 @@ export interface FileRouteTypes {
     | '/dashboard/creator'
     | '/messages/$threadId'
     | '/campaigns'
+    | '/campaigns/$id/edit'
   id:
     | '__root__'
     | '/'
@@ -316,6 +328,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard/creator'
     | '/_authenticated/messages/$threadId'
     | '/_authenticated/campaigns/'
+    | '/_authenticated/campaigns/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -495,6 +508,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCampaignsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/campaigns/$id/edit': {
+      id: '/_authenticated/campaigns/$id/edit'
+      path: '/edit'
+      fullPath: '/campaigns/$id/edit'
+      preLoaderRoute: typeof AuthenticatedCampaignsIdEditRouteImport
+      parentRoute: typeof AuthenticatedCampaignsIdRoute
+    }
   }
 }
 
@@ -528,6 +548,20 @@ const AuthenticatedMessagesRouteWithChildren =
     AuthenticatedMessagesRouteChildren,
   )
 
+interface AuthenticatedCampaignsIdRouteChildren {
+  AuthenticatedCampaignsIdEditRoute: typeof AuthenticatedCampaignsIdEditRoute
+}
+
+const AuthenticatedCampaignsIdRouteChildren: AuthenticatedCampaignsIdRouteChildren =
+  {
+    AuthenticatedCampaignsIdEditRoute: AuthenticatedCampaignsIdEditRoute,
+  }
+
+const AuthenticatedCampaignsIdRouteWithChildren =
+  AuthenticatedCampaignsIdRoute._addFileChildren(
+    AuthenticatedCampaignsIdRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAnalyticsRoute: typeof AuthenticatedAnalyticsRoute
   AuthenticatedApplicationsRoute: typeof AuthenticatedApplicationsRoute
@@ -538,7 +572,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPaymentsRoute: typeof AuthenticatedPaymentsRoute
   AuthenticatedPortfolioRoute: typeof AuthenticatedPortfolioRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
-  AuthenticatedCampaignsIdRoute: typeof AuthenticatedCampaignsIdRoute
+  AuthenticatedCampaignsIdRoute: typeof AuthenticatedCampaignsIdRouteWithChildren
   AuthenticatedCampaignsNewRoute: typeof AuthenticatedCampaignsNewRoute
   AuthenticatedCreatorsIdRoute: typeof AuthenticatedCreatorsIdRoute
   AuthenticatedCampaignsIndexRoute: typeof AuthenticatedCampaignsIndexRoute
@@ -554,7 +588,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPaymentsRoute: AuthenticatedPaymentsRoute,
   AuthenticatedPortfolioRoute: AuthenticatedPortfolioRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
-  AuthenticatedCampaignsIdRoute: AuthenticatedCampaignsIdRoute,
+  AuthenticatedCampaignsIdRoute: AuthenticatedCampaignsIdRouteWithChildren,
   AuthenticatedCampaignsNewRoute: AuthenticatedCampaignsNewRoute,
   AuthenticatedCreatorsIdRoute: AuthenticatedCreatorsIdRoute,
   AuthenticatedCampaignsIndexRoute: AuthenticatedCampaignsIndexRoute,
