@@ -1,8 +1,9 @@
 import { useEffect } from "react";
-import { Link } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
+  Check,
   DollarSign,
   Clock,
   Inbox,
@@ -11,6 +12,7 @@ import {
   Sparkles,
   TrendingUp,
   CheckCircle2,
+  X,
 } from "lucide-react";
 import { format, subDays } from "date-fns";
 import {
@@ -24,6 +26,7 @@ import {
   BarChart,
   Bar,
 } from "recharts";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -47,31 +50,65 @@ export function CreatorDashboardView() {
   const { user } = useAuth();
   const { profile } = useWorkspace();
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
-  // -------- Realtime: refresh dashboard slices on data change --------
+  // -------- Realtime: refresh dashboard slices + premium toasts --------
   useEffect(() => {
     if (!user) return;
     const channel = supabase
       .channel(`creator-dashboard-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "applications", filter: `creator_id=eq.${user.id}` }, () => {
+      // Applications: invite state changes → toast
+      .on("postgres_changes", { event: "*", schema: "public", table: "applications", filter: `creator_id=eq.${user.id}` }, (payload: any) => {
         qc.invalidateQueries({ queryKey: ["creator-apps", user.id] });
-        qc.invalidateQueries({ queryKey: ["creator-stats", user.id] });
+        if (payload.eventType === "UPDATE" && payload.old?.status !== payload.new?.status) {
+          const s = payload.new.status;
+          if (s === "accepted") toast.success("You've been invited to a campaign", { description: "Open Applications to accept or decline." });
+          else if (s === "rejected") toast("Application update", { description: "An advertiser passed on one of your pitches." });
+        }
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "payments", filter: `payee_id=eq.${user.id}` }, () => {
+      // Payments: status transitions → toast
+      .on("postgres_changes", { event: "*", schema: "public", table: "payments", filter: `payee_id=eq.${user.id}` }, (payload: any) => {
         qc.invalidateQueries({ queryKey: ["creator-payments", user.id] });
+        if (payload.eventType === "UPDATE" && payload.old?.status !== payload.new?.status) {
+          const s = payload.new.status;
+          const amount = `$${Number(payload.new.amount).toLocaleString()}`;
+          if (s === "succeeded") toast.success(`${amount} paid out`, { description: "Funds have been released to your account." });
+          else if (s === "processing") toast(`${amount} processing`, { description: "Your payout is on the way." });
+          else if (s === "failed") toast.error(`${amount} payout failed`, { description: "Please review your payout details." });
+        } else if (payload.eventType === "INSERT") {
+          toast(`New payment pending`, { description: `$${Number(payload.new.amount).toLocaleString()} is being prepared.` });
+        }
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
+      // Messages: new inbound message → toast
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload: any) => {
         qc.invalidateQueries({ queryKey: ["creator-messages", user.id] });
-        qc.invalidateQueries({ queryKey: ["creator-stats", user.id] });
+        if (payload.new?.sender_id && payload.new.sender_id !== user.id) {
+          toast("New message", {
+            description: (payload.new.body ?? "").slice(0, 80),
+            action: {
+              label: "Open",
+              onClick: () => navigate({ to: "/messages/$threadId", params: { threadId: payload.new.conversation_id } }),
+            },
+          });
+        }
       })
+      // Messages read/update → refresh unread counts
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "messages" }, () => {
+        qc.invalidateQueries({ queryKey: ["creator-messages", user.id] });
+      })
+      // New open campaigns → refresh opportunities
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "campaigns" }, () => {
         qc.invalidateQueries({ queryKey: ["creator-opps"] });
+      })
+      // Profile updates → refresh completion checklist
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${user.id}` }, () => {
+        qc.invalidateQueries({ queryKey: ["profile", user.id] });
       })
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, qc]);
+  }, [user, qc, navigate]);
 
   // -------- Payments (earnings + pending) --------
   const paymentsQuery = useQuery({
