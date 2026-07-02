@@ -13,6 +13,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CreatorsIdRouteImport } from './routes/creators.$id'
 import { Route as AuthVerifyEmailRouteImport } from './routes/auth.verify-email'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
@@ -51,6 +52,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreatorsIdRoute = CreatorsIdRouteImport.update({
+  id: '/creators/$id',
+  path: '/creators/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthVerifyEmailRoute = AuthVerifyEmailRouteImport.update({
@@ -180,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/verify-email': typeof AuthVerifyEmailRoute
+  '/creators/$id': typeof CreatorsIdRoute
   '/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/campaigns/new': typeof AuthenticatedCampaignsNewRoute
   '/dashboard/advertiser': typeof AuthenticatedDashboardAdvertiserRoute
@@ -205,6 +212,7 @@ export interface FileRoutesByTo {
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/verify-email': typeof AuthVerifyEmailRoute
+  '/creators/$id': typeof CreatorsIdRoute
   '/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/campaigns/new': typeof AuthenticatedCampaignsNewRoute
   '/dashboard/advertiser': typeof AuthenticatedDashboardAdvertiserRoute
@@ -232,6 +240,7 @@ export interface FileRoutesById {
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/verify-email': typeof AuthVerifyEmailRoute
+  '/creators/$id': typeof CreatorsIdRoute
   '/_authenticated/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/_authenticated/campaigns/new': typeof AuthenticatedCampaignsNewRoute
   '/_authenticated/dashboard/advertiser': typeof AuthenticatedDashboardAdvertiserRoute
@@ -259,6 +268,7 @@ export interface FileRouteTypes {
     | '/auth/forgot-password'
     | '/auth/reset-password'
     | '/auth/verify-email'
+    | '/creators/$id'
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/dashboard/advertiser'
@@ -284,6 +294,7 @@ export interface FileRouteTypes {
     | '/auth/forgot-password'
     | '/auth/reset-password'
     | '/auth/verify-email'
+    | '/creators/$id'
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/dashboard/advertiser'
@@ -310,6 +321,7 @@ export interface FileRouteTypes {
     | '/auth/forgot-password'
     | '/auth/reset-password'
     | '/auth/verify-email'
+    | '/creators/$id'
     | '/_authenticated/campaigns/$id'
     | '/_authenticated/campaigns/new'
     | '/_authenticated/dashboard/advertiser'
@@ -324,6 +336,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
+  CreatorsIdRoute: typeof CreatorsIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -354,6 +367,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/creators/$id': {
+      id: '/creators/$id'
+      path: '/creators/$id'
+      fullPath: '/creators/$id'
+      preLoaderRoute: typeof CreatorsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/verify-email': {
@@ -597,6 +617,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
+  CreatorsIdRoute: CreatorsIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
