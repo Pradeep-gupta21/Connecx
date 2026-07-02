@@ -30,7 +30,6 @@ import { Route as AuthenticatedCampaignsIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedMessagesThreadIdRouteImport } from './routes/_authenticated/messages.$threadId'
 import { Route as AuthenticatedDashboardCreatorRouteImport } from './routes/_authenticated/dashboard.creator'
 import { Route as AuthenticatedDashboardAdvertiserRouteImport } from './routes/_authenticated/dashboard.advertiser'
-import { Route as AuthenticatedCreatorsIdRouteImport } from './routes/_authenticated/creators.$id'
 import { Route as AuthenticatedCampaignsNewRouteImport } from './routes/_authenticated/campaigns.new'
 import { Route as AuthenticatedCampaignsIdRouteImport } from './routes/_authenticated/campaigns.$id'
 import { Route as AuthenticatedCampaignsIdEditRouteImport } from './routes/_authenticated/campaigns.$id.edit'
@@ -145,11 +144,6 @@ const AuthenticatedDashboardAdvertiserRoute =
     path: '/advertiser',
     getParentRoute: () => AuthenticatedDashboardRoute,
   } as any)
-const AuthenticatedCreatorsIdRoute = AuthenticatedCreatorsIdRouteImport.update({
-  id: '/creators/$id',
-  path: '/creators/$id',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedCampaignsNewRoute =
   AuthenticatedCampaignsNewRouteImport.update({
     id: '/campaigns/new',
@@ -188,7 +182,6 @@ export interface FileRoutesByFullPath {
   '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/campaigns/new': typeof AuthenticatedCampaignsNewRoute
-  '/creators/$id': typeof AuthenticatedCreatorsIdRoute
   '/dashboard/advertiser': typeof AuthenticatedDashboardAdvertiserRoute
   '/dashboard/creator': typeof AuthenticatedDashboardCreatorRoute
   '/messages/$threadId': typeof AuthenticatedMessagesThreadIdRoute
@@ -214,7 +207,6 @@ export interface FileRoutesByTo {
   '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/campaigns/new': typeof AuthenticatedCampaignsNewRoute
-  '/creators/$id': typeof AuthenticatedCreatorsIdRoute
   '/dashboard/advertiser': typeof AuthenticatedDashboardAdvertiserRoute
   '/dashboard/creator': typeof AuthenticatedDashboardCreatorRoute
   '/messages/$threadId': typeof AuthenticatedMessagesThreadIdRoute
@@ -242,7 +234,6 @@ export interface FileRoutesById {
   '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/_authenticated/campaigns/$id': typeof AuthenticatedCampaignsIdRouteWithChildren
   '/_authenticated/campaigns/new': typeof AuthenticatedCampaignsNewRoute
-  '/_authenticated/creators/$id': typeof AuthenticatedCreatorsIdRoute
   '/_authenticated/dashboard/advertiser': typeof AuthenticatedDashboardAdvertiserRoute
   '/_authenticated/dashboard/creator': typeof AuthenticatedDashboardCreatorRoute
   '/_authenticated/messages/$threadId': typeof AuthenticatedMessagesThreadIdRoute
@@ -270,7 +261,6 @@ export interface FileRouteTypes {
     | '/auth/verify-email'
     | '/campaigns/$id'
     | '/campaigns/new'
-    | '/creators/$id'
     | '/dashboard/advertiser'
     | '/dashboard/creator'
     | '/messages/$threadId'
@@ -296,7 +286,6 @@ export interface FileRouteTypes {
     | '/auth/verify-email'
     | '/campaigns/$id'
     | '/campaigns/new'
-    | '/creators/$id'
     | '/dashboard/advertiser'
     | '/dashboard/creator'
     | '/messages/$threadId'
@@ -323,7 +312,6 @@ export interface FileRouteTypes {
     | '/auth/verify-email'
     | '/_authenticated/campaigns/$id'
     | '/_authenticated/campaigns/new'
-    | '/_authenticated/creators/$id'
     | '/_authenticated/dashboard/advertiser'
     | '/_authenticated/dashboard/creator'
     | '/_authenticated/messages/$threadId'
@@ -487,13 +475,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardAdvertiserRouteImport
       parentRoute: typeof AuthenticatedDashboardRoute
     }
-    '/_authenticated/creators/$id': {
-      id: '/_authenticated/creators/$id'
-      path: '/creators/$id'
-      fullPath: '/creators/$id'
-      preLoaderRoute: typeof AuthenticatedCreatorsIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/campaigns/new': {
       id: '/_authenticated/campaigns/new'
       path: '/campaigns/new'
@@ -574,7 +555,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedCampaignsIdRoute: typeof AuthenticatedCampaignsIdRouteWithChildren
   AuthenticatedCampaignsNewRoute: typeof AuthenticatedCampaignsNewRoute
-  AuthenticatedCreatorsIdRoute: typeof AuthenticatedCreatorsIdRoute
   AuthenticatedCampaignsIndexRoute: typeof AuthenticatedCampaignsIndexRoute
 }
 
@@ -590,7 +570,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedCampaignsIdRoute: AuthenticatedCampaignsIdRouteWithChildren,
   AuthenticatedCampaignsNewRoute: AuthenticatedCampaignsNewRoute,
-  AuthenticatedCreatorsIdRoute: AuthenticatedCreatorsIdRoute,
   AuthenticatedCampaignsIndexRoute: AuthenticatedCampaignsIndexRoute,
 }
 
