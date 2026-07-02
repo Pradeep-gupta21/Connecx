@@ -43,7 +43,7 @@ function AdminCampaigns() {
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="published">Published</SelectItem>
+            <SelectItem value="open">Open</SelectItem>
             <SelectItem value="paused">Paused</SelectItem>
             <SelectItem value="closed">Closed</SelectItem>
             <SelectItem value="archived">Archived</SelectItem>
