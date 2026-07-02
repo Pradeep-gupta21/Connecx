@@ -184,10 +184,11 @@ function CampaignDetail() {
             {isOwner && !c.funded && c.status !== "archived" && (
               <FundCampaignDialog
                 campaignId={id}
+                campaignTitle={c.title}
                 budget={Number(c.budget_max ?? c.budget_min ?? 0)}
-                trigger={<Button className="gap-2"><Wallet className="h-4 w-4" /> Fund campaign</Button>}
               />
             )}
+
             {isOwner && <OwnerActions status={c.status} onStatus={(s) => statusMut.mutate(s)} onDelete={() => deleteMut.mutate()} id={id} />}
           </div>
         </div>
