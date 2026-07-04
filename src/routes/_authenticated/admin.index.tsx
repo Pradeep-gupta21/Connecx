@@ -5,8 +5,10 @@ import { Users, Megaphone, CreditCard, Flag, LifeBuoy, TrendingUp, Activity } fr
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { StatCard } from "@/components/common/StatCard";
+import { AdminPageHeader } from "@/components/admin/AdminShell";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
+  head: () => ({ meta: [{ title: "Admin Dashboard · BrandBridge" }] }),
   component: AdminOverview,
 });
 
@@ -53,8 +55,14 @@ function AdminOverview() {
   const d = q.data;
 
   return (
-    <div className="space-y-6">
+    <div>
+      <AdminPageHeader
+        eyebrow="Operations · Today"
+        title="Platform overview"
+        description="Real-time signals across marketplace health, revenue, and moderation queues."
+      />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
         <StatCard label="Total Users" value={d?.userCount ?? 0} icon={Users} />
         <StatCard label="Active Campaigns" value={d?.activeCampaigns ?? 0} icon={Megaphone} />
         <StatCard label="Revenue (all-time)" value={d?.totalRevenue ?? 0} icon={CreditCard} format={(v) => `$${Math.round(v).toLocaleString()}`} />
