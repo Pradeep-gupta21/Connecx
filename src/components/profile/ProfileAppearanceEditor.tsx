@@ -174,15 +174,15 @@ export function ProfileAppearanceEditor({
         const newPath = await uploadProfileMedia(PROFILE_BANNERS_BUCKET, user.id, bannerFile);
         updates.banner_url = newPath;
         updates.banner_updated_at = new Date().toISOString();
-        updates.banner_position = pos;
+        updates.banner_position = pos as unknown as Database["public"]["Tables"]["profiles"]["Update"]["banner_position"];
         await removeProfileMediaByPath(PROFILE_BANNERS_BUCKET, bannerValue);
       } else if (bannerRemoved) {
         updates.banner_url = null;
         updates.banner_updated_at = new Date().toISOString();
-        updates.banner_position = DEFAULT_BANNER_POSITION;
+        updates.banner_position = DEFAULT_BANNER_POSITION as unknown as Database["public"]["Tables"]["profiles"]["Update"]["banner_position"];
         await removeProfileMediaByPath(PROFILE_BANNERS_BUCKET, bannerValue);
       } else if (JSON.stringify(pos) !== JSON.stringify(bannerPosition ?? DEFAULT_BANNER_POSITION)) {
-        updates.banner_position = pos;
+        updates.banner_position = pos as unknown as Database["public"]["Tables"]["profiles"]["Update"]["banner_position"];
       }
 
       if (Object.keys(updates).length === 0) {
