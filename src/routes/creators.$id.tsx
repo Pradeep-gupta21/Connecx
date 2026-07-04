@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ProfileHeader } from "@/components/profile/ProfileHeader";
 
 export const Route = createFileRoute("/creators/$id")({
   head: ({ params }) => ({
@@ -65,7 +66,7 @@ function CreatorProfilePage() {
       const [{ data: creator }, { data: socials }, { data: portfolio }, { data: reviews }] = await Promise.all([
         supabase
           .from("creator_profiles")
-          .select("*, profiles!inner(display_name, avatar_url, location, bio, country)")
+          .select("*, profiles!inner(display_name, avatar_url, location, bio, country, banner_url, banner_position)")
           .eq("user_id", id)
           .maybeSingle(),
         supabase.from("social_accounts").select("*").eq("user_id", id),
@@ -158,82 +159,41 @@ function CreatorProfilePage() {
       </div>
 
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-border">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/10 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="relative max-w-6xl mx-auto px-6 py-20 md:py-28">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="flex flex-col md:flex-row md:items-end gap-8"
-          >
-            <div className="relative">
-              <Avatar className="h-28 w-28 md:h-36 md:w-36 ring-4 ring-background shadow-2xl">
-                <AvatarImage src={p?.avatar_url ?? undefined} />
-                <AvatarFallback className="text-3xl font-display">
-                  {(p?.display_name ?? "?").slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <span
-                className={cn(
-                  "absolute bottom-2 right-2 h-5 w-5 rounded-full ring-4 ring-background",
-                  c.availability_status === "unavailable"
-                    ? "bg-muted-foreground"
-                    : c.availability_status === "limited" ? "bg-amber-500" : "bg-emerald-500",
-                )}
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground mb-3">
-                <Sparkles className="h-3 w-3" /> Creator
-                {avgRating !== null && (
-                  <span className="inline-flex items-center gap-1 text-amber-500">
-                    · <Star className="h-3 w-3 fill-current" /> {avgRating.toFixed(1)} ({reviews.length})
-                  </span>
-                )}
-              </div>
-              <h1 className="font-display text-4xl md:text-6xl font-semibold tracking-tight">
-                {p?.display_name}
-              </h1>
-              {c.headline && (
-                <p className="mt-4 text-lg md:text-xl text-muted-foreground max-w-2xl leading-relaxed">
-                  {c.headline}
-                </p>
-              )}
-              <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                {p?.location && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5" /> {p.location}
-                  </span>
-                )}
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
-                    c.availability_status === "unavailable"
-                      ? "bg-muted text-muted-foreground"
-                      : c.availability_status === "limited"
-                      ? "bg-amber-500/10 text-amber-700 dark:text-amber-500"
-                      : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-500",
-                  )}
-                >
-                  <span className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    c.availability_status === "unavailable" ? "bg-muted-foreground"
-                    : c.availability_status === "limited" ? "bg-amber-500" : "bg-emerald-500",
-                  )} />
-                  {availabilityLabel}
-                </span>
-              </div>
-            </div>
-          </motion.div>
+      <section className="relative border-b border-border">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-10 space-y-6">
+          <ProfileHeader
+            displayName={p?.display_name ?? "Creator"}
+            avatarValue={p?.avatar_url ?? null}
+            bannerValue={p?.banner_url ?? null}
+            bannerPosition={(p?.banner_position as any) ?? null}
+            headline={c.headline}
+            location={p?.location}
+            meta={[
+              (c.categories ?? [])[0],
+              c.follower_count ? `${c.follower_count.toLocaleString()} followers` : null,
+              availabilityLabel,
+            ].filter(Boolean).join(" • ")}
+            bio={p?.bio}
+            verified={!!c.is_verified}
+            isOwner={user?.id === id}
+            actions={
+              <Button onClick={startConversation} className="gap-2">
+                <MessageSquare className="h-4 w-4" /> Message
+              </Button>
+            }
+            ownerActions={
+              <Button asChild variant="outline">
+                <Link to="/settings">Edit profile</Link>
+              </Button>
+            }
+          />
 
           {/* Quick stats */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.15 }}
-            className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4"
+            className="grid grid-cols-2 md:grid-cols-4 gap-4"
           >
             <StatBlock icon={Users} label="Followers" value={c.follower_count ? c.follower_count.toLocaleString() : "—"} />
             <StatBlock icon={TrendingUp} label="Engagement" value={analytics.engagement_rate ? `${analytics.engagement_rate}%` : "—"} />
@@ -242,6 +202,7 @@ function CreatorProfilePage() {
           </motion.div>
         </div>
       </section>
+
 
       <div className="max-w-6xl mx-auto px-6 py-16 grid lg:grid-cols-3 gap-12">
         {/* MAIN */}

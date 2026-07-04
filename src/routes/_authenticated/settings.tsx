@@ -15,6 +15,8 @@ import { useWorkspace, type AppRole } from "@/hooks/useWorkspace";
 import { supabase } from "@/integrations/supabase/client";
 import { COUNTRIES, dialFor } from "@/lib/countries";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ProfileAppearanceEditor } from "@/components/profile/ProfileAppearanceEditor";
+import type { BannerPosition } from "@/lib/profile-media";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings · BrandBridge" }] }),
@@ -81,12 +83,23 @@ function SettingsPage() {
       <Tabs defaultValue="profile">
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="appearance">Appearance</TabsTrigger>
           <TabsTrigger value="creator">Creator</TabsTrigger>
           <TabsTrigger value="advertiser">Advertiser</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="appearance" className="mt-6">
+          <ProfileAppearanceEditor
+            displayName={profile?.display_name ?? ""}
+            avatarValue={profile?.avatar_url ?? null}
+            bannerValue={profile?.banner_url ?? null}
+            bannerPosition={(profile?.banner_position as unknown as BannerPosition | null) ?? null}
+          />
+        </TabsContent>
+
         <TabsContent value="profile" className="mt-6">
+
           <div className="surface-card p-6 space-y-5">
             <div className="space-y-2">
               <Label htmlFor="dn">Display name</Label>

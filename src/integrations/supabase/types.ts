@@ -1092,7 +1092,11 @@ export type Database = {
       profiles: {
         Row: {
           active_role: Database["public"]["Enums"]["app_role"] | null
+          avatar_updated_at: string | null
           avatar_url: string | null
+          banner_position: Json
+          banner_updated_at: string | null
+          banner_url: string | null
           bio: string | null
           country: string | null
           created_at: string
@@ -1108,7 +1112,11 @@ export type Database = {
         }
         Insert: {
           active_role?: Database["public"]["Enums"]["app_role"] | null
+          avatar_updated_at?: string | null
           avatar_url?: string | null
+          banner_position?: Json
+          banner_updated_at?: string | null
+          banner_url?: string | null
           bio?: string | null
           country?: string | null
           created_at?: string
@@ -1124,7 +1132,11 @@ export type Database = {
         }
         Update: {
           active_role?: Database["public"]["Enums"]["app_role"] | null
+          avatar_updated_at?: string | null
           avatar_url?: string | null
+          banner_position?: Json
+          banner_updated_at?: string | null
+          banner_url?: string | null
           bio?: string | null
           country?: string | null
           created_at?: string
