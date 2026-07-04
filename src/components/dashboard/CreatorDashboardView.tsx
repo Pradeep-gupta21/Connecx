@@ -491,12 +491,11 @@ function CampaignInvites({ appsData }: { appsData: any[] }) {
       <ul className="divide-y divide-border -mx-2">
         {invites.map((a) => (
           <li key={a.id} className="flex items-center gap-4 px-2 py-3">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={a.campaigns?.profiles?.avatar_url ?? undefined} />
-              <AvatarFallback className="text-[10px]">
-                {(a.campaigns?.profiles?.display_name ?? "?").slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <SmartAvatar
+              className="h-10 w-10"
+              value={a.campaigns?.profiles?.avatar_url}
+              name={a.campaigns?.profiles?.display_name}
+            />
             <div className="flex-1 min-w-0">
               <p className="font-medium truncate">{a.campaigns?.title ?? "Campaign"}</p>
               <p className="text-xs text-muted-foreground truncate">
