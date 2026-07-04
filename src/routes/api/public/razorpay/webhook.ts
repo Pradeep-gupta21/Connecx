@@ -181,9 +181,10 @@ async function handleEvent(
       const { data: wd } = await admin
         .from("withdrawals")
         .select("id")
-        .eq("payout_id", payout.id)
+        .or(`payout_id.eq.${payout.id},razorpay_payout_id.eq.${payout.id}`)
         .maybeSingle();
       if (!wd) return;
+
       await PaymentService.markWithdrawalCompleted({
         withdrawalId: wd.id,
         payoutRef: payout.id,

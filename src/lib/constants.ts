@@ -30,3 +30,8 @@ export const INDUSTRIES = [
 
 export type CreatorCategory = (typeof CREATOR_CATEGORIES)[number];
 export type Industry = (typeof INDUSTRIES)[number];
+
+// Payment / payout constants
+export const MIN_WITHDRAWAL_INR = 100;
+export const MAX_WITHDRAWAL_INR = 500_000;
+

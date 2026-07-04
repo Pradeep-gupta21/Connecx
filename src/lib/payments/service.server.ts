@@ -761,7 +761,14 @@ export const PaymentService = {
     method?: string;
     destination: Record<string, unknown>;
   }) {
-    if (args.amount <= 0) throw new Error("Invalid amount");
+    const { MIN_WITHDRAWAL_INR, MAX_WITHDRAWAL_INR } = await import("@/lib/constants");
+    if (!Number.isFinite(args.amount) || args.amount <= 0) throw new Error("Invalid amount");
+    if (args.amount < MIN_WITHDRAWAL_INR) {
+      throw new Error(`Minimum withdrawal is ₹${MIN_WITHDRAWAL_INR.toLocaleString("en-IN")}`);
+    }
+    if (args.amount > MAX_WITHDRAWAL_INR) {
+      throw new Error(`Maximum per-request withdrawal is ₹${MAX_WITHDRAWAL_INR.toLocaleString("en-IN")}`);
+    }
     const { data: wallet, error: wErr } = await admin
       .from("wallets")
       .select("id, available_balance, currency")
@@ -770,6 +777,7 @@ export const PaymentService = {
     if (wErr) throw new Error(wErr.message);
     if (!wallet) throw new Error("Wallet not found");
     if (Number(wallet.available_balance) < args.amount) throw new Error("Insufficient balance");
+
 
     const { data: wd, error: iErr } = await admin
       .from("withdrawals")
@@ -861,7 +869,9 @@ export const PaymentService = {
             status: "processing",
             payout_id: payout.id,
             payout_ref: payout.id,
+            razorpay_payout_id: payout.id,
           }).eq("id", wd.id);
+
         } else {
           // Manual payout — mark processing; ops will mark completed
           await admin.from("withdrawals").update({ status: "processing" }).eq("id", wd.id);
