@@ -869,7 +869,9 @@ export const PaymentService = {
             status: "processing",
             payout_id: payout.id,
             payout_ref: payout.id,
+            razorpay_payout_id: payout.id,
           }).eq("id", wd.id);
+
         } else {
           // Manual payout — mark processing; ops will mark completed
           await admin.from("withdrawals").update({ status: "processing" }).eq("id", wd.id);
