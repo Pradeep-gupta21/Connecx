@@ -17,7 +17,9 @@ import {
 } from "@/components/ui/dialog";
 import { Money, formatMoney } from "./Money";
 import { useWithdrawal } from "@/hooks/useWallet";
+import { MIN_WITHDRAWAL_INR } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+
 
 export function WithdrawDialog({
   available,
