@@ -61,7 +61,9 @@ function AdminOverview() {
         title="Platform overview"
         description="Real-time signals across marketplace health, revenue, and moderation queues."
       />
+      <div className="space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
 
         <StatCard label="Total Users" value={d?.userCount ?? 0} icon={Users} />
         <StatCard label="Active Campaigns" value={d?.activeCampaigns ?? 0} icon={Megaphone} />
