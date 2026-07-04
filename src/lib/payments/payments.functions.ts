@@ -108,7 +108,7 @@ export const reviewDeliverables = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// -------- Refund --------
+// -------- Refund: user files a REQUEST (admin must approve) --------
 const refundSchema = z.object({
   paymentId: z.string().uuid(),
   amount: z.number().positive().optional(),
@@ -131,6 +131,40 @@ export const createRefund = createServerFn({ method: "POST" })
     });
     if (!isAdmin && pay.payer_id !== context.userId) throw new Error("Forbidden");
     return PaymentService.createRefund({ ...data, actorId: context.userId });
+  });
+
+// -------- Admin: approve or reject a refund request --------
+const adminRefundSchema = z.object({
+  refundId: z.string().uuid(),
+  action: z.enum(["approve", "reject"]),
+  notes: z.string().max(500).optional(),
+  reason: z.string().max(500).optional(),
+});
+export const adminReviewRefund = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => adminRefundSchema.parse(raw))
+  .handler(async ({ data, context }) => {
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (!isAdmin) throw new Error("Admin only");
+    const { PaymentService } = await import("./service.server");
+    if (data.action === "approve") {
+      return PaymentService.adminApproveRefund({
+        refundId: data.refundId,
+        adminId: context.userId,
+        notes: data.notes,
+      });
+    }
+    if (!data.reason || data.reason.trim().length < 3) {
+      throw new Error("Rejection reason is required");
+    }
+    return PaymentService.adminRejectRefund({
+      refundId: data.refundId,
+      adminId: context.userId,
+      reason: data.reason,
+    });
   });
 
 // -------- Withdrawals --------
