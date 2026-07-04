@@ -1,5 +1,6 @@
 import { LogOut, Settings, UserCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SmartAvatar } from "@/components/profile/SmartAvatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
