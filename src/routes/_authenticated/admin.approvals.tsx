@@ -1,21 +1,29 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { CheckCircle2, XCircle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/common/EmptyState";
+import { AdminPageHeader } from "@/components/admin/AdminShell";
+
+const approvalsSearch = z.object({ kind: z.enum(["creator", "advertiser"]).optional() });
 
 export const Route = createFileRoute("/_authenticated/admin/approvals")({
+  validateSearch: approvalsSearch,
   component: AdminApprovals,
 });
 
 function AdminApprovals() {
   const qc = useQueryClient();
+  const search = useSearch({ from: "/_authenticated/admin/approvals" });
+  const navigate = useNavigate();
+  const kind = search.kind ?? "creator";
 
   const creators = useQuery({
     queryKey: ["admin", "approvals", "creator"],
@@ -95,23 +103,39 @@ function AdminApprovals() {
   };
 
   return (
-    <Tabs defaultValue="creator">
-      <TabsList>
-        <TabsTrigger value="creator">Creators <Badge variant="secondary" className="ml-2">{creators.data?.length ?? 0}</Badge></TabsTrigger>
-        <TabsTrigger value="advertiser">Advertisers <Badge variant="secondary" className="ml-2">{advertisers.data?.length ?? 0}</Badge></TabsTrigger>
-      </TabsList>
-      <TabsContent value="creator" className="mt-4 space-y-3">
-        {(creators.data ?? []).map((r) => renderCard("creator", r))}
-        {!creators.isLoading && (creators.data ?? []).length === 0 && (
-          <EmptyState icon={Sparkles} title="Inbox zero" description="No creator profiles pending review." />
-        )}
-      </TabsContent>
-      <TabsContent value="advertiser" className="mt-4 space-y-3">
-        {(advertisers.data ?? []).map((r) => renderCard("advertiser", r))}
-        {!advertisers.isLoading && (advertisers.data ?? []).length === 0 && (
-          <EmptyState icon={Sparkles} title="All clear" description="No advertiser profiles pending review." />
-        )}
-      </TabsContent>
-    </Tabs>
+    <div>
+      <AdminPageHeader
+        eyebrow="Trust & safety"
+        title={kind === "creator" ? "Creator approvals" : "Advertiser approvals"}
+        description="Review new profiles and admit them to the marketplace once they meet quality standards."
+      />
+      <Tabs
+        value={kind}
+        onValueChange={(v) =>
+          navigate({ to: "/admin/approvals", search: { kind: v as "creator" | "advertiser" }, replace: true })
+        }
+      >
+        <TabsList>
+          <TabsTrigger value="creator">
+            Creators <Badge variant="secondary" className="ml-2">{creators.data?.length ?? 0}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="advertiser">
+            Advertisers <Badge variant="secondary" className="ml-2">{advertisers.data?.length ?? 0}</Badge>
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="creator" className="mt-4 space-y-3">
+          {(creators.data ?? []).map((r) => renderCard("creator", r))}
+          {!creators.isLoading && (creators.data ?? []).length === 0 && (
+            <EmptyState icon={Sparkles} title="Inbox zero" description="No creator profiles pending review." />
+          )}
+        </TabsContent>
+        <TabsContent value="advertiser" className="mt-4 space-y-3">
+          {(advertisers.data ?? []).map((r) => renderCard("advertiser", r))}
+          {!advertisers.isLoading && (advertisers.data ?? []).length === 0 && (
+            <EmptyState icon={Sparkles} title="All clear" description="No advertiser profiles pending review." />
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
