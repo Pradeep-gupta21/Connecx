@@ -32,7 +32,14 @@ export type WithdrawalStatus =
   | "failed"
   | "cancelled";
 
-export type RefundStatus = "pending" | "processing" | "completed" | "failed";
+export type RefundStatus =
+  | "requested"
+  | "approved"
+  | "rejected"
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed";
 
 export interface CreateOrderInput {
   amount: number; // in major unit (e.g. INR rupees)
