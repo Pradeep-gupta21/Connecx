@@ -118,7 +118,7 @@ const groups: NavGroup[] = [
 
 function useIsActive() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const search = useRouterState({ select: (s) => s.location.search }) as Record<string, unknown>;
+  const search = useRouterState({ select: (s) => s.location.search as Record<string, unknown> });
   return (item: NavItem) => {
     const base = item.to;
     const isExact = pathname === base;
@@ -128,7 +128,6 @@ function useIsActive() {
       const currentKind = (search?.kind as string | undefined) ?? "creator";
       return currentKind === item.matchKind;
     }
-    // If another item shares this route with a specific matchKind, don't double-activate.
     return base === "/admin" ? pathname === "/admin" : true;
   };
 }
