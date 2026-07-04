@@ -561,7 +561,8 @@ function countBy<T extends string>(arr: T[]) {
 function computeCompletion(profile: any) {
   const items = [
     { label: "Display name", done: !!profile?.display_name },
-    { label: "Avatar photo", done: !!profile?.avatar_url },
+    { label: "Profile picture", done: !!profile?.avatar_url },
+    { label: "Cover banner", done: !!profile?.banner_url },
     { label: "Bio", done: !!profile?.bio },
     { label: "Country", done: !!profile?.country },
     { label: "Phone", done: !!profile?.phone },
