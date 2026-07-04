@@ -2051,7 +2051,14 @@ export type Database = {
         | "bonus"
         | "refund"
         | "campaign_payment"
-      refund_status: "pending" | "processing" | "completed" | "failed"
+      refund_status:
+        | "pending"
+        | "processing"
+        | "completed"
+        | "failed"
+        | "requested"
+        | "approved"
+        | "rejected"
       report_status: "open" | "reviewing" | "resolved" | "dismissed"
       social_platform:
         | "instagram"
@@ -2268,7 +2275,15 @@ export const Constants = {
         "refund",
         "campaign_payment",
       ],
-      refund_status: ["pending", "processing", "completed", "failed"],
+      refund_status: [
+        "pending",
+        "processing",
+        "completed",
+        "failed",
+        "requested",
+        "approved",
+        "rejected",
+      ],
       report_status: ["open", "reviewing", "resolved", "dismissed"],
       social_platform: [
         "instagram",
