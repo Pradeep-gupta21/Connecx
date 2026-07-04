@@ -98,13 +98,25 @@ export function AdvertiserDashboardView() {
 
   return (
     <div className="space-y-10">
-      <PageHeader
-        title={`${greeting()}${profile?.display_name ? `, ${profile.display_name.split(" ")[0]}` : ""}`}
-        description="Command center for your campaigns, creators, and spend."
-        actions={<Link to="/campaigns/new"><Button>New campaign</Button></Link>}
+      <ProfileHeader
+        displayName={profile?.display_name ?? "Advertiser"}
+        avatarValue={profile?.avatar_url ?? null}
+        bannerValue={profile?.banner_url ?? null}
+        bannerPosition={(profile?.banner_position as any) ?? null}
+        headline={greeting()}
+        location={profile?.location}
+        bio={profile?.bio}
+        isOwner
+        ownerActions={
+          <>
+            <Button asChild variant="outline"><Link to="/settings">Edit profile</Link></Button>
+            <Button asChild><Link to="/campaigns/new">New campaign</Link></Button>
+          </>
+        }
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
         {stats.isLoading ? (
           Array.from({ length: 4 }).map((_, i) => <StatSkeleton key={i} />)
         ) : (
