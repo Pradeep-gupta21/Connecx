@@ -1093,20 +1093,21 @@ export const PaymentService = {
     notes?: string;
     triggerPayout?: boolean;
   }) {
+    // CAS approve — only one admin wins.
     const { data: wd, error } = await admin
       .from("withdrawals")
-      .select("id, user_id, amount, currency, method, destination, status")
+      .update({
+        status: "approved",
+        approved_by: args.adminId,
+        approved_at: new Date().toISOString(),
+        admin_notes: args.notes ?? null,
+      })
       .eq("id", args.withdrawalId)
-      .single();
-    if (error || !wd) throw new Error("Withdrawal not found");
-    if (wd.status !== "requested") throw new Error(`Cannot approve from ${wd.status}`);
-
-    await admin.from("withdrawals").update({
-      status: "approved",
-      approved_by: args.adminId,
-      approved_at: new Date().toISOString(),
-      admin_notes: args.notes ?? null,
-    }).eq("id", wd.id);
+      .eq("status", "requested")
+      .select("id, user_id, amount, currency, method, destination")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!wd) throw new Error("Withdrawal is no longer pending");
 
     await audit({
       actorId: args.adminId,
