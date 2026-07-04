@@ -298,12 +298,11 @@ function Thread() {
           </Button>
         </Link>
         <div className="relative">
-          <Avatar className="h-9 w-9">
-            <AvatarImage src={(other as any)?.avatar_url ?? undefined} />
-            <AvatarFallback className="text-xs">
-              {((other as any)?.display_name ?? "?").slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+          <SmartAvatar
+            className="h-9 w-9"
+            value={(other as any)?.avatar_url}
+            name={(other as any)?.display_name}
+          />
           <span
             className={cn(
               "absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-background",
