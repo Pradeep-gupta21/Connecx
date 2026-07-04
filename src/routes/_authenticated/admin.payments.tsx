@@ -61,7 +61,7 @@ function AdminPayments() {
     queryFn: async () => {
       const { data } = await supabase
         .from("refunds")
-        .select("id, amount, currency, status, reason, created_at, processed_at, payment_id")
+        .select("id, amount, currency, status, reason, rejection_reason, admin_notes, created_at, processed_at, reviewed_at, payment_id, requested_by")
         .order("created_at", { ascending: false })
         .limit(200);
       return data ?? [];
