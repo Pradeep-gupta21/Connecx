@@ -64,16 +64,17 @@ function Discover() {
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const { data, error } = await supabase.rpc("search_creators", {
-        _q: q || null,
-        _category: cat === "all" ? null : cat,
-        _skill: skill || null,
-        _location: location || null,
+        _q: q || undefined,
+        _category: cat === "all" ? undefined : cat,
+        _skill: skill || undefined,
+        _location: location || undefined,
         _limit: PAGE_SIZE,
         _offset: pageParam as number,
       });
       if (error) throw error;
       return { rows: (data ?? []) as CreatorRow[], offset: pageParam as number };
     },
+
     getNextPageParam: (last) => {
       const total = last.rows[0]?.total_count ?? 0;
       const nextOffset = last.offset + last.rows.length;
