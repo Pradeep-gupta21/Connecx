@@ -33,6 +33,8 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { StatSkeleton, ListSkeleton } from "@/components/common/Skeletons";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ProfileHeader } from "@/components/profile/ProfileHeader";
+import { SmartAvatar } from "@/components/profile/SmartAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
