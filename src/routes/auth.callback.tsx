@@ -44,6 +44,16 @@ function AuthCallback() {
         return;
       }
 
+      // Admins go straight to the admin console — never through onboarding.
+      const { data: roleRows } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id);
+      if (roleRows?.some((r) => r.role === "admin")) {
+        navigate({ to: "/admin", replace: true });
+        return;
+      }
+
       navigate({ to: "/dashboard", replace: true });
     })();
   }, [navigate]);

@@ -13,9 +13,10 @@ export const Route = createFileRoute("/_authenticated")({
 
 function AuthenticatedLayout() {
   const { user, loading, signOut } = useAuth();
-  const { profile, loading: wsLoading } = useWorkspace();
+  const { profile, roles, loading: wsLoading } = useWorkspace();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isAdmin = roles.includes("admin");
 
   useEffect(() => {
     if (loading) return;
@@ -27,10 +28,12 @@ function AuthenticatedLayout() {
       navigate({ to: "/auth/verify-email", replace: true });
       return;
     }
+    // Admins bypass onboarding entirely — they only need a lightweight profile.
+    if (isAdmin) return;
     if (!wsLoading && profile && !profile.onboarded && pathname !== "/onboarding") {
       navigate({ to: "/onboarding", replace: true });
     }
-  }, [user, loading, profile, wsLoading, navigate, pathname]);
+  }, [user, loading, profile, wsLoading, isAdmin, navigate, pathname]);
 
   if (loading || !user) {
     return (
