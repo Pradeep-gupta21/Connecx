@@ -28,24 +28,37 @@ function Discover() {
     queryFn: async () => {
       let query = supabase
         .from("creator_profiles")
-        .select("user_id, headline, categories, rate_min, rate_max, follower_count, profiles!creator_profiles_profile_fkey!inner(display_name, avatar_url, location, bio)")
+        .select(
+          "user_id, headline, categories, rate_min, rate_max, follower_count, profiles!creator_profiles_profile_fkey!inner(display_name, avatar_url, location, bio)"
+        )
+        .is("deleted_at", null)
         .order("updated_at", { ascending: false })
-        .limit(50);
+        .limit(500);
       if (cat !== "all") query = query.contains("categories", [cat]);
       const { data, error } = await query;
       if (error) throw error;
-      return data;
+      // Hide suspended profiles from discovery
+      return (data ?? []).filter((c: any) => !c.profiles?.suspended_at);
     },
   });
 
   const filtered = useMemo(() => {
     if (!data) return [];
-    if (!q) return data;
-    const term = q.toLowerCase();
-    return data.filter((c: any) =>
-      [c.profiles?.display_name, c.headline, c.profiles?.location, ...(c.categories ?? [])]
-        .filter(Boolean).join(" ").toLowerCase().includes(term)
-    );
+    const term = q.trim().toLowerCase();
+    if (!term) return data;
+    return data.filter((c: any) => {
+      const haystack = [
+        c.profiles?.display_name,
+        c.profiles?.location,
+        c.profiles?.bio,
+        c.headline,
+        ...(c.categories ?? []),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(term);
+    });
   }, [data, q]);
 
   return (
