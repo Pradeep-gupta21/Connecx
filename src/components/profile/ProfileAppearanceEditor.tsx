@@ -155,7 +155,7 @@ export function ProfileAppearanceEditor({
     if (!user) return;
     setSaving(true);
     try {
-      const updates: Record<string, unknown> = {};
+      const updates: Database["public"]["Tables"]["profiles"]["Update"] = {};
 
       // Avatar
       if (avatarFile) {
