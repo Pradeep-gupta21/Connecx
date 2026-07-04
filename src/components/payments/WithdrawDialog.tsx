@@ -43,8 +43,10 @@ export function WithdrawDialog({
   const amt = Number(amount);
   const validBank = name.trim().length >= 2 && account.length >= 6 && ifsc.length >= 8;
   const validUpi = /^[a-zA-Z0-9._-]+@[a-zA-Z]{2,}$/.test(upi);
+  const meetsMin = amt >= MIN_WITHDRAWAL_INR;
   const canSubmit =
-    amt > 0 && amt <= available && (method === "upi" ? validUpi : validBank) && !wd.isPending;
+    meetsMin && amt <= available && (method === "upi" ? validUpi : validBank) && !wd.isPending;
+
 
   const reset = () => {
     setStep("form");
