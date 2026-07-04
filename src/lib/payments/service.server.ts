@@ -323,7 +323,9 @@ export const PaymentService = {
       amount: toMinor(input.amount),
       currency,
       keyId: razorpay.publicKeyId(),
+      mode: razorpay.mode(),
     };
+
   },
 
   // -------- Verify & mark as HELD (client callback) --------
