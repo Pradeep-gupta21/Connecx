@@ -101,6 +101,11 @@ export const razorpay = {
     return getCreds().keyId;
   },
 
+  mode(): RazorpayMode {
+    return getCreds().mode;
+  },
+
+
   async createOrder(args: {
     amountMinor: number;
     currency: string;
