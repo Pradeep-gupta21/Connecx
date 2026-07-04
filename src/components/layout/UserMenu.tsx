@@ -31,12 +31,12 @@ export function UserMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full p-0">
-          <Avatar className="h-9 w-9">
-            <AvatarImage src={profile?.avatar_url ?? undefined} alt={name} />
-            <AvatarFallback className="bg-foreground text-background text-xs font-medium">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+          <SmartAvatar
+            className="h-9 w-9"
+            value={profile?.avatar_url}
+            name={name}
+            alt={name}
+          />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
