@@ -293,35 +293,7 @@ function AdminPayments() {
         </TabsContent>
 
         <TabsContent value="refunds" className="mt-6">
-          {refunds.isLoading ? (
-            <LedgerTable rows={undefined} isLoading columns={["date", "reference", "status", "amount"]} />
-          ) : (refunds.data ?? []).length === 0 ? (
-            <EmptyState
-              icon={ClipboardList}
-              title="No refunds"
-              description="Approved refunds appear here with their processing state."
-            />
-          ) : (
-            <div className="surface-card divide-y divide-border/60">
-              {(refunds.data ?? []).map((r: any) => (
-                <div key={r.id} className="p-4 flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Money value={r.amount} currency={r.currency ?? "INR"} className="font-semibold" />
-                      <PaymentStatusBadge kind="refund" status={r.status} />
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Filed {format(new Date(r.created_at), "MMM d")}
-                      {r.reason && ` · "${r.reason}"`}
-                    </p>
-                  </div>
-                  <span className="text-[11px] font-mono text-muted-foreground">
-                    payment {r.payment_id?.slice(0, 8)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+          <RefundQueue refunds={refunds.data ?? []} isLoading={refunds.isLoading} />
         </TabsContent>
 
         <TabsContent value="withdrawals" className="mt-6">
