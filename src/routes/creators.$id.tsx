@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ProfileHeader } from "@/components/profile/ProfileHeader";
 
 export const Route = createFileRoute("/creators/$id")({
   head: ({ params }) => ({
