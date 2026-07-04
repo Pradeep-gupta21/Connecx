@@ -694,6 +694,18 @@ export const PaymentService = {
       description: "Funds released to available balance",
     });
 
+    // Ledger: escrow liability → creator wallet
+    await postLedger({
+      event: "escrow.released",
+      amount: releaseAmt, currency: "INR",
+      debit: ACCT.platformEscrow, credit: ACCT.userWallet(pay.payee_id),
+      debitUser: pay.payer_id, creditUser: pay.payee_id,
+      paymentId: pay.id, campaignId: pay.campaign_id,
+      description: "Escrow released to creator",
+      idempotencyKey: `pay:${pay.id}:release`,
+      actorId,
+    });
+
     await log({ paymentId, actorId, action: "payment.released", from: "held", to: "released" });
     await audit({ actorId, action: "payment.released", entityType: "payment", entityId: paymentId });
 
@@ -713,7 +725,20 @@ export const PaymentService = {
     });
   },
 
-  // -------- Refunds --------
+  // -------- Refunds — approval workflow --------
+  //
+  // State machine:
+  //   REQUESTED  → user files, admin reviews
+  //   APPROVED   → admin approved (short-lived; immediately calls Razorpay)
+  //   PROCESSING → Razorpay accepted the refund; awaiting refund.processed webhook
+  //   COMPLETED  → funds returned + escrow / wallet reversed
+  //   REJECTED   → admin denied; requester notified
+  //   FAILED     → Razorpay / internal error
+  //
+  // Duplicate protection: a partial unique index on refunds(payment_id) WHERE
+  // status IN (requested/approved/processing/pending) prevents concurrent
+  // filings against the same payment. Admin approve/reject use compare-and-swap
+  // on status='requested' so only one admin action wins.
 
   async createRefund(args: {
     paymentId: string;
@@ -728,9 +753,12 @@ export const PaymentService = {
       .single();
     if (error || !pay) throw new Error("Payment not found");
     if (!pay.razorpay_payment_id) throw new Error("Nothing to refund — payment not captured");
+    if (!["held", "revision_requested", "released"].includes(pay.status_v2 ?? "")) {
+      throw new Error(`Cannot refund from ${pay.status_v2 ?? "unknown"}`);
+    }
 
     const refundAmount = args.amount ?? Number(pay.amount);
-    if (refundAmount <= 0) throw new Error("Invalid refund amount");
+    if (refundAmount <= 0 || refundAmount > Number(pay.amount)) throw new Error("Invalid refund amount");
 
     const { data: refundRow, error: rErr } = await admin
       .from("refunds")
@@ -740,39 +768,153 @@ export const PaymentService = {
         amount: refundAmount,
         currency: pay.currency ?? "INR",
         reason: args.reason ?? null,
-        status: "processing",
+        status: "requested",
       })
       .select("id")
       .single();
-    if (rErr || !refundRow) throw new Error(`Refund insert failed: ${rErr?.message}`);
-
-    const rzp = await razorpay.createRefund({
-      paymentId: pay.razorpay_payment_id,
-      amountMinor: toMinor(refundAmount),
-      notes: { refund_id: refundRow.id, reason: args.reason ?? "" },
-    });
-
-    await admin.from("refunds").update({ razorpay_refund_id: rzp.id }).eq("id", refundRow.id);
-    await admin.from("payments")
-      .update({ status: "processing", status_v2: "refund_pending" })
-      .eq("id", pay.id);
+    if (rErr || !refundRow) {
+      // 23505 unique_violation → open refund already exists
+      if (rErr?.code === "23505") throw new Error("A refund request is already open for this payment");
+      throw new Error(`Refund request failed: ${rErr?.message}`);
+    }
 
     await log({
       paymentId: pay.id,
       actorId: args.actorId,
       action: "refund.requested",
-      to: "refund_pending",
-      metadata: { refund_id: refundRow.id, razorpay_refund_id: rzp.id, amount: refundAmount },
+      metadata: { refund_id: refundRow.id, amount: refundAmount, reason: args.reason },
     });
     await audit({
       actorId: args.actorId,
       action: "refund.requested",
-      entityType: "payment",
-      entityId: pay.id,
-      metadata: { amount: refundAmount, reason: args.reason },
+      entityType: "refund",
+      entityId: refundRow.id,
+      metadata: { payment_id: pay.id, amount: refundAmount, reason: args.reason },
     });
 
-    return { refundId: refundRow.id, razorpayRefundId: rzp.id };
+    // Notify admins & the payment counterparty that a refund is pending review.
+    await notify({
+      userId: pay.payee_id,
+      type: "refund_requested",
+      title: "Refund requested",
+      body: `A refund of ₹${refundAmount.toLocaleString("en-IN")} is pending admin review.`,
+      payload: { payment_id: pay.id, refund_id: refundRow.id },
+    });
+
+    return { refundId: refundRow.id, status: "requested" as const };
+  },
+
+  async adminApproveRefund(args: { refundId: string; adminId: string; notes?: string }) {
+    // Compare-and-swap: only lock a refund that is still 'requested'.
+    const { data: locked, error } = await admin
+      .from("refunds")
+      .update({
+        status: "approved",
+        reviewed_by: args.adminId,
+        reviewed_at: new Date().toISOString(),
+        admin_notes: args.notes ?? null,
+      })
+      .eq("id", args.refundId)
+      .eq("status", "requested")
+      .select("id, payment_id, amount, currency, reason")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!locked) throw new Error("Refund is no longer pending — another admin may have handled it");
+
+    const { data: pay } = await admin
+      .from("payments")
+      .select("id, payer_id, payee_id, campaign_id, razorpay_payment_id, status_v2")
+      .eq("id", locked.payment_id)
+      .single();
+    if (!pay || !pay.razorpay_payment_id) {
+      await admin.from("refunds").update({
+        status: "failed",
+        failure_reason: "Payment missing Razorpay reference",
+      }).eq("id", locked.id);
+      throw new Error("Payment cannot be refunded via Razorpay");
+    }
+
+    try {
+      const rzp = await razorpay.createRefund({
+        paymentId: pay.razorpay_payment_id,
+        amountMinor: toMinor(Number(locked.amount)),
+        notes: { refund_id: locked.id, reason: locked.reason ?? "" },
+      });
+      await admin.from("refunds")
+        .update({ status: "processing", razorpay_refund_id: rzp.id })
+        .eq("id", locked.id);
+      await admin.from("payments")
+        .update({ status: "processing", status_v2: "refund_pending" })
+        .eq("id", pay.id);
+
+      await log({
+        paymentId: pay.id, actorId: args.adminId, action: "refund.approved",
+        to: "refund_pending",
+        metadata: { refund_id: locked.id, razorpay_refund_id: rzp.id },
+      });
+      await audit({
+        actorId: args.adminId, action: "refund.approved",
+        entityType: "refund", entityId: locked.id,
+        metadata: { payment_id: pay.id, amount: locked.amount },
+      });
+      await notify({
+        userId: pay.payer_id, type: "refund_approved",
+        title: "Refund approved",
+        body: `Your refund of ₹${Number(locked.amount).toLocaleString("en-IN")} is being processed.`,
+        payload: { payment_id: pay.id, refund_id: locked.id },
+      });
+      return { refundId: locked.id, status: "processing" as const };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      await admin.from("refunds").update({
+        status: "failed",
+        failure_reason: msg,
+      }).eq("id", locked.id);
+      await log({
+        paymentId: pay.id, actorId: args.adminId, action: "refund.failed",
+        metadata: { refund_id: locked.id, error: msg },
+      });
+      throw new Error(`Razorpay refund failed: ${msg}`);
+    }
+  },
+
+  async adminRejectRefund(args: { refundId: string; adminId: string; reason: string }) {
+    if (!args.reason || args.reason.trim().length < 3) {
+      throw new Error("Rejection reason is required");
+    }
+    const { data: locked, error } = await admin
+      .from("refunds")
+      .update({
+        status: "rejected",
+        reviewed_by: args.adminId,
+        reviewed_at: new Date().toISOString(),
+        rejection_reason: args.reason,
+      })
+      .eq("id", args.refundId)
+      .eq("status", "requested")
+      .select("id, payment_id, amount, requested_by")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!locked) throw new Error("Refund is no longer pending — another admin may have handled it");
+
+    await log({
+      paymentId: locked.payment_id, actorId: args.adminId,
+      action: "refund.rejected",
+      metadata: { refund_id: locked.id, reason: args.reason },
+    });
+    await audit({
+      actorId: args.adminId, action: "refund.rejected",
+      entityType: "refund", entityId: locked.id,
+      metadata: { payment_id: locked.payment_id, reason: args.reason },
+    });
+    await notify({
+      userId: locked.requested_by,
+      type: "refund_rejected",
+      title: "Refund rejected",
+      body: args.reason.slice(0, 200),
+      payload: { payment_id: locked.payment_id, refund_id: locked.id },
+    });
+    return { refundId: locked.id, status: "rejected" as const };
   },
 
   async markRefundCompleted(args: { refundId: string }) {
@@ -784,7 +926,7 @@ export const PaymentService = {
       .update({ status: "completed", processed_at: new Date().toISOString() })
       .eq("id", refund.id);
     const { data: pay } = await admin
-      .from("payments").select("id, payer_id, payee_id, campaign_id, status_v2, creator_earnings, amount")
+      .from("payments").select("id, payer_id, payee_id, campaign_id, status_v2, creator_earnings, amount, currency")
       .eq("id", refund.payment_id).single();
     if (!pay) return;
 
@@ -792,14 +934,12 @@ export const PaymentService = {
     await admin.from("payments")
       .update({ status: "refunded", status_v2: "refunded" }).eq("id", pay.id);
 
-    // Reverse creator-side balances.
-    // - If still HELD/revision_requested: unwind the hold (held & pending).
-    // - If already RELEASED: debit available_balance (creator was paid, now clawed back).
-    // - Otherwise: no creator wallet impact (payee was never credited).
     const refundAmt = Number(refund.amount);
     const creatorAmt = Number(pay.creator_earnings ?? pay.amount ?? refundAmt);
+    const currency = (pay.currency as string) ?? "INR";
     try {
-      if (prevStatus === "held" || prevStatus === "revision_requested") {
+      if (prevStatus === "held" || prevStatus === "revision_requested" || prevStatus === "refund_pending") {
+        // Determine reversal source by whether wallet has any held funds
         const unwind = Math.min(creatorAmt, refundAmt);
         await admin.rpc("ensure_wallet", { _user_id: pay.payee_id });
         const { data: wallet } = await admin
@@ -807,7 +947,7 @@ export const PaymentService = {
           .select("id, held_balance, pending_balance")
           .eq("user_id", pay.payee_id)
           .single();
-        if (wallet) {
+        if (wallet && Number(wallet.held_balance) > 0) {
           const newHeld = Math.max(Number(wallet.held_balance) - unwind, 0);
           const newPending = Math.max(Number(wallet.pending_balance) - unwind, 0);
           await admin.from("wallets")
@@ -821,10 +961,20 @@ export const PaymentService = {
             balance_after: null,
             reference_type: "refund",
             reference_id: refund.id,
-            description: "Held funds released back to advertiser (refund)",
+            description: "Held funds returned (refund)",
             metadata: { payment_id: pay.id, from_status: prevStatus },
           });
         }
+        // Ledger: escrow liability → cash out
+        await postLedger({
+          event: "refund.from_escrow",
+          amount: refundAmt, currency,
+          debit: ACCT.platformEscrow, credit: ACCT.platformCash,
+          debitUser: pay.payee_id, creditUser: pay.payer_id,
+          paymentId: pay.id, campaignId: pay.campaign_id,
+          description: "Refund from escrow to advertiser",
+          idempotencyKey: `refund:${refund.id}:escrow`,
+        });
       } else if (prevStatus === "released") {
         await applyWalletTxn({
           userId: pay.payee_id,
@@ -833,6 +983,16 @@ export const PaymentService = {
           referenceType: "refund",
           referenceId: refund.id,
           description: "Refund clawback from available balance",
+        });
+        // Ledger: creator wallet → cash out
+        await postLedger({
+          event: "refund.clawback",
+          amount: refundAmt, currency,
+          debit: ACCT.userWallet(pay.payee_id), credit: ACCT.platformCash,
+          debitUser: pay.payee_id, creditUser: pay.payer_id,
+          paymentId: pay.id, campaignId: pay.campaign_id,
+          description: "Refund clawback from creator wallet",
+          idempotencyKey: `refund:${refund.id}:clawback`,
         });
       }
     } catch (e) {
@@ -844,6 +1004,13 @@ export const PaymentService = {
       type: "refund_completed",
       title: "Refund completed",
       body: `₹${refundAmt.toLocaleString("en-IN")} refunded to your source account.`,
+      payload: { payment_id: pay.id, refund_id: refund.id },
+    });
+    await notify({
+      userId: pay.payee_id,
+      type: "refund_completed",
+      title: "Refund processed",
+      body: `A refund of ₹${refundAmt.toLocaleString("en-IN")} was completed on this payment.`,
       payload: { payment_id: pay.id, refund_id: refund.id },
     });
   },
