@@ -1066,6 +1066,17 @@ export const PaymentService = {
       description: "Withdrawal requested",
     });
 
+    // Ledger: creator wallet → payouts_pending liability
+    await postLedger({
+      event: "withdrawal.requested",
+      amount: args.amount, currency: wallet.currency ?? "INR",
+      debit: ACCT.userWallet(args.userId), credit: ACCT.platformPayoutsPending,
+      debitUser: args.userId, creditUser: null,
+      description: "Withdrawal reserved from wallet",
+      idempotencyKey: `wd:${wd.id}:reserve`,
+      actorId: args.userId,
+    });
+
     await audit({
       actorId: args.userId,
       action: "withdrawal.requested",
