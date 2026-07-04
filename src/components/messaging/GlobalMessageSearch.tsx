@@ -6,6 +6,7 @@ import { Search, X, MessageSquare } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SmartAvatar } from "@/components/profile/SmartAvatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -128,10 +129,7 @@ export function GlobalMessageSearch({ open, onOpenChange }: { open: boolean; onO
               <button key={p.id}
                 onClick={() => setCreatorFilter(p.id)}
                 className="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-xs hover:bg-secondary transition-colors">
-                <Avatar className="h-4 w-4">
-                  <AvatarImage src={p.avatar ?? undefined} />
-                  <AvatarFallback className="text-[8px]">{p.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
+                <SmartAvatar className="h-4 w-4" value={p.avatar} name={p.name} />
                 {p.name}
               </button>
             ))}
@@ -155,10 +153,11 @@ export function GlobalMessageSearch({ open, onOpenChange }: { open: boolean; onO
                   <li key={r.id}>
                     <button onClick={() => jump(r.conversation_id, r.id)}
                       className="w-full text-left px-4 py-3 hover:bg-secondary/60 transition-colors flex items-start gap-3">
-                      <Avatar className="h-8 w-8 mt-0.5">
-                        <AvatarImage src={other?.avatar_url ?? undefined} />
-                        <AvatarFallback className="text-[10px]">{(other?.display_name ?? "?").slice(0, 2).toUpperCase()}</AvatarFallback>
-                      </Avatar>
+                      <SmartAvatar
+                        className="h-8 w-8 mt-0.5"
+                        value={other?.avatar_url}
+                        name={other?.display_name}
+                      />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span className="font-medium text-foreground">{other?.display_name ?? "Conversation"}</span>

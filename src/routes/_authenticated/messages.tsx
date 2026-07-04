@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { MessageSquare, Search, SearchCode } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SmartAvatar } from "@/components/profile/SmartAvatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -163,10 +164,11 @@ function MessagesLayout() {
                       )}
                     >
                       <div className="relative shrink-0">
-                        <Avatar className="h-9 w-9">
-                          <AvatarImage src={other?.avatar_url ?? undefined} />
-                          <AvatarFallback className="text-[10px]">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
+                        <SmartAvatar
+                          className="h-9 w-9"
+                          value={other?.avatar_url}
+                          name={name}
+                        />
                         {online && (
                           <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
                         )}

@@ -33,6 +33,8 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { StatSkeleton, ListSkeleton } from "@/components/common/Skeletons";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ProfileHeader } from "@/components/profile/ProfileHeader";
+import { SmartAvatar } from "@/components/profile/SmartAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
@@ -194,15 +196,27 @@ export function CreatorDashboardView() {
 
   return (
     <div className="space-y-10">
-      <PageHeader
-        title={`${greeting()}${profile?.display_name ? `, ${profile.display_name.split(" ")[0]}` : ""}`}
-        description="Here's the pulse of your creator business — updated in realtime."
-        actions={
-          <Link to="/campaigns">
-            <Button>Browse campaigns</Button>
-          </Link>
+      <ProfileHeader
+        displayName={profile?.display_name ?? "Creator"}
+        avatarValue={profile?.avatar_url ?? null}
+        bannerValue={profile?.banner_url ?? null}
+        bannerPosition={(profile?.banner_position as any) ?? null}
+        headline={greeting()}
+        location={profile?.location}
+        bio={profile?.bio}
+        isOwner
+        ownerActions={
+          <>
+            <Button asChild variant="outline">
+              <Link to="/settings">Edit profile</Link>
+            </Button>
+            <Button asChild>
+              <Link to="/campaigns">Browse campaigns</Link>
+            </Button>
+          </>
         }
       />
+
 
       {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -337,12 +351,11 @@ export function CreatorDashboardView() {
                 return (
                   <li key={c.id}>
                     <Link to="/messages/$threadId" params={{ threadId: c.id }} className="flex items-center gap-3 px-2 py-3 rounded-lg hover:bg-secondary/60">
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={c.advertiser?.avatar_url ?? undefined} />
-                        <AvatarFallback className="text-[10px] bg-secondary">
-                          {(c.advertiser?.display_name ?? "?").slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      <SmartAvatar
+                        className="h-9 w-9"
+                        value={c.advertiser?.avatar_url}
+                        name={c.advertiser?.display_name}
+                      />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-medium truncate">{c.advertiser?.display_name ?? "Brand"}</p>
@@ -478,12 +491,11 @@ function CampaignInvites({ appsData }: { appsData: any[] }) {
       <ul className="divide-y divide-border -mx-2">
         {invites.map((a) => (
           <li key={a.id} className="flex items-center gap-4 px-2 py-3">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={a.campaigns?.profiles?.avatar_url ?? undefined} />
-              <AvatarFallback className="text-[10px]">
-                {(a.campaigns?.profiles?.display_name ?? "?").slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <SmartAvatar
+              className="h-10 w-10"
+              value={a.campaigns?.profiles?.avatar_url}
+              name={a.campaigns?.profiles?.display_name}
+            />
             <div className="flex-1 min-w-0">
               <p className="font-medium truncate">{a.campaigns?.title ?? "Campaign"}</p>
               <p className="text-xs text-muted-foreground truncate">
@@ -547,7 +559,8 @@ function countBy<T extends string>(arr: T[]) {
 function computeCompletion(profile: any) {
   const items = [
     { label: "Display name", done: !!profile?.display_name },
-    { label: "Avatar photo", done: !!profile?.avatar_url },
+    { label: "Profile picture", done: !!profile?.avatar_url },
+    { label: "Cover banner", done: !!profile?.banner_url },
     { label: "Bio", done: !!profile?.bio },
     { label: "Country", done: !!profile?.country },
     { label: "Phone", done: !!profile?.phone },
