@@ -1164,23 +1164,24 @@ export const PaymentService = {
     adminId: string;
     reason?: string;
   }) {
+    // CAS: only reject if still 'requested'. Prevents two admins from acting.
     const { data: wd, error } = await admin
       .from("withdrawals")
-      .select("id, user_id, amount, status")
+      .update({
+        status: "rejected",
+        approved_by: args.adminId,
+        approved_at: new Date().toISOString(),
+        admin_notes: args.reason ?? null,
+      })
       .eq("id", args.withdrawalId)
-      .single();
-    if (error || !wd) throw new Error("Withdrawal not found");
-    if (wd.status !== "requested") throw new Error(`Cannot reject from ${wd.status}`);
-
-    await admin.from("withdrawals").update({
-      status: "rejected",
-      approved_by: args.adminId,
-      approved_at: new Date().toISOString(),
-      admin_notes: args.reason ?? null,
-    }).eq("id", wd.id);
+      .eq("status", "requested")
+      .select("id, user_id, amount")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!wd) throw new Error("Withdrawal is no longer pending");
 
     // Restore the reserved amount to available AND unwind the withdrawn_balance
-    // that requestWithdrawal bumped (otherwise "lifetime withdrawn" drifts up on every reject).
+    // that requestWithdrawal bumped.
     const amt = Number(wd.amount);
     await admin.rpc("ensure_wallet", { _user_id: wd.user_id });
     const { data: wallet } = await admin
@@ -1205,6 +1206,22 @@ export const PaymentService = {
       });
     }
 
+    // Ledger: reverse the reservation
+    await postLedger({
+      event: "withdrawal.reversed",
+      amount: amt, currency: "INR",
+      debit: ACCT.platformPayoutsPending, credit: ACCT.userWallet(wd.user_id),
+      debitUser: null, creditUser: wd.user_id,
+      description: "Withdrawal rejected — reservation reversed",
+      idempotencyKey: `wd:${wd.id}:reverse`,
+      actorId: args.adminId,
+    });
+
+    await audit({
+      actorId: args.adminId, action: "withdrawal.rejected",
+      entityType: "withdrawal", entityId: wd.id,
+      metadata: { reason: args.reason, amount: amt },
+    });
     await notify({
       userId: wd.user_id,
       type: "withdrawal_completed",
@@ -1215,17 +1232,37 @@ export const PaymentService = {
   },
 
   async markWithdrawalCompleted(args: { withdrawalId: string; payoutRef?: string }) {
-    const { data: wd } = await admin
+    // Idempotent: only completes an in-flight withdrawal.
+    const { data: wd, error } = await admin
       .from("withdrawals")
-      .select("id, user_id, amount, status")
-      .eq("id", args.withdrawalId).single();
-    if (!wd || wd.status === "completed") return;
-    await admin.from("withdrawals").update({
-      status: "completed",
-      completed_at: new Date().toISOString(),
-      payout_ref: args.payoutRef ?? null,
-      processed_at: new Date().toISOString(),
-    }).eq("id", wd.id);
+      .update({
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        payout_ref: args.payoutRef ?? null,
+        processed_at: new Date().toISOString(),
+      })
+      .eq("id", args.withdrawalId)
+      .in("status", ["approved", "processing"])
+      .select("id, user_id, amount, currency")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!wd) return; // already completed or not eligible
+
+    // Ledger: payouts_pending → cash out (leaves the platform bank)
+    await postLedger({
+      event: "withdrawal.completed",
+      amount: Number(wd.amount), currency: (wd.currency as string) ?? "INR",
+      debit: ACCT.platformPayoutsPending, credit: ACCT.platformCash,
+      debitUser: null, creditUser: wd.user_id,
+      description: "Payout completed",
+      idempotencyKey: `wd:${wd.id}:complete`,
+    });
+
+    await audit({
+      actorId: null, action: "withdrawal.completed",
+      entityType: "withdrawal", entityId: wd.id,
+      metadata: { amount: wd.amount, payoutRef: args.payoutRef },
+    });
     await notify({
       userId: wd.user_id,
       type: "withdrawal_completed",
