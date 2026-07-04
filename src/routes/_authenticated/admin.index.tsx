@@ -17,8 +17,9 @@ export const Route = createFileRoute("/_authenticated/admin/")({
   component: AdminOverview,
 });
 
-const ACTIVE_CAMPAIGN_STATUSES = ["open", "active", "in_progress", "live"];
-const COMPLETED_CAMPAIGN_STATUSES = ["completed", "closed", "fulfilled"];
+const ACTIVE_CAMPAIGN_STATUSES = ["open"] as const;
+const COMPLETED_CAMPAIGN_STATUSES = ["closed"] as const;
+const PENDING_WITHDRAWAL_STATUSES = ["requested", "processing"] as const;
 
 async function fetchOverview() {
   const todayStart = new Date();
