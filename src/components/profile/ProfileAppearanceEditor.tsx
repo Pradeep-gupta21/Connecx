@@ -8,6 +8,7 @@ import { Slider } from "@/components/ui/slider";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfileMediaUrl } from "@/hooks/useProfileMediaUrl";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import {
   ACCEPTED_IMAGE_TYPES,
   AVATAR_MAX_BYTES,
