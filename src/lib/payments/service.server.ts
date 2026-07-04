@@ -342,7 +342,7 @@ export const PaymentService = {
 
     const { data: pay, error } = await admin
       .from("payments")
-      .select("id, amount, currency, payer_id, payee_id, campaign_id, status_v2, type")
+      .select("id, amount, currency, payer_id, payee_id, campaign_id, status_v2, type, platform_fee, gst, creator_earnings, contract_id")
       .eq("razorpay_order_id", input.razorpay_order_id)
       .single();
     if (error || !pay) throw new Error("Payment order not found");
@@ -372,6 +372,49 @@ export const PaymentService = {
           status: "open",
         })
         .eq("id", pay.campaign_id);
+    }
+
+    // Double-entry ledger: cash in → escrow liability + fee + gst revenue.
+    // Idempotent per payment id — safe if webhook + client both fire.
+    const currency = (pay.currency as string) ?? "INR";
+    const creatorAmt = Number(pay.creator_earnings ?? pay.amount ?? 0);
+    const feeAmt = Number(pay.platform_fee ?? 0);
+    const gstAmt = Number(pay.gst ?? 0);
+    if (creatorAmt > 0) {
+      await postLedger({
+        event: "campaign.funded.escrow",
+        amount: creatorAmt, currency,
+        debit: ACCT.platformCash, credit: ACCT.platformEscrow,
+        debitUser: pay.payer_id, creditUser: pay.payee_id,
+        paymentId: pay.id, contractId: pay.contract_id, campaignId: pay.campaign_id,
+        description: "Escrow hold from campaign funding",
+        idempotencyKey: `pay:${pay.id}:escrow`,
+        actorId: input.actorId,
+      });
+    }
+    if (feeAmt > 0) {
+      await postLedger({
+        event: "campaign.funded.fee",
+        amount: feeAmt, currency,
+        debit: ACCT.platformCash, credit: ACCT.platformFees,
+        debitUser: pay.payer_id, creditUser: null,
+        paymentId: pay.id, campaignId: pay.campaign_id,
+        description: "Platform commission",
+        idempotencyKey: `pay:${pay.id}:fee`,
+        actorId: input.actorId,
+      });
+    }
+    if (gstAmt > 0) {
+      await postLedger({
+        event: "campaign.funded.gst",
+        amount: gstAmt, currency,
+        debit: ACCT.platformCash, credit: ACCT.platformGst,
+        debitUser: pay.payer_id, creditUser: null,
+        paymentId: pay.id, campaignId: pay.campaign_id,
+        description: "GST collected",
+        idempotencyKey: `pay:${pay.id}:gst`,
+        actorId: input.actorId,
+      });
     }
 
     await log({
