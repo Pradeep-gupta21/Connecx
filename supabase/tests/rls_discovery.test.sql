@@ -90,14 +90,15 @@ BEGIN
   END IF;
 
   SELECT count(*) INTO n
-  FROM information_schema.role_routine_grants
-  WHERE routine_schema = 'public'
-    AND routine_name = 'search_creators'
-    AND grantee = 'authenticated'
-    AND privilege_type = 'EXECUTE';
+  FROM pg_proc p
+  JOIN pg_namespace ns ON ns.oid = p.pronamespace
+  WHERE ns.nspname = 'public'
+    AND p.proname = 'search_creators'
+    AND has_function_privilege('authenticated', p.oid, 'EXECUTE');
   IF n = 0 THEN
     RAISE EXCEPTION 'FAIL: authenticated cannot EXECUTE search_creators';
   END IF;
+
 
   -- === 7. profiles.username is unique (case-insensitive) ===================
   PERFORM 1 FROM pg_indexes
