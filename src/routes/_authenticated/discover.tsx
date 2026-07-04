@@ -74,7 +74,7 @@ function Discover() {
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by name, headline, location..."
+            placeholder="Search by name, category, skill, location, or bio..."
             className="pl-9 h-10"
           />
         </div>
