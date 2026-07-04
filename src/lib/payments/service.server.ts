@@ -128,6 +128,58 @@ async function applyWalletTxn(args: {
   if (error) throw new Error(`Wallet mutation failed: ${error.message}`);
 }
 
+// -------------------- Double-entry ledger --------------------
+// Chart of accounts. User accounts are namespaced by uuid so per-user
+// balances can be reconstructed by SUM(credits) - SUM(debits) on the account.
+export const ACCT = {
+  platformCash: "platform:cash",           // funds in Razorpay/bank
+  platformEscrow: "platform:escrow",       // held liability
+  platformFees: "platform:revenue:fees",   // marketplace commission
+  platformGst: "platform:revenue:gst",     // tax collected
+  platformPayoutsPending: "platform:payouts_pending",
+  userWallet: (uid: string) => `user:${uid}:wallet`,
+} as const;
+
+async function postLedger(args: {
+  event: string;
+  amount: number;
+  currency?: string;
+  debit: string;
+  credit: string;
+  debitUser?: string | null;
+  creditUser?: string | null;
+  paymentId?: string | null;
+  contractId?: string | null;
+  campaignId?: string | null;
+  description?: string;
+  metadata?: Record<string, unknown>;
+  idempotencyKey: string;
+  actorId?: string | null;
+}): Promise<string | null> {
+  if (!Number.isFinite(args.amount) || args.amount <= 0) return null;
+  const { data, error } = await admin.rpc("post_ledger_entry", {
+    _event_type: args.event,
+    _amount: args.amount,
+    _currency: args.currency ?? "INR",
+    _debit_account: args.debit,
+    _credit_account: args.credit,
+    _debit_user: args.debitUser ?? null,
+    _credit_user: args.creditUser ?? null,
+    _payment_id: args.paymentId ?? null,
+    _contract_id: args.contractId ?? null,
+    _campaign_id: args.campaignId ?? null,
+    _description: args.description ?? null,
+    _metadata: args.metadata ?? {},
+    _idempotency_key: args.idempotencyKey,
+    _created_by: args.actorId ?? null,
+  });
+  if (error) {
+    console.error("[ledger] post failed", args.event, args.idempotencyKey, error.message);
+    return null;
+  }
+  return (data as string) ?? null;
+}
+
 async function nextReceipt(): Promise<string> {
   const { data } = await admin.rpc("next_receipt_number");
   return (data as string) ?? `RCPT-${Date.now()}`;
