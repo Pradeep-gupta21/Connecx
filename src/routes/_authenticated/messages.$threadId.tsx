@@ -5,6 +5,7 @@ import { ArrowLeft, Send, Loader2, Search, Pin as PinIcon } from "lucide-react";
 import { format, isSameDay } from "date-fns";
 import { AnimatePresence } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SmartAvatar } from "@/components/profile/SmartAvatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
