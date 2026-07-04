@@ -50,13 +50,17 @@ export interface CreateOrderInput {
   notes?: Record<string, string>;
 }
 
+export type RazorpayMode = "test" | "live";
+
 export interface CreateOrderResult {
   orderId: string; // razorpay order id
   paymentId: string; // internal payments.id
   amount: number; // minor unit (paise)
   currency: string;
   keyId: string; // public razorpay key
+  mode: RazorpayMode; // derived from the key id prefix
 }
+
 
 export interface VerifyPaymentInput {
   razorpay_order_id: string;
