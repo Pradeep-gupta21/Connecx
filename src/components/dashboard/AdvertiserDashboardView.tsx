@@ -220,12 +220,11 @@ export function AdvertiserDashboardView() {
               {(creatorsQ.data as any[]).map((c) => (
                 <li key={c.user_id}>
                   <Link to="/creators/$id" params={{ id: c.user_id }} className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-secondary/60">
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={c.profiles?.avatar_url ?? undefined} />
-                      <AvatarFallback className="text-[10px] bg-secondary">
-                        {(c.profiles?.display_name ?? "?").slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <SmartAvatar
+                      className="h-9 w-9"
+                      value={c.profiles?.avatar_url}
+                      name={c.profiles?.display_name}
+                    />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{c.profiles?.display_name ?? "Creator"}</p>
                       <p className="text-[11px] text-muted-foreground truncate">{c.headline ?? c.profiles?.location ?? "—"}</p>
