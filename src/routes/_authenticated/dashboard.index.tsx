@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 
-export const Route = createFileRoute("/_authenticated/dashboard")({
+export const Route = createFileRoute("/_authenticated/dashboard/")({
   head: () => ({ meta: [{ title: "Dashboard · BrandBridge" }] }),
   component: DashboardRedirect,
 });
