@@ -50,7 +50,6 @@ import { Route as AuthenticatedAdminModerationRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminHealthRouteImport } from './routes/_authenticated/admin.health'
 import { Route as AuthenticatedAdminFlagsRouteImport } from './routes/_authenticated/admin.flags'
 import { Route as AuthenticatedAdminDisputesRouteImport } from './routes/_authenticated/admin.disputes'
-import { Route as AuthenticatedAdminDatabaseRouteImport } from './routes/_authenticated/admin.database'
 import { Route as AuthenticatedAdminCampaignsRouteImport } from './routes/_authenticated/admin.campaigns'
 import { Route as AuthenticatedAdminAuditRouteImport } from './routes/_authenticated/admin.audit'
 import { Route as AuthenticatedAdminApprovalsRouteImport } from './routes/_authenticated/admin.approvals'
@@ -285,12 +284,6 @@ const AuthenticatedAdminDisputesRoute =
     path: '/disputes',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
-const AuthenticatedAdminDatabaseRoute =
-  AuthenticatedAdminDatabaseRouteImport.update({
-    id: '/database',
-    path: '/database',
-    getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
 const AuthenticatedAdminCampaignsRoute =
   AuthenticatedAdminCampaignsRouteImport.update({
     id: '/campaigns',
@@ -362,7 +355,6 @@ export interface FileRoutesByFullPath {
   '/admin/approvals': typeof AuthenticatedAdminApprovalsRoute
   '/admin/audit': typeof AuthenticatedAdminAuditRoute
   '/admin/campaigns': typeof AuthenticatedAdminCampaignsRoute
-  '/admin/database': typeof AuthenticatedAdminDatabaseRoute
   '/admin/disputes': typeof AuthenticatedAdminDisputesRoute
   '/admin/flags': typeof AuthenticatedAdminFlagsRoute
   '/admin/health': typeof AuthenticatedAdminHealthRoute
@@ -412,7 +404,6 @@ export interface FileRoutesByTo {
   '/admin/approvals': typeof AuthenticatedAdminApprovalsRoute
   '/admin/audit': typeof AuthenticatedAdminAuditRoute
   '/admin/campaigns': typeof AuthenticatedAdminCampaignsRoute
-  '/admin/database': typeof AuthenticatedAdminDatabaseRoute
   '/admin/disputes': typeof AuthenticatedAdminDisputesRoute
   '/admin/flags': typeof AuthenticatedAdminFlagsRoute
   '/admin/health': typeof AuthenticatedAdminHealthRoute
@@ -465,7 +456,6 @@ export interface FileRoutesById {
   '/_authenticated/admin/approvals': typeof AuthenticatedAdminApprovalsRoute
   '/_authenticated/admin/audit': typeof AuthenticatedAdminAuditRoute
   '/_authenticated/admin/campaigns': typeof AuthenticatedAdminCampaignsRoute
-  '/_authenticated/admin/database': typeof AuthenticatedAdminDatabaseRoute
   '/_authenticated/admin/disputes': typeof AuthenticatedAdminDisputesRoute
   '/_authenticated/admin/flags': typeof AuthenticatedAdminFlagsRoute
   '/_authenticated/admin/health': typeof AuthenticatedAdminHealthRoute
@@ -518,7 +508,6 @@ export interface FileRouteTypes {
     | '/admin/approvals'
     | '/admin/audit'
     | '/admin/campaigns'
-    | '/admin/database'
     | '/admin/disputes'
     | '/admin/flags'
     | '/admin/health'
@@ -568,7 +557,6 @@ export interface FileRouteTypes {
     | '/admin/approvals'
     | '/admin/audit'
     | '/admin/campaigns'
-    | '/admin/database'
     | '/admin/disputes'
     | '/admin/flags'
     | '/admin/health'
@@ -620,7 +608,6 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/approvals'
     | '/_authenticated/admin/audit'
     | '/_authenticated/admin/campaigns'
-    | '/_authenticated/admin/database'
     | '/_authenticated/admin/disputes'
     | '/_authenticated/admin/flags'
     | '/_authenticated/admin/health'
@@ -946,13 +933,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminDisputesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/_authenticated/admin/database': {
-      id: '/_authenticated/admin/database'
-      path: '/database'
-      fullPath: '/admin/database'
-      preLoaderRoute: typeof AuthenticatedAdminDatabaseRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
     '/_authenticated/admin/campaigns': {
       id: '/_authenticated/admin/campaigns'
       path: '/campaigns'
@@ -1019,7 +999,6 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminApprovalsRoute: typeof AuthenticatedAdminApprovalsRoute
   AuthenticatedAdminAuditRoute: typeof AuthenticatedAdminAuditRoute
   AuthenticatedAdminCampaignsRoute: typeof AuthenticatedAdminCampaignsRoute
-  AuthenticatedAdminDatabaseRoute: typeof AuthenticatedAdminDatabaseRoute
   AuthenticatedAdminDisputesRoute: typeof AuthenticatedAdminDisputesRoute
   AuthenticatedAdminFlagsRoute: typeof AuthenticatedAdminFlagsRoute
   AuthenticatedAdminHealthRoute: typeof AuthenticatedAdminHealthRoute
@@ -1045,7 +1024,6 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminApprovalsRoute: AuthenticatedAdminApprovalsRoute,
   AuthenticatedAdminAuditRoute: AuthenticatedAdminAuditRoute,
   AuthenticatedAdminCampaignsRoute: AuthenticatedAdminCampaignsRoute,
-  AuthenticatedAdminDatabaseRoute: AuthenticatedAdminDatabaseRoute,
   AuthenticatedAdminDisputesRoute: AuthenticatedAdminDisputesRoute,
   AuthenticatedAdminFlagsRoute: AuthenticatedAdminFlagsRoute,
   AuthenticatedAdminHealthRoute: AuthenticatedAdminHealthRoute,
