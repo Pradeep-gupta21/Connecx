@@ -1,8 +1,10 @@
 // Browser-safe Razorpay Checkout loader. Loads the Razorpay JS SDK on demand
 // and opens the checkout modal for a server-issued order.
+import { toast } from "sonner";
 import type { CreateOrderResult } from "./types";
 
 const SDK_URL = "https://checkout.razorpay.com/v1/checkout.js";
+
 
 declare global {
   interface Window {
@@ -58,6 +60,30 @@ export async function openRazorpayCheckout(args: {
 }) {
   await loadSdk();
   if (!window.Razorpay) throw new Error("Razorpay SDK unavailable");
+
+  // Guard against a live key leaking into a client that thinks it's in test mode.
+  const keyMode: "test" | "live" = args.order.keyId.startsWith("rzp_live_") ? "live" : "test";
+  if (keyMode !== args.order.mode) {
+    throw new Error(
+      `Razorpay key/mode mismatch: server said ${args.order.mode} but key prefix says ${keyMode}`,
+    );
+  }
+
+  // In TEST mode, real UPI apps (GPay, PhonePe, Paytm, BHIM) will show
+  // "Invalid UPI ID" because Razorpay's test merchant VPA is not registered
+  // with NPCI. Testers must use the on-screen "Success"/"Failure" simulator
+  // that Razorpay renders on the checkout after picking UPI.
+  if (args.order.mode === "test") {
+    toast.info("Test mode: pay UPI using Razorpay's on-screen Success button (real UPI apps will reject the test VPA).", {
+      duration: 8000,
+    });
+  }
+
+  console.info(
+    `[razorpay] opening checkout mode=${args.order.mode} key_prefix=${args.order.keyId.slice(0, 9)} order=${args.order.orderId}`,
+  );
+
+
   const rzp = new window.Razorpay({
     key: args.order.keyId,
     amount: args.order.amount,
@@ -67,6 +93,9 @@ export async function openRazorpayCheckout(args: {
     description: args.description,
     prefill: args.prefill,
     theme: { color: "#111111" },
+    // Note: we intentionally do NOT pass a `method.upi.vpa` or any custom
+    // UPI ID. Razorpay must generate the VPA / intent itself — passing one
+    // leads to "Invalid UPI ID" in third-party UPI apps.
     modal: { ondismiss: args.onDismiss, escape: true },
     handler: (response) => {
       void args.onSuccess(response);
@@ -74,3 +103,4 @@ export async function openRazorpayCheckout(args: {
   });
   rzp.open();
 }
+

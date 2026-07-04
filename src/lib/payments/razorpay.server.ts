@@ -1,8 +1,18 @@
 // Server-only Razorpay HTTP client. Uses Basic Auth with key_id:key_secret.
 // Do NOT import this from anything client-reachable at module scope.
 import { createHmac, timingSafeEqual } from "node:crypto";
+import type { RazorpayMode } from "./types";
 
 const RZP_BASE = "https://api.razorpay.com/v1";
+
+// Log environment banner exactly once per cold start.
+let bannerLogged = false;
+
+function detectMode(keyId: string): RazorpayMode {
+  if (keyId.startsWith("rzp_live_")) return "live";
+  // Anything else (rzp_test_, sandbox, missing prefix) is treated as test.
+  return "test";
+}
 
 function getCreds() {
   const keyId = process.env.RAZORPAY_KEY_ID;
@@ -10,13 +20,33 @@ function getCreds() {
   if (!keyId || !keySecret) {
     throw new Error("Razorpay credentials missing (RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET)");
   }
-  return { keyId, keySecret };
+
+  const mode = detectMode(keyId);
+  const expected = (process.env.PAYMENT_MODE || "").toLowerCase() as "" | RazorpayMode;
+
+  // Guard: if the app is explicitly configured for test, refuse to run with a live key.
+  if (expected && expected !== mode) {
+    throw new Error(
+      `Razorpay mode mismatch: PAYMENT_MODE=${expected} but key is ${mode} (prefix=${keyId.slice(0, 9)})`,
+    );
+  }
+
+  if (!bannerLogged) {
+    bannerLogged = true;
+    // Only prefix is logged — full key id is not a secret but we still keep logs tidy.
+    console.log(
+      `[razorpay] mode=${mode} key_prefix=${keyId.slice(0, 9)} webhook_secret=${process.env.RAZORPAY_WEBHOOK_SECRET ? "set" : "missing"}`,
+    );
+  }
+
+  return { keyId, keySecret, mode };
 }
 
 function authHeader(): string {
   const { keyId, keySecret } = getCreds();
   return "Basic " + Buffer.from(`${keyId}:${keySecret}`).toString("base64");
 }
+
 
 async function rzpFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${RZP_BASE}${path}`, {
@@ -70,6 +100,11 @@ export const razorpay = {
   publicKeyId(): string {
     return getCreds().keyId;
   },
+
+  mode(): RazorpayMode {
+    return getCreds().mode;
+  },
+
 
   async createOrder(args: {
     amountMinor: number;
