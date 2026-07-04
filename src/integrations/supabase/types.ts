@@ -1109,6 +1109,7 @@ export type Database = {
           suspended_at: string | null
           suspended_reason: string | null
           updated_at: string
+          username: string | null
         }
         Insert: {
           active_role?: Database["public"]["Enums"]["app_role"] | null
@@ -1129,6 +1130,7 @@ export type Database = {
           suspended_at?: string | null
           suspended_reason?: string | null
           updated_at?: string
+          username?: string | null
         }
         Update: {
           active_role?: Database["public"]["Enums"]["app_role"] | null
@@ -1149,6 +1151,7 @@ export type Database = {
           suspended_at?: string | null
           suspended_reason?: string | null
           updated_at?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -2051,6 +2054,32 @@ export type Database = {
           _payment_id?: string
         }
         Returns: string
+      }
+      search_creators: {
+        Args: {
+          _category?: string
+          _limit?: number
+          _location?: string
+          _offset?: number
+          _q?: string
+          _skill?: string
+        }
+        Returns: {
+          avatar_url: string
+          bio: string
+          categories: string[]
+          display_name: string
+          follower_count: number
+          headline: string
+          languages: string[]
+          location: string
+          rate_max: number
+          rate_min: number
+          total_count: number
+          updated_at: string
+          user_id: string
+          username: string
+        }[]
       }
       upsert_campaign_payment_summary: {
         Args: { _campaign_id: string }

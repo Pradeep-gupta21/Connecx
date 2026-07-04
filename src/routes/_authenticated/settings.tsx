@@ -29,6 +29,7 @@ function SettingsPage() {
   const qc = useQueryClient();
 
   const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [location, setLocation] = useState("");
   const [bio, setBio] = useState("");
   const [country, setCountry] = useState("");
@@ -38,6 +39,7 @@ function SettingsPage() {
   useEffect(() => {
     if (profile) {
       setDisplayName(profile.display_name ?? "");
+      setUsername(profile.username ?? "");
       setLocation(profile.location ?? "");
       setBio(profile.bio ?? "");
       setCountry(profile.country ?? "");
@@ -47,16 +49,27 @@ function SettingsPage() {
 
   const saveProfile = async () => {
     if (!user) return;
+    if (username && !/^[a-zA-Z0-9_]{3,30}$/.test(username.trim())) {
+      return toast.error("Username must be 3-30 letters, numbers, or underscores");
+    }
     setSavingProfile(true);
     const { error } = await supabase
       .from("profiles")
-      .update({ display_name: displayName, location, bio, country, phone })
+      .update({
+        display_name: displayName,
+        username: username.trim() || null,
+        location,
+        bio,
+        country,
+        phone,
+      })
       .eq("id", user.id);
     setSavingProfile(false);
     if (error) return toast.error(error.message);
     qc.invalidateQueries({ queryKey: ["profile", user.id] });
     toast.success("Profile saved");
   };
+
 
   const toggleRole = async (role: AppRole, on: boolean) => {
     if (!user) return;
@@ -105,6 +118,26 @@ function SettingsPage() {
               <Label htmlFor="dn">Display name</Label>
               <Input id="dn" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="un">Username</Label>
+              <div className="flex">
+                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-secondary text-sm text-muted-foreground">
+                  @
+                </span>
+                <Input
+                  id="un"
+                  className="rounded-l-none"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.replace(/\s+/g, ""))}
+                  placeholder="your_handle"
+                  aria-describedby="un-help"
+                />
+              </div>
+              <p id="un-help" className="text-xs text-muted-foreground">
+                3–30 characters. Letters, numbers, and underscores only. Used for @mentions and search.
+              </p>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="loc">Location</Label>
               <Input id="loc" value={location} onChange={(e) => setLocation(e.target.value)} />

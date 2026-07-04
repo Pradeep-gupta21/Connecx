@@ -26,8 +26,10 @@ function Onboarding() {
   const [step, setStep] = useState(1);
 
   const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [location, setLocation] = useState("");
+
 
   // Creator
   const [headline, setHeadline] = useState("");
@@ -56,6 +58,7 @@ function Onboarding() {
   useEffect(() => {
     if (profile) {
       setDisplayName(profile.display_name ?? "");
+      setUsername(profile.username ?? "");
       setBio(profile.bio ?? "");
       setLocation(profile.location ?? "");
     }
@@ -69,6 +72,9 @@ function Onboarding() {
   const finish = async () => {
     if (!user) return;
     if (!displayName.trim()) return toast.error("Add a display name");
+    if (username && !/^[a-zA-Z0-9_]{3,30}$/.test(username.trim())) {
+      return toast.error("Username must be 3-30 letters, numbers, or underscores");
+    }
     if (role === "creator" && categories.length === 0) {
       return toast.error("Pick at least one category");
     }
@@ -81,12 +87,14 @@ function Onboarding() {
         .from("profiles")
         .update({
           display_name: displayName,
+          username: username.trim() || null,
           bio: bio || null,
           location: location || null,
           onboarded: true,
         })
         .eq("id", user.id);
       if (profileErr) throw profileErr;
+
 
       if (role === "creator") {
         const { error } = await supabase.from("creator_profiles").upsert(
@@ -154,6 +162,26 @@ function Onboarding() {
                 <Label htmlFor="name">Display name</Label>
                 <Input id="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <div className="flex">
+                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-secondary text-sm text-muted-foreground">
+                    @
+                  </span>
+                  <Input
+                    id="username"
+                    className="rounded-l-none"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.replace(/\s+/g, ""))}
+                    placeholder="your_handle"
+                    aria-describedby="username-help"
+                  />
+                </div>
+                <p id="username-help" className="text-xs text-muted-foreground">
+                  3–30 characters. Letters, numbers, and underscores only.
+                </p>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="location">Location</Label>
                 <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Lisbon, Portugal" />
