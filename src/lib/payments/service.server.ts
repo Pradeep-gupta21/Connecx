@@ -281,8 +281,10 @@ export const PaymentService = {
       amount: toMinor(breakdown.total_payable),
       currency: "INR",
       keyId: razorpay.publicKeyId(),
+      mode: razorpay.mode(),
       breakdown,
     };
+
   },
 
   // Generic order (kept for compatibility)
