@@ -351,12 +351,11 @@ export function CreatorDashboardView() {
                 return (
                   <li key={c.id}>
                     <Link to="/messages/$threadId" params={{ threadId: c.id }} className="flex items-center gap-3 px-2 py-3 rounded-lg hover:bg-secondary/60">
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={c.advertiser?.avatar_url ?? undefined} />
-                        <AvatarFallback className="text-[10px] bg-secondary">
-                          {(c.advertiser?.display_name ?? "?").slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      <SmartAvatar
+                        className="h-9 w-9"
+                        value={c.advertiser?.avatar_url}
+                        name={c.advertiser?.display_name}
+                      />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-medium truncate">{c.advertiser?.display_name ?? "Brand"}</p>
