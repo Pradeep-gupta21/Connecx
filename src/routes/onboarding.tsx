@@ -58,6 +58,7 @@ function Onboarding() {
   useEffect(() => {
     if (profile) {
       setDisplayName(profile.display_name ?? "");
+      setUsername(profile.username ?? "");
       setBio(profile.bio ?? "");
       setLocation(profile.location ?? "");
     }
@@ -71,6 +72,9 @@ function Onboarding() {
   const finish = async () => {
     if (!user) return;
     if (!displayName.trim()) return toast.error("Add a display name");
+    if (username && !/^[a-zA-Z0-9_]{3,30}$/.test(username.trim())) {
+      return toast.error("Username must be 3-30 letters, numbers, or underscores");
+    }
     if (role === "creator" && categories.length === 0) {
       return toast.error("Pick at least one category");
     }
@@ -83,12 +87,14 @@ function Onboarding() {
         .from("profiles")
         .update({
           display_name: displayName,
+          username: username.trim() || null,
           bio: bio || null,
           location: location || null,
           onboarded: true,
         })
         .eq("id", user.id);
       if (profileErr) throw profileErr;
+
 
       if (role === "creator") {
         const { error } = await supabase.from("creator_profiles").upsert(
