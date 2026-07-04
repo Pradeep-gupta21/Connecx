@@ -120,6 +120,7 @@ function AdminOverview() {
           )}
         </ul>
       </div>
+      </div>
     </div>
   );
 }
