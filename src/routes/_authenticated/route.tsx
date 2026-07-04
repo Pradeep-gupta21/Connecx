@@ -17,6 +17,7 @@ function AuthenticatedLayout() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isAdmin = roles.includes("admin");
+  const isAdminRoute = pathname.startsWith("/admin");
 
   useEffect(() => {
     if (loading) return;
@@ -58,6 +59,11 @@ function AuthenticatedLayout() {
         </div>
       </div>
     );
+  }
+
+  // Admin routes render their own dedicated shell — never wrap in creator/advertiser AppShell.
+  if (isAdminRoute) {
+    return <Outlet />;
   }
 
   return (
