@@ -66,7 +66,7 @@ function CreatorProfilePage() {
       const [{ data: creator }, { data: socials }, { data: portfolio }, { data: reviews }] = await Promise.all([
         supabase
           .from("creator_profiles")
-          .select("*, profiles!inner(display_name, avatar_url, location, bio, country, banner_url, banner_position)")
+          .select("*, profiles!creator_profiles_profile_fkey!inner(display_name, avatar_url, location, bio, country, banner_url, banner_position)")
           .eq("user_id", id)
           .maybeSingle(),
         supabase.from("social_accounts").select("*").eq("user_id", id),
