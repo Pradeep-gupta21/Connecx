@@ -129,10 +129,7 @@ export function GlobalMessageSearch({ open, onOpenChange }: { open: boolean; onO
               <button key={p.id}
                 onClick={() => setCreatorFilter(p.id)}
                 className="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-xs hover:bg-secondary transition-colors">
-                <Avatar className="h-4 w-4">
-                  <AvatarImage src={p.avatar ?? undefined} />
-                  <AvatarFallback className="text-[8px]">{p.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
+                <SmartAvatar className="h-4 w-4" value={p.avatar} name={p.name} />
                 {p.name}
               </button>
             ))}
