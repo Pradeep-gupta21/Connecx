@@ -194,15 +194,27 @@ export function CreatorDashboardView() {
 
   return (
     <div className="space-y-10">
-      <PageHeader
-        title={`${greeting()}${profile?.display_name ? `, ${profile.display_name.split(" ")[0]}` : ""}`}
-        description="Here's the pulse of your creator business — updated in realtime."
-        actions={
-          <Link to="/campaigns">
-            <Button>Browse campaigns</Button>
-          </Link>
+      <ProfileHeader
+        displayName={profile?.display_name ?? "Creator"}
+        avatarValue={profile?.avatar_url ?? null}
+        bannerValue={profile?.banner_url ?? null}
+        bannerPosition={(profile?.banner_position as any) ?? null}
+        headline={greeting()}
+        location={profile?.location}
+        bio={profile?.bio}
+        isOwner
+        ownerActions={
+          <>
+            <Button asChild variant="outline">
+              <Link to="/settings">Edit profile</Link>
+            </Button>
+            <Button asChild>
+              <Link to="/campaigns">Browse campaigns</Link>
+            </Button>
+          </>
         }
       />
+
 
       {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
