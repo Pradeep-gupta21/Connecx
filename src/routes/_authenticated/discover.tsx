@@ -157,8 +157,9 @@ function Discover() {
           icon={Search}
           title="Couldn't load creators"
           description={(query.error as Error)?.message ?? "Try again in a moment."}
-          action={<Button onClick={() => query.refetch()}>Retry</Button>}
+          action={{ label: "Retry", onClick: () => query.refetch() }}
         />
+
       ) : rows.length === 0 ? (
         <EmptyState
           icon={Search}
