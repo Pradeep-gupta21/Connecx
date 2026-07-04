@@ -15,6 +15,8 @@ import { useWorkspace, type AppRole } from "@/hooks/useWorkspace";
 import { supabase } from "@/integrations/supabase/client";
 import { COUNTRIES, dialFor } from "@/lib/countries";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ProfileAppearanceEditor } from "@/components/profile/ProfileAppearanceEditor";
+import type { BannerPosition } from "@/lib/profile-media";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings · BrandBridge" }] }),
