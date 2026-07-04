@@ -69,7 +69,7 @@ export function AdvertiserDashboardView() {
     queryFn: async () => {
       const { data } = await supabase
         .from("creator_profiles")
-        .select("user_id, headline, categories, profiles!inner(display_name, avatar_url, location)")
+        .select("user_id, headline, categories, profiles!creator_profiles_profile_fkey!inner(display_name, avatar_url, location)")
         .order("created_at", { ascending: false })
         .limit(6);
       return data ?? [];
