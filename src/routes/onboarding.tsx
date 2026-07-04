@@ -21,7 +21,7 @@ export const Route = createFileRoute("/onboarding")({
 
 function Onboarding() {
   const { user, loading } = useAuth();
-  const { profile, activeRole } = useWorkspace();
+  const { profile, activeRole, roles } = useWorkspace();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
 
@@ -47,6 +47,11 @@ function Onboarding() {
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth", replace: true });
   }, [user, loading, navigate]);
+
+  // Admins never onboard — send them straight to the admin console.
+  useEffect(() => {
+    if (roles.includes("admin")) navigate({ to: "/admin", replace: true });
+  }, [roles, navigate]);
 
   useEffect(() => {
     if (loading) return;
