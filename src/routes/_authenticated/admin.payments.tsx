@@ -61,7 +61,7 @@ function AdminPayments() {
     queryFn: async () => {
       const { data } = await supabase
         .from("refunds")
-        .select("id, amount, currency, status, reason, created_at, processed_at, payment_id")
+        .select("id, amount, currency, status, reason, rejection_reason, admin_notes, created_at, processed_at, reviewed_at, payment_id, requested_by")
         .order("created_at", { ascending: false })
         .limit(200);
       return data ?? [];
@@ -293,35 +293,7 @@ function AdminPayments() {
         </TabsContent>
 
         <TabsContent value="refunds" className="mt-6">
-          {refunds.isLoading ? (
-            <LedgerTable rows={undefined} isLoading columns={["date", "reference", "status", "amount"]} />
-          ) : (refunds.data ?? []).length === 0 ? (
-            <EmptyState
-              icon={ClipboardList}
-              title="No refunds"
-              description="Approved refunds appear here with their processing state."
-            />
-          ) : (
-            <div className="surface-card divide-y divide-border/60">
-              {(refunds.data ?? []).map((r: any) => (
-                <div key={r.id} className="p-4 flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Money value={r.amount} currency={r.currency ?? "INR"} className="font-semibold" />
-                      <PaymentStatusBadge kind="refund" status={r.status} />
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Filed {format(new Date(r.created_at), "MMM d")}
-                      {r.reason && ` · "${r.reason}"`}
-                    </p>
-                  </div>
-                  <span className="text-[11px] font-mono text-muted-foreground">
-                    payment {r.payment_id?.slice(0, 8)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+          <RefundQueue refunds={refunds.data ?? []} isLoading={refunds.isLoading} />
         </TabsContent>
 
         <TabsContent value="withdrawals" className="mt-6">
@@ -390,5 +362,172 @@ function AdminPayments() {
         payment={openPayment}
       />
     </div>
+  );
+}
+
+// ----- Refund review queue -----
+import { useState as useReactState } from "react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useAdminReviewRefund } from "@/hooks/usePayments";
+import { Check, X } from "lucide-react";
+
+function RefundQueue({ refunds, isLoading }: { refunds: any[]; isLoading: boolean }) {
+  const [rejectRefund, setRejectRefund] = useReactState<any | null>(null);
+  const review = useAdminReviewRefund();
+
+  if (isLoading) {
+    return <LedgerTable rows={undefined} isLoading columns={["date", "reference", "status", "amount"]} />;
+  }
+  if (refunds.length === 0) {
+    return (
+      <EmptyState
+        icon={ClipboardList}
+        title="No refunds"
+        description="Refund requests appear here for admin review."
+      />
+    );
+  }
+
+  const pending = refunds.filter((r) => r.status === "requested");
+  const others = refunds.filter((r) => r.status !== "requested");
+
+  return (
+    <div className="space-y-6">
+      {pending.length > 0 && (
+        <section>
+          <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+            Pending review · {pending.length}
+          </h3>
+          <div className="surface-card divide-y divide-border/60">
+            {pending.map((r) => (
+              <div key={r.id} className="p-4 flex items-center justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Money value={r.amount} currency={r.currency ?? "INR"} className="font-semibold" />
+                    <PaymentStatusBadge kind="refund" status={r.status} />
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Filed {format(new Date(r.created_at), "MMM d, h:mm a")}
+                    {r.reason && ` · "${r.reason}"`}
+                  </p>
+                  <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
+                    payment {r.payment_id?.slice(0, 8)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={review.isPending}
+                    onClick={() => setRejectRefund(r)}
+                  >
+                    <X className="h-4 w-4 mr-1" /> Reject
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={review.isPending}
+                    onClick={() =>
+                      review.mutate({ refundId: r.id, action: "approve" })
+                    }
+                  >
+                    <Check className="h-4 w-4 mr-1" /> Approve
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {others.length > 0 && (
+        <section>
+          <h3 className="text-sm font-semibold text-muted-foreground mb-2">History</h3>
+          <div className="surface-card divide-y divide-border/60">
+            {others.map((r) => (
+              <div key={r.id} className="p-4 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Money value={r.amount} currency={r.currency ?? "INR"} className="font-semibold" />
+                    <PaymentStatusBadge kind="refund" status={r.status} />
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Filed {format(new Date(r.created_at), "MMM d")}
+                    {r.reason && ` · "${r.reason}"`}
+                    {r.rejection_reason && ` · Rejected: ${r.rejection_reason}`}
+                  </p>
+                </div>
+                <span className="text-[11px] font-mono text-muted-foreground">
+                  payment {r.payment_id?.slice(0, 8)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <RefundRejectDialog
+        refund={rejectRefund}
+        onOpenChange={(v) => !v && setRejectRefund(null)}
+        onReject={(reason) => {
+          if (!rejectRefund) return;
+          review.mutate(
+            { refundId: rejectRefund.id, action: "reject", reason },
+            { onSuccess: () => setRejectRefund(null) },
+          );
+        }}
+        isPending={review.isPending}
+      />
+    </div>
+  );
+}
+
+function RefundRejectDialog({
+  refund,
+  onOpenChange,
+  onReject,
+  isPending,
+}: {
+  refund: any | null;
+  onOpenChange: (v: boolean) => void;
+  onReject: (reason: string) => void;
+  isPending: boolean;
+}) {
+  const [reason, setReason] = useReactState("");
+  return (
+    <Dialog open={!!refund} onOpenChange={(v) => { onOpenChange(v); if (!v) setReason(""); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Reject refund request</DialogTitle>
+          <DialogDescription>
+            Explain why this refund is being denied. The requester will see this message.
+          </DialogDescription>
+        </DialogHeader>
+        <Textarea
+          rows={4}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Reason for rejection (required)"
+        />
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button
+            variant="destructive"
+            disabled={isPending || reason.trim().length < 3}
+            onClick={() => onReject(reason.trim())}
+          >
+            Reject refund
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

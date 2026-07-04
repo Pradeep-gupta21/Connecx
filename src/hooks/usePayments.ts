@@ -11,6 +11,7 @@ import {
   reviewDeliverables,
   adminReviewWithdrawal,
   adminMarkWithdrawalCompleted,
+  adminReviewRefund,
 } from "@/lib/payments/payments.functions";
 import { openRazorpayCheckout } from "@/lib/payments/checkout";
 import type { FeeBreakdown } from "@/lib/payments/types";
@@ -127,6 +128,22 @@ export function useAdminMarkWithdrawalCompleted() {
     onSuccess: () => {
       toast.success("Marked as completed");
       qc.invalidateQueries({ queryKey: ["admin-withdrawals"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useAdminReviewRefund() {
+  const fn = useServerFn(adminReviewRefund);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { refundId: string; action: "approve" | "reject"; notes?: string; reason?: string }) =>
+      fn({ data }),
+    onSuccess: (_r, v) => {
+      toast.success(v.action === "approve" ? "Refund approved — processing" : "Refund rejected");
+      qc.invalidateQueries({ queryKey: ["admin-refunds"] });
+      qc.invalidateQueries({ queryKey: ["admin-payments"] });
+      qc.invalidateQueries({ queryKey: ["payment-history"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });

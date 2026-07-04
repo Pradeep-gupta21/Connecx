@@ -98,8 +98,9 @@ export function useRefund() {
   return useMutation({
     mutationFn: (data: { paymentId: string; amount?: number; reason?: string }) => fn({ data }),
     onSuccess: () => {
-      toast.success("Refund initiated");
+      toast.success("Refund request submitted — awaiting admin review");
       qc.invalidateQueries({ queryKey: ["payment-history"] });
+      qc.invalidateQueries({ queryKey: ["admin-refunds"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
