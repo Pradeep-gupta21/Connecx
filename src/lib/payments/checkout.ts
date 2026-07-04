@@ -69,10 +69,20 @@ export async function openRazorpayCheckout(args: {
     );
   }
 
-  // Visible in the browser console so QA can confirm which environment the SDK opened in.
+  // In TEST mode, real UPI apps (GPay, PhonePe, Paytm, BHIM) will show
+  // "Invalid UPI ID" because Razorpay's test merchant VPA is not registered
+  // with NPCI. Testers must use the on-screen "Success"/"Failure" simulator
+  // that Razorpay renders on the checkout after picking UPI.
+  if (args.order.mode === "test") {
+    toast.info("Test mode: pay UPI using Razorpay's on-screen Success button (real UPI apps will reject the test VPA).", {
+      duration: 8000,
+    });
+  }
+
   console.info(
     `[razorpay] opening checkout mode=${args.order.mode} key_prefix=${args.order.keyId.slice(0, 9)} order=${args.order.orderId}`,
   );
+
 
   const rzp = new window.Razorpay({
     key: args.order.keyId,
