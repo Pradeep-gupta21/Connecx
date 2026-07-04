@@ -163,6 +163,26 @@ function Onboarding() {
                 <Input id="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <div className="flex">
+                  <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-secondary text-sm text-muted-foreground">
+                    @
+                  </span>
+                  <Input
+                    id="username"
+                    className="rounded-l-none"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.replace(/\s+/g, ""))}
+                    placeholder="your_handle"
+                    aria-describedby="username-help"
+                  />
+                </div>
+                <p id="username-help" className="text-xs text-muted-foreground">
+                  3–30 characters. Letters, numbers, and underscores only.
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="location">Location</Label>
                 <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Lisbon, Portugal" />
               </div>
