@@ -1109,6 +1109,7 @@ export type Database = {
           suspended_at: string | null
           suspended_reason: string | null
           updated_at: string
+          username: string | null
         }
         Insert: {
           active_role?: Database["public"]["Enums"]["app_role"] | null
@@ -1129,6 +1130,7 @@ export type Database = {
           suspended_at?: string | null
           suspended_reason?: string | null
           updated_at?: string
+          username?: string | null
         }
         Update: {
           active_role?: Database["public"]["Enums"]["app_role"] | null
@@ -1149,6 +1151,7 @@ export type Database = {
           suspended_at?: string | null
           suspended_reason?: string | null
           updated_at?: string
+          username?: string | null
         }
         Relationships: []
       }
