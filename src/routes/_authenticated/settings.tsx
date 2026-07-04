@@ -119,6 +119,26 @@ function SettingsPage() {
               <Input id="dn" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="un">Username</Label>
+              <div className="flex">
+                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-secondary text-sm text-muted-foreground">
+                  @
+                </span>
+                <Input
+                  id="un"
+                  className="rounded-l-none"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.replace(/\s+/g, ""))}
+                  placeholder="your_handle"
+                  aria-describedby="un-help"
+                />
+              </div>
+              <p id="un-help" className="text-xs text-muted-foreground">
+                3–30 characters. Letters, numbers, and underscores only. Used for @mentions and search.
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="loc">Location</Label>
               <Input id="loc" value={location} onChange={(e) => setLocation(e.target.value)} />
             </div>
