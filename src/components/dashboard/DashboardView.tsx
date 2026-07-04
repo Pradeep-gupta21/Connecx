@@ -60,7 +60,7 @@ export function DashboardView() {
       if (isAdvertiser) {
         const { data } = await supabase
           .from("creator_profiles")
-          .select("user_id, headline, categories, rate_min, rate_max, profiles!inner(display_name, avatar_url, location)")
+          .select("user_id, headline, categories, rate_min, rate_max, profiles!creator_profiles_profile_fkey!inner(display_name, avatar_url, location)")
           .limit(6);
         return data ?? [];
       }
