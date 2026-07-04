@@ -26,8 +26,10 @@ function Onboarding() {
   const [step, setStep] = useState(1);
 
   const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [location, setLocation] = useState("");
+
 
   // Creator
   const [headline, setHeadline] = useState("");
