@@ -99,10 +99,11 @@ function Discover() {
               className="surface-card p-5 hover:shadow-elevated hover:-translate-y-px transition-all group"
             >
               <div className="flex items-start gap-3">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage src={c.profiles?.avatar_url ?? undefined} />
-                  <AvatarFallback className="bg-secondary">{(c.profiles?.display_name ?? "?").slice(0,2).toUpperCase()}</AvatarFallback>
-                </Avatar>
+                <SmartAvatar
+                  className="h-12 w-12"
+                  value={c.profiles?.avatar_url}
+                  name={c.profiles?.display_name}
+                />
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate group-hover:underline">{c.profiles?.display_name ?? "Creator"}</div>
                   <div className="text-xs text-muted-foreground truncate">{c.profiles?.location ?? "—"}</div>
