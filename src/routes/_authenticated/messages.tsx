@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { MessageSquare, Search, SearchCode } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SmartAvatar } from "@/components/profile/SmartAvatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/common/EmptyState";
