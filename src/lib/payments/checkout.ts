@@ -1,8 +1,10 @@
 // Browser-safe Razorpay Checkout loader. Loads the Razorpay JS SDK on demand
 // and opens the checkout modal for a server-issued order.
+import { toast } from "sonner";
 import type { CreateOrderResult } from "./types";
 
 const SDK_URL = "https://checkout.razorpay.com/v1/checkout.js";
+
 
 declare global {
   interface Window {
