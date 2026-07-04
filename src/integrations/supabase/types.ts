@@ -1142,6 +1142,7 @@ export type Database = {
       }
       refunds: {
         Row: {
+          admin_notes: string | null
           amount: number
           created_at: string
           created_by: string | null
@@ -1154,12 +1155,16 @@ export type Database = {
           processed_at: string | null
           razorpay_refund_id: string | null
           reason: string | null
+          rejection_reason: string | null
           requested_by: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: Database["public"]["Enums"]["refund_status"]
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          admin_notes?: string | null
           amount: number
           created_at?: string
           created_by?: string | null
@@ -1172,12 +1177,16 @@ export type Database = {
           processed_at?: string | null
           razorpay_refund_id?: string | null
           reason?: string | null
+          rejection_reason?: string | null
           requested_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: Database["public"]["Enums"]["refund_status"]
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          admin_notes?: string | null
           amount?: number
           created_at?: string
           created_by?: string | null
@@ -1190,7 +1199,10 @@ export type Database = {
           processed_at?: string | null
           razorpay_refund_id?: string | null
           reason?: string | null
+          rejection_reason?: string | null
           requested_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: Database["public"]["Enums"]["refund_status"]
           updated_at?: string
           updated_by?: string | null
@@ -1541,6 +1553,7 @@ export type Database = {
       }
       transactions: {
         Row: {
+          account: string | null
           amount: number
           campaign_id: string | null
           contract_id: string | null
@@ -1551,15 +1564,21 @@ export type Database = {
           deleted_at: string | null
           description: string | null
           direction: string
+          entry_type: string | null
+          event_type: string | null
+          group_id: string | null
           id: string
+          idempotency_key: string | null
           metadata: Json | null
           payment_id: string | null
+          posted_at: string | null
           status: Database["public"]["Enums"]["payment_status"]
           updated_at: string
           updated_by: string | null
           user_id: string | null
         }
         Insert: {
+          account?: string | null
           amount: number
           campaign_id?: string | null
           contract_id?: string | null
@@ -1570,15 +1589,21 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           direction: string
+          entry_type?: string | null
+          event_type?: string | null
+          group_id?: string | null
           id?: string
+          idempotency_key?: string | null
           metadata?: Json | null
           payment_id?: string | null
+          posted_at?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
           updated_at?: string
           updated_by?: string | null
           user_id?: string | null
         }
         Update: {
+          account?: string | null
           amount?: number
           campaign_id?: string | null
           contract_id?: string | null
@@ -1589,9 +1614,14 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           direction?: string
+          entry_type?: string | null
+          event_type?: string | null
+          group_id?: string | null
           id?: string
+          idempotency_key?: string | null
           metadata?: Json | null
           payment_id?: string | null
+          posted_at?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
           updated_at?: string
           updated_by?: string | null
@@ -1990,6 +2020,25 @@ export type Database = {
           _user_id: string
         }
         Returns: undefined
+      }
+      post_ledger_entry: {
+        Args: {
+          _amount: number
+          _campaign_id?: string
+          _contract_id?: string
+          _created_by?: string
+          _credit_account: string
+          _credit_user?: string
+          _currency: string
+          _debit_account: string
+          _debit_user?: string
+          _description?: string
+          _event_type: string
+          _idempotency_key?: string
+          _metadata?: Json
+          _payment_id?: string
+        }
+        Returns: string
       }
       upsert_campaign_payment_summary: {
         Args: { _campaign_id: string }
