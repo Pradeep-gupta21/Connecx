@@ -136,11 +136,17 @@ export function WithdrawDialog({
                     </button>
                   ))}
                 </div>
+                {amt > 0 && !meetsMin && (
+                  <p className="mt-2 text-xs text-destructive">
+                    Minimum withdrawal is {formatMoney(MIN_WITHDRAWAL_INR, currency)}
+                  </p>
+                )}
                 {amt > available && (
                   <p className="mt-2 text-xs text-destructive">
                     Amount exceeds available balance
                   </p>
                 )}
+
               </div>
 
               <div>
