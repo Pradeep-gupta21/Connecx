@@ -170,15 +170,44 @@ export const adminReviewRefund = createServerFn({ method: "POST" })
 // -------- Withdrawals --------
 const withdrawalSchema = z.object({
   amount: z.number().positive(),
-  method: z.enum(["bank_transfer", "upi"]).default("bank_transfer"),
-  destination: z.record(z.string(), z.unknown()),
+  payoutMethodId: z.string().uuid(),
 });
 export const createWithdrawal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((raw: unknown) => withdrawalSchema.parse(raw))
   .handler(async ({ data, context }) => {
     const { PaymentService } = await import("./service.server");
-    return PaymentService.requestWithdrawal({ userId: context.userId, ...data });
+    return PaymentService.requestWithdrawal({
+      userId: context.userId,
+      amount: data.amount,
+      payoutMethodId: data.payoutMethodId,
+    });
+  });
+
+const adminPayoutReviewSchema = z.object({
+  payoutMethodId: z.string().uuid(),
+  action: z.enum(["approve", "reject", "request_update"]),
+  reason: z.string().max(500).optional(),
+});
+export const adminReviewPayoutMethod = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => adminPayoutReviewSchema.parse(raw))
+  .handler(async ({ data, context }) => {
+    if ((data.action === "reject" || data.action === "request_update") && !data.reason?.trim()) {
+      throw new Error("Please provide a reason");
+    }
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (!isAdmin) throw new Error("Admin only");
+    const { error } = await context.supabase.rpc("admin_review_payout_method" as never, {
+      _payout_method_id: data.payoutMethodId,
+      _action: data.action,
+      _reason: data.reason ?? null,
+    } as never);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 const adminWithdrawalSchema = z.object({
