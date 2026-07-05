@@ -499,7 +499,7 @@ function PayoutForm({
         } else {
           payload.upi_id = upi.trim();
         }
-        const { error } = await supabase.from("payout_methods" as never).insert(payload);
+        const { error } = await (supabase as unknown as { from: (t: string) => any }).from("payout_methods").insert(payload);
         if (error) {
           if (error.code === "23505")
             throw new Error("You've already added this account");
