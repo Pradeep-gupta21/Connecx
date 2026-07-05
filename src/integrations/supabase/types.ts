@@ -1029,6 +1029,72 @@ export type Database = {
           },
         ]
       }
+      payout_methods: {
+        Row: {
+          account_holder_name: string | null
+          account_number: string | null
+          account_number_hash: string | null
+          account_number_last4: string | null
+          account_type: Database["public"]["Enums"]["bank_account_type"] | null
+          bank_name: string | null
+          created_at: string
+          id: string
+          ifsc: string | null
+          is_default: boolean
+          label: string | null
+          method_type: Database["public"]["Enums"]["payout_method_type"]
+          rejection_reason: string | null
+          updated_at: string
+          upi_id: string | null
+          user_id: string
+          verification_status: Database["public"]["Enums"]["payout_verification_status"]
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          account_holder_name?: string | null
+          account_number?: string | null
+          account_number_hash?: string | null
+          account_number_last4?: string | null
+          account_type?: Database["public"]["Enums"]["bank_account_type"] | null
+          bank_name?: string | null
+          created_at?: string
+          id?: string
+          ifsc?: string | null
+          is_default?: boolean
+          label?: string | null
+          method_type: Database["public"]["Enums"]["payout_method_type"]
+          rejection_reason?: string | null
+          updated_at?: string
+          upi_id?: string | null
+          user_id: string
+          verification_status?: Database["public"]["Enums"]["payout_verification_status"]
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          account_holder_name?: string | null
+          account_number?: string | null
+          account_number_hash?: string | null
+          account_number_last4?: string | null
+          account_type?: Database["public"]["Enums"]["bank_account_type"] | null
+          bank_name?: string | null
+          created_at?: string
+          id?: string
+          ifsc?: string | null
+          is_default?: boolean
+          label?: string | null
+          method_type?: Database["public"]["Enums"]["payout_method_type"]
+          rejection_reason?: string | null
+          updated_at?: string
+          upi_id?: string | null
+          user_id?: string
+          verification_status?: Database["public"]["Enums"]["payout_verification_status"]
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: []
+      }
       portfolio: {
         Row: {
           cover_media_id: string | null
@@ -2090,6 +2156,7 @@ export type Database = {
       app_role: "advertiser" | "creator" | "admin" | "moderator"
       application_status: "pending" | "accepted" | "rejected" | "withdrawn"
       approval_status: "pending" | "approved" | "rejected"
+      bank_account_type: "savings" | "current"
       campaign_status: "draft" | "open" | "closed" | "archived" | "paused"
       contract_status:
         | "draft"
@@ -2141,6 +2208,8 @@ export type Database = {
         | "bonus"
         | "refund"
         | "campaign_payment"
+      payout_method_type: "bank" | "upi"
+      payout_verification_status: "pending" | "verified" | "rejected"
       refund_status:
         | "pending"
         | "processing"
@@ -2310,6 +2379,7 @@ export const Constants = {
       app_role: ["advertiser", "creator", "admin", "moderator"],
       application_status: ["pending", "accepted", "rejected", "withdrawn"],
       approval_status: ["pending", "approved", "rejected"],
+      bank_account_type: ["savings", "current"],
       campaign_status: ["draft", "open", "closed", "archived", "paused"],
       contract_status: [
         "draft",
@@ -2365,6 +2435,8 @@ export const Constants = {
         "refund",
         "campaign_payment",
       ],
+      payout_method_type: ["bank", "upi"],
+      payout_verification_status: ["pending", "verified", "rejected"],
       refund_status: [
         "pending",
         "processing",
