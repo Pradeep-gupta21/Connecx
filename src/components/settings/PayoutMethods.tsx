@@ -47,8 +47,19 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as supabaseTyped } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+
+// payout_methods types are generated after the migration runs; use a loose
+// alias here so this compiles regardless of the current types.ts snapshot.
+const supabase = supabaseTyped as unknown as {
+  from: (t: string) => {
+    select: (...args: unknown[]) => any;
+    insert: (...args: unknown[]) => any;
+    update: (...args: unknown[]) => any;
+    delete: (...args: unknown[]) => any;
+  };
+};
 
 type MethodType = "bank" | "upi";
 type VerificationStatus = "pending" | "verified" | "rejected";
