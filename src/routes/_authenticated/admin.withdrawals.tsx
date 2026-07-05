@@ -104,12 +104,14 @@ function WithdrawalCard({ wd }: { wd: any }) {
   const review = useAdminReviewWithdrawal();
   const complete = useAdminMarkWithdrawalCompleted();
 
-  const dest = wd.destination as Record<string, any>;
+  const dest = wd.destination as Record<string, any> | null;
   const destSummary = dest?.vpa
     ? `UPI · ${dest.vpa}`
-    : dest?.account_number
-      ? `${dest.account_holder_name ?? ""} · ${String(dest.account_number).slice(-4).padStart(String(dest.account_number).length, "•")} · ${dest.ifsc ?? ""}`
-      : JSON.stringify(dest);
+    : dest?.account_number_last4
+      ? `${dest.account_holder_name ?? ""} · ${dest.bank_name ?? ""} · •••• ${dest.account_number_last4} · ${dest.ifsc ?? ""}${dest.account_type ? ` · ${dest.account_type}` : ""}`
+      : dest?.account_number
+        ? `${dest.account_holder_name ?? ""} · •••• ${String(dest.account_number).slice(-4)} · ${dest.ifsc ?? ""}`
+        : "—";
 
   return (
     <div className="surface-card p-5">
