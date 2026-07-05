@@ -98,10 +98,15 @@ function SettingsPage() {
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
+          <TabsTrigger value="payouts">Payouts</TabsTrigger>
           <TabsTrigger value="creator">Creator</TabsTrigger>
           <TabsTrigger value="advertiser">Advertiser</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="payouts" className="mt-6">
+          <PayoutMethods />
+        </TabsContent>
 
         <TabsContent value="appearance" className="mt-6">
           <ProfileAppearanceEditor
