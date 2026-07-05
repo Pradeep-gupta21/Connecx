@@ -98,7 +98,7 @@ export function PayoutMethods() {
     enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("payout_methods" as never)
+        .from("payout_methods")
         .select("*")
         .eq("user_id", user!.id)
         .order("is_default", { ascending: false })
@@ -124,7 +124,7 @@ export function PayoutMethods() {
 
   const setDefault = async (id: string) => {
     const { error } = await supabase
-      .from("payout_methods" as never)
+      .from("payout_methods")
       .update({ is_default: true })
       .eq("id", id);
     if (error) return toast.error(error.message);
@@ -135,7 +135,7 @@ export function PayoutMethods() {
   const remove = async () => {
     if (!deletingId) return;
     const { error } = await supabase
-      .from("payout_methods" as never)
+      .from("payout_methods")
       .delete()
       .eq("id", deletingId);
     setDeletingId(null);
@@ -490,7 +490,7 @@ function PayoutForm({
           payload.rejection_reason = null;
         }
         const { error } = await supabase
-          .from("payout_methods" as never)
+          .from("payout_methods")
           .update(payload)
           .eq("id", editing.id);
         if (error) throw error;
@@ -510,7 +510,7 @@ function PayoutForm({
         } else {
           payload.upi_id = upi.trim();
         }
-        const { error } = await (supabase as unknown as { from: (t: string) => any }).from("payout_methods").insert(payload);
+        const { error } = await supabase.from("payout_methods").insert(payload);
         if (error) {
           if (error.code === "23505")
             throw new Error("You've already added this account");
