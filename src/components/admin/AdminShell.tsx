@@ -93,6 +93,7 @@ const groups: NavGroup[] = [
     items: [
       { to: "/admin/payments", label: "Payments & Escrow", icon: Wallet },
       { to: "/admin/withdrawals", label: "Withdrawals", icon: Banknote },
+      { to: "/admin/payouts", label: "Payout Methods", icon: Banknote },
       { to: "/admin/refunds", label: "Refund Requests", icon: RotateCcw },
       { to: "/admin/disputes", label: "Disputes", icon: Gavel },
     ],

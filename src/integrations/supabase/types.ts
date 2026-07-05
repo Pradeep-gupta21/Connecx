@@ -1940,6 +1940,7 @@ export type Database = {
           id: string
           method: string
           payout_id: string | null
+          payout_method_id: string | null
           payout_ref: string | null
           processed_at: string | null
           razorpay_payout_id: string | null
@@ -1965,6 +1966,7 @@ export type Database = {
           id?: string
           method?: string
           payout_id?: string | null
+          payout_method_id?: string | null
           payout_ref?: string | null
           processed_at?: string | null
           razorpay_payout_id?: string | null
@@ -1990,6 +1992,7 @@ export type Database = {
           id?: string
           method?: string
           payout_id?: string | null
+          payout_method_id?: string | null
           payout_ref?: string | null
           processed_at?: string | null
           razorpay_payout_id?: string | null
@@ -2000,6 +2003,13 @@ export type Database = {
           wallet_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "withdrawals_payout_method_id_fkey"
+            columns: ["payout_method_id"]
+            isOneToOne: false
+            referencedRelation: "payout_methods"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "withdrawals_wallet_id_fkey"
             columns: ["wallet_id"]
@@ -2057,6 +2067,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_review_payout_method: {
+        Args: { _action: string; _payout_method_id: string; _reason?: string }
+        Returns: undefined
+      }
       admin_set_approval: {
         Args: {
           _kind: string

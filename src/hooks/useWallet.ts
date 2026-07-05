@@ -81,8 +81,7 @@ export function useWithdrawal() {
   const fn = useServerFn(createWithdrawal);
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { amount: number; method?: "bank_transfer" | "upi"; destination: Record<string, unknown> }) =>
-      fn({ data }),
+    mutationFn: (data: { amount: number; payoutMethodId: string }) => fn({ data }),
     onSuccess: () => {
       toast.success("Withdrawal requested");
       qc.invalidateQueries({ queryKey: ["wallet"] });
