@@ -1024,8 +1024,7 @@ export const PaymentService = {
   async requestWithdrawal(args: {
     userId: string;
     amount: number;
-    method?: string;
-    destination: Record<string, unknown>;
+    payoutMethodId: string;
   }) {
     const { MIN_WITHDRAWAL_INR, MAX_WITHDRAWAL_INR } = await import("@/lib/constants");
     if (!Number.isFinite(args.amount) || args.amount <= 0) throw new Error("Invalid amount");
@@ -1035,6 +1034,27 @@ export const PaymentService = {
     if (args.amount > MAX_WITHDRAWAL_INR) {
       throw new Error(`Maximum per-request withdrawal is ₹${MAX_WITHDRAWAL_INR.toLocaleString("en-IN")}`);
     }
+
+    // Verify payout method is owned + verified
+    const { data: pm, error: pmErr } = await (admin as unknown as {
+      from: (t: string) => {
+        select: (s: string) => {
+          eq: (c: string, v: string) => { maybeSingle: () => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }> };
+        };
+      };
+    })
+      .from("payout_methods")
+      .select(
+        "id, user_id, method_type, verification_status, account_holder_name, bank_name, account_number_last4, ifsc, account_type, upi_id",
+      )
+      .eq("id", args.payoutMethodId)
+      .maybeSingle();
+    if (pmErr) throw new Error(pmErr.message);
+    if (!pm || pm.user_id !== args.userId) throw new Error("Payout method not found");
+    if (pm.verification_status !== "verified") {
+      throw new Error("Selected payout account is not verified yet");
+    }
+
     const { data: wallet, error: wErr } = await admin
       .from("wallets")
       .select("id, available_balance, currency")
@@ -1044,6 +1064,18 @@ export const PaymentService = {
     if (!wallet) throw new Error("Wallet not found");
     if (Number(wallet.available_balance) < args.amount) throw new Error("Insufficient balance");
 
+    const isBank = pm.method_type === "bank";
+    const method = isBank ? "bank_transfer" : "upi";
+    const destination: Record<string, unknown> = isBank
+      ? {
+          payout_method_id: pm.id,
+          account_holder_name: pm.account_holder_name,
+          bank_name: pm.bank_name,
+          account_number_last4: pm.account_number_last4,
+          ifsc: pm.ifsc,
+          account_type: pm.account_type,
+        }
+      : { payout_method_id: pm.id, vpa: pm.upi_id };
 
     const { data: wd, error: iErr } = await admin
       .from("withdrawals")
@@ -1052,10 +1084,11 @@ export const PaymentService = {
         wallet_id: wallet.id,
         amount: args.amount,
         currency: wallet.currency ?? "INR",
-        method: args.method ?? "bank_transfer",
-        destination: args.destination,
+        method,
+        destination,
+        payout_method_id: pm.id as string,
         status: "requested",
-      })
+      } as never)
       .select("id")
       .single();
     if (iErr || !wd) throw new Error(`Withdrawal failed: ${iErr?.message}`);
