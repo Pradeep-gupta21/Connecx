@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { COUNTRIES, dialFor } from "@/lib/countries";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ProfileAppearanceEditor } from "@/components/profile/ProfileAppearanceEditor";
+import { PayoutMethods } from "@/components/settings/PayoutMethods";
 import type { BannerPosition } from "@/lib/profile-media";
 
 export const Route = createFileRoute("/_authenticated/settings")({
@@ -97,10 +98,15 @@ function SettingsPage() {
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
+          <TabsTrigger value="payouts">Payouts</TabsTrigger>
           <TabsTrigger value="creator">Creator</TabsTrigger>
           <TabsTrigger value="advertiser">Advertiser</TabsTrigger>
           <TabsTrigger value="account">Account</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="payouts" className="mt-6">
+          <PayoutMethods />
+        </TabsContent>
 
         <TabsContent value="appearance" className="mt-6">
           <ProfileAppearanceEditor
