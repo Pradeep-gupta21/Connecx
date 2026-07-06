@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useWorkspace } from "@/hooks/useWorkspace";
 
 export const Route = createFileRoute("/_authenticated/dashboard/")({
-  head: () => ({ meta: [{ title: "Dashboard · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Dashboard · Connecx" }] }),
   component: DashboardRedirect,
 });
 

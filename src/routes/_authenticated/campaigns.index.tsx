@@ -19,7 +19,7 @@ import { PLATFORMS } from "@/components/campaigns/CampaignForm";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/campaigns/")({
-  head: () => ({ meta: [{ title: "Campaigns · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Campaigns · Connecx" }] }),
   component: Campaigns,
 });
 

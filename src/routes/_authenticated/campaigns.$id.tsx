@@ -26,7 +26,7 @@ import { DeliverablesPanel } from "@/components/payments/DeliverablesPanel";
 import { useAcceptCreator } from "@/hooks/usePayments";
 
 export const Route = createFileRoute("/_authenticated/campaigns/$id")({
-  head: () => ({ meta: [{ title: "Campaign · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Campaign · Connecx" }] }),
   component: CampaignDetail,
 });
 

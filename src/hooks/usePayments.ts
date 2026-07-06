@@ -37,7 +37,7 @@ export function useFundCampaign(campaignName?: string) {
       return new Promise<{ paymentId: string }>((resolve, reject) => {
         openRazorpayCheckout({
           order,
-          name: "BrandBridge",
+          name: "Connecx",
           description: campaignName ?? "Fund campaign",
           onSuccess: async (r) => {
             try {

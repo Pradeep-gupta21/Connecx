@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/messages")({
-  head: () => ({ meta: [{ title: "Messages · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Messages · Connecx" }] }),
   component: MessagesLayout,
 });
 

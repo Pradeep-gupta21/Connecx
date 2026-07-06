@@ -38,7 +38,7 @@ import { PaymentDetailSheet } from "@/components/payments/PaymentDetailSheet";
 import { RefundRequestDialog } from "@/components/payments/RefundRequestDialog";
 
 export const Route = createFileRoute("/_authenticated/payments")({
-  head: () => ({ meta: [{ title: "Payments · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Payments · Connecx" }] }),
   component: PaymentsHub,
 });
 

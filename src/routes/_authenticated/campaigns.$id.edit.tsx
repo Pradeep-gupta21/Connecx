@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/campaigns/$id/edit")({
-  head: () => ({ meta: [{ title: "Edit campaign · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Edit campaign · Connecx" }] }),
   component: EditCampaign,
 });
 

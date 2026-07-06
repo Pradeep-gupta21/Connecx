@@ -26,8 +26,8 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in · BrandBridge" },
-      { name: "description", content: "Sign in or create your BrandBridge account." },
+      { title: "Sign in · Connecx" },
+      { name: "description", content: "Sign in or create your Connecx account." },
     ],
   }),
   component: AuthPage,
@@ -70,7 +70,7 @@ function AuthPage() {
         <Logo />
         <div className="space-y-6 max-w-md">
           <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-            BrandBridge
+            Connecx
           </p>
           <h1 className="font-display text-4xl font-semibold leading-tight tracking-tight">
             Where ambitious brands and the right creators find each other.
@@ -79,7 +79,7 @@ function AuthPage() {
             One workspace for campaigns, pitches, and conversations — built for both sides.
           </p>
         </div>
-        <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} BrandBridge</p>
+        <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Connecx</p>
       </div>
 
       <div className="flex items-center justify-center p-6 md:p-12">
@@ -158,7 +158,7 @@ function SignInForm() {
   return (
     <div>
       <h2 className="font-display text-2xl font-semibold tracking-tight">Welcome back</h2>
-      <p className="mt-1.5 text-sm text-muted-foreground">Sign in to your BrandBridge workspace.</p>
+      <p className="mt-1.5 text-sm text-muted-foreground">Sign in to your Connecx workspace.</p>
       <div className="mt-6">
         <GoogleButton />
         <Divider />

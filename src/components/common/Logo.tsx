@@ -8,7 +8,7 @@ export function Logo({ className, compact = false }: { className?: string; compa
         <span className="absolute -right-0.5 -bottom-0.5 h-2 w-2 rounded-full bg-accent ring-2 ring-background" />
       </div>
       {!compact && (
-        <span className="font-display text-[17px] font-semibold tracking-tight">BrandBridge</span>
+        <span className="font-display text-[17px] font-semibold tracking-tight">Connecx</span>
       )}
     </div>
   );

@@ -5,14 +5,14 @@ import { LegalPage } from "@/components/common/LegalPage";
 export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
-      { title: "Privacy Policy — Ventro" },
+      { title: "Privacy Policy — Connecx" },
       {
         name: "description",
         content:
-          "How Ventro collects, uses, and protects your personal information. Read our full privacy policy.",
+          "How Connecx collects, uses, and protects your personal information. Read our full privacy policy.",
       },
-      { property: "og:title", content: "Privacy Policy — Ventro" },
-      { property: "og:description", content: "Ventro's privacy policy and data handling practices." },
+      { property: "og:title", content: "Privacy Policy — Connecx" },
+      { property: "og:description", content: "Connecx's privacy policy and data handling practices." },
     ],
     links: [{ rel: "canonical", href: "/privacy" }],
   }),
@@ -24,9 +24,9 @@ function PrivacyPage() {
     <PublicLayout>
       <LegalPage eyebrow="Legal" title="Privacy Policy" updated="6 July 2026">
         <p>
-          At Ventro ("we", "us", "our"), we respect your privacy and are committed to protecting
+          At Connecx ("we", "us", "our"), we respect your privacy and are committed to protecting
           your personal data. This policy explains what information we collect, how we use it, and
-          the choices you have. It applies to all users of the Ventro platform, including
+          the choices you have. It applies to all users of the Connecx platform, including
           creators, advertisers, and visitors.
         </p>
 
@@ -112,7 +112,7 @@ function PrivacyPage() {
             <li>Portability — request an export of your data in a portable format</li>
             <li>Withdraw consent — where processing is based on consent</li>
           </ul>
-          <p>To exercise any of these rights, email us at support@ventro.in.</p>
+          <p>To exercise any of these rights, email us at support@connecx.in.</p>
         </div>
 
         <div>
@@ -128,7 +128,7 @@ function PrivacyPage() {
         <div>
           <h2>8. Children's privacy</h2>
           <p>
-            Ventro is not intended for users under the age of 18. We do not knowingly collect
+            Connecx is not intended for users under the age of 18. We do not knowingly collect
             personal data from children. If you believe a child has provided us with personal data,
             please contact us and we will delete it promptly.
           </p>
@@ -146,7 +146,7 @@ function PrivacyPage() {
           <h2>10. Contact us</h2>
           <p>
             Questions about this policy? Email{" "}
-            <a href="mailto:support@ventro.in">support@ventro.in</a> or write to us at Ventro,
+            <a href="mailto:support@connecx.in">support@connecx.in</a> or write to us at Connecx,
             Bengaluru, Karnataka, India.
           </p>
         </div>

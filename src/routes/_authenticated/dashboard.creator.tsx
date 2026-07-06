@@ -4,7 +4,7 @@ import { CreatorDashboardView } from "@/components/dashboard/CreatorDashboardVie
 import { useWorkspace } from "@/hooks/useWorkspace";
 
 export const Route = createFileRoute("/_authenticated/dashboard/creator")({
-  head: () => ({ meta: [{ title: "Creator dashboard · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Creator dashboard · Connecx" }] }),
   component: CreatorDashboard,
 });
 

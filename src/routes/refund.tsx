@@ -5,14 +5,14 @@ import { LegalPage } from "@/components/common/LegalPage";
 export const Route = createFileRoute("/refund")({
   head: () => ({
     meta: [
-      { title: "Refund & Cancellation Policy — Ventro" },
+      { title: "Refund & Cancellation Policy — Connecx" },
       {
         name: "description",
         content:
-          "Ventro's refund and cancellation policy for campaigns, including creator and brand cancellations.",
+          "Connecx's refund and cancellation policy for campaigns, including creator and brand cancellations.",
       },
-      { property: "og:title", content: "Refund & Cancellation Policy — Ventro" },
-      { property: "og:description", content: "Ventro's refund and cancellation policy." },
+      { property: "og:title", content: "Refund & Cancellation Policy — Connecx" },
+      { property: "og:description", content: "Connecx's refund and cancellation policy." },
     ],
     links: [{ rel: "canonical", href: "/refund" }],
   }),
@@ -24,7 +24,7 @@ function RefundPage() {
     <PublicLayout>
       <LegalPage eyebrow="Legal" title="Refund & Cancellation Policy" updated="6 July 2026">
         <p>
-          This policy explains how cancellations and refunds work on Ventro. It applies to all
+          This policy explains how cancellations and refunds work on Connecx. It applies to all
           campaigns and payments processed through the Platform.
         </p>
 
@@ -82,7 +82,7 @@ function RefundPage() {
           <p>
             If you disagree with a payment, deliverable, or refund decision, please raise a
             dispute from your dashboard. Our support team will review the case, request evidence
-            from both parties, and issue a decision within 7 business days. Decisions by Ventro
+            from both parties, and issue a decision within 7 business days. Decisions by Connecx
             support in disputed cases are final for internal purposes but do not restrict your
             legal rights.
           </p>
@@ -94,7 +94,7 @@ function RefundPage() {
             Creators who repeatedly cancel accepted campaigns without valid reason may be subject
             to account restrictions, reduced discoverability, or suspension. If a creator cancels
             after starting work, any portion of the funds already earned may be released for work
-            genuinely completed, at Ventro's reasonable assessment.
+            genuinely completed, at Connecx's reasonable assessment.
           </p>
         </div>
 
@@ -121,7 +121,7 @@ function RefundPage() {
           <h2>9. Contact support</h2>
           <p>
             For refund or cancellation requests, email{" "}
-            <a href="mailto:support@ventro.in">support@ventro.in</a> with your campaign ID and a
+            <a href="mailto:support@connecx.in">support@connecx.in</a> with your campaign ID and a
             brief description of the issue. Our team will respond within 24–48 hours.
           </p>
         </div>

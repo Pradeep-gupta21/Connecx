@@ -57,15 +57,15 @@ export function SiteFooter() {
           <div className="md:col-span-4">
             <Logo />
             <p className="mt-4 text-sm text-muted-foreground leading-relaxed max-w-xs">
-              Ventro is where ambitious brands meet authentic creators — with transparent
+              Connecx is where ambitious brands meet authentic creators — with transparent
               collaboration and secure payments.
             </p>
             <a
-              href="mailto:support@ventro.in"
+              href="mailto:support@connecx.in"
               className="mt-5 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <Mail className="h-3.5 w-3.5" />
-              support@ventro.in
+              support@connecx.in
             </a>
           </div>
 
@@ -114,7 +114,7 @@ export function SiteFooter() {
 
         <div className="mt-12 pt-6 border-t border-border/60 flex flex-col-reverse md:flex-row items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground">
-            © 2026 Ventro. All Rights Reserved.
+            © 2026 Connecx. All Rights Reserved.
           </p>
           <div className="flex items-center gap-1">
             {socials.map((s) => (

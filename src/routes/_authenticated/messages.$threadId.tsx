@@ -19,7 +19,7 @@ import { MessageSearch } from "@/components/messaging/MessageSearch";
 import { PinnedBar } from "@/components/messaging/PinnedBar";
 
 export const Route = createFileRoute("/_authenticated/messages/$threadId")({
-  head: () => ({ meta: [{ title: "Conversation · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Conversation · Connecx" }] }),
   component: Thread,
 });
 

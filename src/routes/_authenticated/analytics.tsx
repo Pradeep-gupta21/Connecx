@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/analytics")({
-  head: () => ({ meta: [{ title: "Analytics · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Analytics · Connecx" }] }),
   component: AnalyticsPage,
 });
 

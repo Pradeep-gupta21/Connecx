@@ -214,7 +214,7 @@ function AdminSidebar({
             </span>
             <div className="min-w-0">
               <div className="text-[13px] font-semibold leading-none">Admin Console</div>
-              <div className="mt-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">BrandBridge · Ops</div>
+              <div className="mt-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Connecx · Ops</div>
             </div>
           </Link>
         )}
