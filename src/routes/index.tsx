@@ -16,6 +16,7 @@ import { Logo } from "@/components/common/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { AnimatedNumber } from "@/components/common/AnimatedNumber";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 
 export const Route = createFileRoute("/")({
   head: () => ({
