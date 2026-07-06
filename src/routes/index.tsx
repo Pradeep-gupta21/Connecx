@@ -16,6 +16,7 @@ import { Logo } from "@/components/common/Logo";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { AnimatedNumber } from "@/components/common/AnimatedNumber";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -317,13 +318,7 @@ function Landing() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border/60">
-        <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-          <Logo compact />
-          <p>© {new Date().getFullYear()} BrandBridge. Handcrafted for creators and brands.</p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
