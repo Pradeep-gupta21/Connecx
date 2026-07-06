@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth/forgot-password")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Reset password · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Reset password · Connecx" }] }),
   component: ForgotPasswordPage,
 });
 

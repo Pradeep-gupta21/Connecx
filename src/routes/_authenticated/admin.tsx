@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { AdminShell } from "@/components/admin/AdminShell";
 
 export const Route = createFileRoute("/_authenticated/admin")({
-  head: () => ({ meta: [{ title: "Admin Console · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Admin Console · Connecx" }] }),
   component: AdminLayout,
 });
 

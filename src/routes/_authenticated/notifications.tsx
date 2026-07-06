@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/notifications")({
-  head: () => ({ meta: [{ title: "Notifications · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Notifications · Connecx" }] }),
   component: NotificationsPage,
 });
 

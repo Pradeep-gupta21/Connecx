@@ -4,7 +4,7 @@ import { AdvertiserDashboardView } from "@/components/dashboard/AdvertiserDashbo
 import { useWorkspace } from "@/hooks/useWorkspace";
 
 export const Route = createFileRoute("/_authenticated/dashboard/advertiser")({
-  head: () => ({ meta: [{ title: "Advertiser dashboard · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Advertiser dashboard · Connecx" }] }),
   component: AdvertiserDashboard,
 });
 

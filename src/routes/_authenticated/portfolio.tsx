@@ -15,7 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/portfolio")({
-  head: () => ({ meta: [{ title: "Portfolio · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Portfolio · Connecx" }] }),
   component: PortfolioPage,
 });
 

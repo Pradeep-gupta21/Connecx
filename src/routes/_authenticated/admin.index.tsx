@@ -13,7 +13,7 @@ import { StatCard } from "@/components/common/StatCard";
 import { AdminPageHeader } from "@/components/admin/AdminShell";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
-  head: () => ({ meta: [{ title: "Admin Dashboard · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Admin Dashboard · Connecx" }] }),
   component: AdminOverview,
 });
 

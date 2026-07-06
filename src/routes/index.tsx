@@ -21,13 +21,13 @@ import { SiteFooter } from "@/components/layout/SiteFooter";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "BrandBridge — Where brands meet creators" },
+      { title: "Connecx — Where brands meet creators" },
       {
         name: "description",
         content:
           "The calm, professional marketplace for advertisers and content creators. Launch campaigns, review pitches, and message collaborators — all in one place.",
       },
-      { property: "og:title", content: "BrandBridge — Where brands meet creators" },
+      { property: "og:title", content: "Connecx — Where brands meet creators" },
       {
         property: "og:description",
         content:
@@ -111,7 +111,7 @@ function Landing() {
               <span className="text-gradient">the right creators.</span>
             </h1>
             <p className="mt-7 text-lg md:text-xl text-muted-foreground max-w-xl leading-relaxed">
-              BrandBridge is the calm, professional marketplace for advertisers and content
+              Connecx is the calm, professional marketplace for advertisers and content
               creators. Launch campaigns, review pitches, and message collaborators — all in
               one place.
             </p>
@@ -218,7 +218,7 @@ function Landing() {
               Built like the tools you already love.
             </h2>
             <p className="mt-5 text-muted-foreground leading-relaxed">
-              Keyboard-first, blazing fast, and quiet by default. BrandBridge stays out of the
+              Keyboard-first, blazing fast, and quiet by default. Connecx stays out of the
               way so you can focus on the work.
             </p>
           </motion.div>

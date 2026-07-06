@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth/callback")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Signing you in… · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Signing you in… · Connecx" }] }),
   component: AuthCallback,
 });
 

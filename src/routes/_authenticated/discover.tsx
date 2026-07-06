@@ -14,7 +14,7 @@ import { CREATOR_CATEGORIES } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/discover")({
-  head: () => ({ meta: [{ title: "Discover creators · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Discover creators · Connecx" }] }),
   component: Discover,
 });
 

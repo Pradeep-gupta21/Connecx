@@ -20,7 +20,7 @@ import { PayoutMethods } from "@/components/settings/PayoutMethods";
 import type { BannerPosition } from "@/lib/profile-media";
 
 export const Route = createFileRoute("/_authenticated/settings")({
-  head: () => ({ meta: [{ title: "Settings · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Settings · Connecx" }] }),
   component: SettingsPage,
 });
 

@@ -16,7 +16,7 @@ import { useWorkspace } from "@/hooks/useWorkspace";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/applications")({
-  head: () => ({ meta: [{ title: "Applications · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Applications · Connecx" }] }),
   component: ApplicationsPage,
 });
 

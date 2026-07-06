@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/auth/verify-email")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Verify your email · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Verify your email · Connecx" }] }),
   component: VerifyEmailPage,
 });
 
@@ -55,7 +55,7 @@ function VerifyEmailPage() {
         <p className="mt-3 text-muted-foreground">
           We sent a verification link to{" "}
           <span className="text-foreground font-medium">{user?.email ?? "your email"}</span>.
-          Click it to activate your BrandBridge account.
+          Click it to activate your Connecx account.
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
           Didn't get it? Check spam, or resend below.

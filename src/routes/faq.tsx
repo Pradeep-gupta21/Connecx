@@ -7,14 +7,14 @@ import { PublicLayout } from "@/components/layout/PublicLayout";
 export const Route = createFileRoute("/faq")({
   head: () => ({
     meta: [
-      { title: "FAQ — Ventro" },
+      { title: "FAQ — Connecx" },
       {
         name: "description",
         content:
-          "Frequently asked questions about Ventro — how the platform works, payments, verification, and support.",
+          "Frequently asked questions about Connecx — how the platform works, payments, verification, and support.",
       },
-      { property: "og:title", content: "FAQ — Ventro" },
-      { property: "og:description", content: "Answers to common questions about using Ventro." },
+      { property: "og:title", content: "FAQ — Connecx" },
+      { property: "og:description", content: "Answers to common questions about using Connecx." },
     ],
     links: [{ rel: "canonical", href: "/faq" }],
   }),
@@ -26,11 +26,11 @@ const groups: { title: string; items: { q: string; a: string }[] }[] = [
     title: "Getting started",
     items: [
       {
-        q: "What is Ventro?",
-        a: "Ventro is a marketplace that connects brands and creators for paid campaigns — with escrow payments, verified profiles, and in-platform messaging.",
+        q: "What is Connecx?",
+        a: "Connecx is a marketplace that connects brands and creators for paid campaigns — with escrow payments, verified profiles, and in-platform messaging.",
       },
       {
-        q: "Is Ventro free to sign up?",
+        q: "Is Connecx free to sign up?",
         a: "Yes. Creating an account is free for both creators and brands. We charge a small platform fee only when a campaign is successfully funded and delivered.",
       },
       {
@@ -52,7 +52,7 @@ const groups: { title: string; items: { q: string; a: string }[] }[] = [
       },
       {
         q: "What are the fees?",
-        a: "Ventro charges a transparent platform fee shown at funding time. Payment gateway charges and applicable taxes (GST, TDS) may also apply.",
+        a: "Connecx charges a transparent platform fee shown at funding time. Payment gateway charges and applicable taxes (GST, TDS) may also apply.",
       },
     ],
   },
@@ -115,7 +115,7 @@ function FaqPage() {
             Frequently asked questions
           </h1>
           <p className="mt-5 text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            Everything you need to know about using Ventro. Can't find your answer?{" "}
+            Everything you need to know about using Connecx. Can't find your answer?{" "}
             <Link to="/contact" className="underline underline-offset-4 hover:text-foreground">
               Contact support
             </Link>

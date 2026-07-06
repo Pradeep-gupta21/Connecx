@@ -79,18 +79,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "BrandBridge — Where brands meet creators" },
+      { title: "Connecx — Where brands meet creators" },
       {
         name: "description",
         content:
-          "BrandBridge is the marketplace where advertisers discover creators and creators land paid campaigns.",
+          "Connecx is the marketplace where advertisers discover creators and creators land paid campaigns.",
       },
-      { name: "author", content: "BrandBridge" },
-      { property: "og:title", content: "BrandBridge — Where brands meet creators" },
+      { name: "author", content: "Connecx" },
+      { property: "og:title", content: "Connecx — Where brands meet creators" },
       {
         property: "og:description",
         content:
-          "BrandBridge is the marketplace where advertisers discover creators and creators land paid campaigns.",
+          "Connecx is the marketplace where advertisers discover creators and creators land paid campaigns.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

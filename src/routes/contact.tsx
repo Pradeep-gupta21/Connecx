@@ -24,16 +24,16 @@ import { Label } from "@/components/ui/label";
 export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
-      { title: "Contact Us — Ventro" },
+      { title: "Contact Us — Connecx" },
       {
         name: "description",
         content:
-          "Get in touch with the Ventro team. We reply to every message within 24–48 hours.",
+          "Get in touch with the Connecx team. We reply to every message within 24–48 hours.",
       },
-      { property: "og:title", content: "Contact Us — Ventro" },
+      { property: "og:title", content: "Contact Us — Connecx" },
       {
         property: "og:description",
-        content: "Contact Ventro support or business team. Response within 24–48 hours.",
+        content: "Contact Connecx support or business team. Response within 24–48 hours.",
       },
     ],
     links: [{ rel: "canonical", href: "/contact" }],
@@ -64,7 +64,7 @@ function ContactPage() {
       `Name: ${parsed.data.name}\nEmail: ${parsed.data.email}\n\n${parsed.data.message}`,
     );
     const subject = encodeURIComponent(parsed.data.subject);
-    window.location.href = `mailto:support@ventro.in?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:support@connecx.in?subject=${subject}&body=${body}`;
     setTimeout(() => {
       setSubmitting(false);
       toast.success("Opening your email client…");
@@ -100,14 +100,14 @@ function ContactPage() {
             {
               icon: Mail,
               title: "Support email",
-              value: "support@ventro.in",
-              href: "mailto:support@ventro.in",
+              value: "support@connecx.in",
+              href: "mailto:support@connecx.in",
             },
             {
               icon: Briefcase,
               title: "Business inquiries",
-              value: "business@ventro.in",
-              href: "mailto:business@ventro.in",
+              value: "business@connecx.in",
+              href: "mailto:business@connecx.in",
             },
             {
               icon: Clock,

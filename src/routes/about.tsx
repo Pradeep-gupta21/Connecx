@@ -19,17 +19,17 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
-      { title: "About Us — Ventro" },
+      { title: "About Us — Connecx" },
       {
         name: "description",
         content:
-          "Ventro connects ambitious brands with authentic creators through transparent collaboration, verified profiles, and secure payments.",
+          "Connecx connects ambitious brands with authentic creators through transparent collaboration, verified profiles, and secure payments.",
       },
-      { property: "og:title", content: "About Us — Ventro" },
+      { property: "og:title", content: "About Us — Connecx" },
       {
         property: "og:description",
         content:
-          "Learn about Ventro's mission to bridge brands and creators with trust and secure payments.",
+          "Learn about Connecx's mission to bridge brands and creators with trust and secure payments.",
       },
     ],
     links: [{ rel: "canonical", href: "/about" }],
@@ -53,7 +53,7 @@ function AboutPage() {
             transition={{ duration: 0.6 }}
           >
             <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-              About Ventro
+              About Connecx
             </p>
             <h1 className="mt-4 font-display text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05]">
               Bridging brands and creators —
@@ -61,7 +61,7 @@ function AboutPage() {
               <span className="text-gradient">the honest way.</span>
             </h1>
             <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Ventro is a modern marketplace where brands discover talented creators, launch
+              Connecx is a modern marketplace where brands discover talented creators, launch
               campaigns with confidence, and pay securely — all in one calm, professional workspace.
             </p>
           </motion.div>
@@ -85,7 +85,7 @@ function AboutPage() {
             </h2>
             <p className="mt-6 text-muted-foreground leading-relaxed">
               The creator economy is one of the fastest growing markets in the world, yet the tools
-              connecting brands and creators are still fragmented, opaque, and slow. Ventro exists
+              connecting brands and creators are still fragmented, opaque, and slow. Connecx exists
               to fix that. We give brands a single place to run campaigns end to end — from
               discovery and pitching to messaging, delivery, and secure payouts — and we give
               creators a fair marketplace with verified opportunities, transparent pricing, and
@@ -100,7 +100,7 @@ function AboutPage() {
         <div className="max-w-6xl mx-auto px-6 py-20 md:py-24">
           <div className="max-w-2xl">
             <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-              How Ventro works
+              How Connecx works
             </p>
             <h2 className="mt-3 font-display text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
               A workflow both sides trust.
@@ -154,7 +154,7 @@ function AboutPage() {
         <div className="max-w-6xl mx-auto px-6 py-20 md:py-24">
           <div className="max-w-2xl">
             <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
-              Why choose Ventro
+              Why choose Connecx
             </p>
             <h2 className="mt-3 font-display text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
               Built on transparency, trust, and secure payments.
@@ -244,7 +244,7 @@ function AboutPage() {
             <p className="mt-6 text-muted-foreground leading-relaxed">
               We imagine a world where a creator in a small town has the same access to global
               brand campaigns as a creator in a metro. A world where brands measure real outcomes,
-              not vanity metrics. Ventro is our contribution to that future — one honest
+              not vanity metrics. Connecx is our contribution to that future — one honest
               collaboration at a time.
             </p>
           </div>
@@ -261,7 +261,7 @@ function AboutPage() {
                 Join the movement.
               </h2>
               <p className="mt-3 text-background/70">
-                Whether you're a creator or a brand — Ventro is built for you.
+                Whether you're a creator or a brand — Connecx is built for you.
               </p>
               <div className="mt-8 flex flex-wrap gap-3 justify-center">
                 <Link to="/auth">

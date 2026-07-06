@@ -19,10 +19,10 @@ import { ProfileHeader } from "@/components/profile/ProfileHeader";
 export const Route = createFileRoute("/creators/$id")({
   head: ({ params }) => ({
     meta: [
-      { title: `Creator profile · BrandBridge` },
-      { name: "description", content: "Discover this creator on BrandBridge." },
-      { property: "og:title", content: "Creator profile · BrandBridge" },
-      { property: "og:description", content: "Discover this creator on BrandBridge." },
+      { title: `Creator profile · Connecx` },
+      { name: "description", content: "Discover this creator on Connecx." },
+      { property: "og:title", content: "Creator profile · Connecx" },
+      { property: "og:description", content: "Discover this creator on Connecx." },
     ],
   }),
   component: CreatorProfilePage,
@@ -150,7 +150,7 @@ function CreatorProfilePage() {
       <div className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-3">
           <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" /> BrandBridge
+            <ArrowLeft className="h-4 w-4" /> Connecx
           </Link>
           <Button onClick={startConversation} size="sm" className="gap-2">
             <MessageSquare className="h-4 w-4" /> Message

@@ -15,7 +15,7 @@ import { CREATOR_CATEGORIES, INDUSTRIES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/onboarding")({
-  head: () => ({ meta: [{ title: "Complete your profile · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Complete your profile · Connecx" }] }),
   component: Onboarding,
 });
 
@@ -294,7 +294,7 @@ function Onboarding() {
             <div className="mt-10 flex justify-between">
               <Button variant="ghost" onClick={() => setStep(1)} disabled={saving}>Back</Button>
               <Button onClick={finish} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enter BrandBridge"}
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enter Connecx"}
               </Button>
             </div>
           </div>

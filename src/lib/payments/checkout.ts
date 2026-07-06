@@ -89,7 +89,7 @@ export async function openRazorpayCheckout(args: {
     amount: args.order.amount,
     currency: args.order.currency,
     order_id: args.order.orderId,
-    name: args.name ?? "BrandBridge",
+    name: args.name ?? "Connecx",
     description: args.description,
     prefill: args.prefill,
     theme: { color: "#111111" },

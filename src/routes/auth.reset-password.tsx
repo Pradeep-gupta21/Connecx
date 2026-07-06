@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth/reset-password")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Set new password · BrandBridge" }] }),
+  head: () => ({ meta: [{ title: "Set new password · Connecx" }] }),
   component: ResetPasswordPage,
 });
 
