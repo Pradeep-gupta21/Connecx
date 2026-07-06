@@ -2097,6 +2097,7 @@ export type Database = {
         Returns: string
       }
       ensure_wallet: { Args: { _user_id: string }; Returns: string }
+      get_my_phone: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
