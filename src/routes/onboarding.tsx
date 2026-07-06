@@ -111,8 +111,6 @@ function Onboarding() {
             rate_max: rateMax ? Number(rateMax) : null,
             available: true,
             availability_status: "available",
-            approval_status: "approved",
-            approved_at: new Date().toISOString(),
           },
           { onConflict: "user_id" }
         );

@@ -28,11 +28,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select(
+          "id, display_name, avatar_url, bio, location, active_role, onboarded, created_at, updated_at, country, deleted_at, suspended_at, suspended_reason, banner_url, banner_position, avatar_updated_at, banner_updated_at, username"
+        )
         .eq("id", user!.id)
         .maybeSingle();
       if (error) throw error;
-      return data;
+      if (!data) return null;
+      // Phone lives behind an owner-only RPC (column not readable via SELECT).
+      const { data: phone } = await supabase.rpc("get_my_phone");
+      return { ...data, phone: (phone as string | null) ?? null } as Profile;
     },
   });
 
