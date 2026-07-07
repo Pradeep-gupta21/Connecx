@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CREATOR_CATEGORIES } from "@/lib/constants";
 import { PLATFORMS } from "@/components/campaigns/CampaignForm";
 import { toast } from "sonner";
+import { formatMoney } from "@/components/payments/Money";
 
 export const Route = createFileRoute("/_authenticated/campaigns/")({
   head: () => ({ meta: [{ title: "Campaigns · Connecx" }] }),

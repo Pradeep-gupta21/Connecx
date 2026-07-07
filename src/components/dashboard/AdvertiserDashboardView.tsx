@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { supabase } from "@/integrations/supabase/client";
+import { formatMoney } from "@/components/payments/Money";
 
 export function AdvertiserDashboardView() {
   const { user } = useAuth();
