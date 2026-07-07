@@ -144,14 +144,18 @@ function ApplicationsPage() {
                   </span>
                 </div>
                 {isAdvertiser ? (
-                  <Select value={a.status} onValueChange={(v) => updateStatus.mutate({ id: a.id, status: v })}>
-                    <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="accepted">Accepted</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  a.status === "withdrawn" ? (
+                    <p className="text-[11px] text-muted-foreground italic">Withdrawn by creator</p>
+                  ) : (
+                    <Select value={a.status} onValueChange={(v) => updateStatus.mutate({ id: a.id, status: v })}>
+                      <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="accepted">Accepted</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )
                 ) : (
                   a.status !== "withdrawn" && (
                     <Button variant="outline" size="sm" onClick={() => withdraw.mutate(a.id)}>Withdraw</Button>

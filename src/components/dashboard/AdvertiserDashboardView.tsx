@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { supabase } from "@/integrations/supabase/client";
+import { formatMoney } from "@/components/payments/Money";
 
 export function AdvertiserDashboardView() {
   const { user } = useAuth();
@@ -40,11 +41,11 @@ export function AdvertiserDashboardView() {
       const budget = cs.reduce((sum, c: any) => sum + Number(c.budget_max ?? 0), 0);
       return {
         active,
-        applications: as.length,
+        applications: as.filter((a) => a.status !== "withdrawn").length,
         pending,
         spent,
         budget,
-        appsByDay: bucketByDay(as.map((a) => a.created_at)),
+        appsByDay: bucketByDay(as.filter((a) => a.status !== "withdrawn").map((a) => a.created_at)),
       };
     },
   });
@@ -157,8 +158,8 @@ export function AdvertiserDashboardView() {
           <p className="text-xs text-muted-foreground mt-0.5">Across your published campaigns.</p>
           <div className="mt-6 space-y-3">
             <div className="flex items-baseline justify-between">
-              <span className="font-display text-3xl font-semibold tabular-nums">${(stats.data?.spent ?? 0).toLocaleString()}</span>
-              <span className="text-xs text-muted-foreground tabular-nums">of ${(stats.data?.budget ?? 0).toLocaleString()}</span>
+              <span className="font-display text-3xl font-semibold tabular-nums">{formatMoney(stats.data?.spent ?? 0, "INR", { showZero: true })}</span>
+              <span className="text-xs text-muted-foreground tabular-nums">of {formatMoney(stats.data?.budget ?? 0, "INR", { showZero: true })}</span>
             </div>
             <div className="h-2 rounded-full bg-secondary overflow-hidden">
               <div className="h-full bg-accent transition-all" style={{ width: `${budgetUsedPct}%` }} />
