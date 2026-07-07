@@ -41,11 +41,11 @@ export function AdvertiserDashboardView() {
       const budget = cs.reduce((sum, c: any) => sum + Number(c.budget_max ?? 0), 0);
       return {
         active,
-        applications: as.length,
+        applications: as.filter((a) => a.status !== "withdrawn").length,
         pending,
         spent,
         budget,
-        appsByDay: bucketByDay(as.map((a) => a.created_at)),
+        appsByDay: bucketByDay(as.filter((a) => a.status !== "withdrawn").map((a) => a.created_at)),
       };
     },
   });
