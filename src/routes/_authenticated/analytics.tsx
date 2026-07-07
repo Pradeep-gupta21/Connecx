@@ -84,7 +84,7 @@ function AnalyticsPage() {
         <StatCard label="Applications sent" value={sent} icon={Send} />
         <StatCard label="Accepted" value={accepted} icon={CheckCircle2} />
         <StatCard label="Accept rate" value={`${acceptRate}%`} icon={MousePointerClick} />
-        <StatCard label="Total earned" value={`$${earned.toLocaleString()}`} icon={DollarSign} />
+        <StatCard label="Total earned" value={`₹${earned.toLocaleString()}`} icon={DollarSign} />
       </div>
 
 

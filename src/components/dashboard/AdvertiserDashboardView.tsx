@@ -125,7 +125,7 @@ export function AdvertiserDashboardView() {
             <StatCard label="Active campaigns" value={stats.data?.active ?? 0} icon={Megaphone} />
             <StatCard label="Applications received" value={stats.data?.applications ?? 0} icon={Users} />
             <StatCard label="Pending approvals" value={stats.data?.pending ?? 0} icon={Clock} />
-            <StatCard label="Budget spent" value={`$${(stats.data?.spent ?? 0).toLocaleString()}`} icon={CircleDollarSign} />
+            <StatCard label="Budget spent" value={`₹${(stats.data?.spent ?? 0).toLocaleString()}`} icon={CircleDollarSign} />
           </>
         )}
       </div>

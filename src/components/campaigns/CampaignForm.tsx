@@ -128,11 +128,11 @@ export function CampaignForm({ initialValues, onSubmit, onCancel, submitLabel = 
 
       <div className="grid md:grid-cols-3 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="budget_min">Budget min ($)</Label>
+          <Label htmlFor="budget_min">Budget min (₹)</Label>
           <Input id="budget_min" type="number" min="0" placeholder="500" {...form.register("budget_min")} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="budget_max">Budget max ($)</Label>
+          <Label htmlFor="budget_max">Budget max (₹)</Label>
           <Input id="budget_max" type="number" min="0" placeholder="2500" {...form.register("budget_max")} />
         </div>
         <div className="space-y-2">
