@@ -224,7 +224,11 @@ function Campaigns() {
                     {c.platform && <Badge variant="secondary" className="text-[10px]">{c.platform}</Badge>}
                   </div>
                   {(c.budget_min || c.budget_max) && (
-                    <span className="font-medium tabular-nums">${c.budget_min ?? "?"} – ${c.budget_max ?? "?"}</span>
+                    <span className="font-medium tabular-nums">
+                      {c.budget_min != null ? formatMoney(c.budget_min, "INR", { showZero: true }) : "?"}
+                      {" – "}
+                      {c.budget_max != null ? formatMoney(c.budget_max, "INR", { showZero: true }) : "?"}
+                    </span>
                   )}
                 </div>
                 {c.deadline && (

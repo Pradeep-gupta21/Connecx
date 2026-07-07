@@ -155,6 +155,7 @@ export type Database = {
           pitch: string | null
           status: Database["public"]["Enums"]["application_status"]
           updated_at: string
+          withdrawn_at: string | null
         }
         Insert: {
           campaign_id: string
@@ -165,6 +166,7 @@ export type Database = {
           pitch?: string | null
           status?: Database["public"]["Enums"]["application_status"]
           updated_at?: string
+          withdrawn_at?: string | null
         }
         Update: {
           campaign_id?: string
@@ -175,6 +177,7 @@ export type Database = {
           pitch?: string | null
           status?: Database["public"]["Enums"]["application_status"]
           updated_at?: string
+          withdrawn_at?: string | null
         }
         Relationships: [
           {
