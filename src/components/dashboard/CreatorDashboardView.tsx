@@ -5,6 +5,7 @@ import {
   ArrowRight,
   Check,
   DollarSign,
+  IndianRupeeIcon,
   Clock,
   Inbox,
   Megaphone,
@@ -73,12 +74,12 @@ export function CreatorDashboardView() {
         qc.invalidateQueries({ queryKey: ["creator-payments", user.id] });
         if (payload.eventType === "UPDATE" && payload.old?.status !== payload.new?.status) {
           const s = payload.new.status;
-          const amount = `$${Number(payload.new.amount).toLocaleString()}`;
+          const amount = `₹${Number(payload.new.amount).toLocaleString()}`;
           if (s === "succeeded") toast.success(`${amount} paid out`, { description: "Funds have been released to your account." });
           else if (s === "processing") toast(`${amount} processing`, { description: "Your payout is on the way." });
           else if (s === "failed") toast.error(`${amount} payout failed`, { description: "Please review your payout details." });
         } else if (payload.eventType === "INSERT") {
-          toast(`New payment pending`, { description: `$${Number(payload.new.amount).toLocaleString()} is being prepared.` });
+          toast(`New payment pending`, { description: `₹${Number(payload.new.amount).toLocaleString()} is being prepared.` });
         }
       })
       // Messages: new inbound message → toast
@@ -224,7 +225,7 @@ export function CreatorDashboardView() {
           Array.from({ length: 4 }).map((_, i) => <StatSkeleton key={i} />)
         ) : (
           <>
-            <StatCard label="Total earnings" value={fmtMoney(totalEarnings)} icon={DollarSign} />
+            <StatCard label="Total earnings" value={fmtMoney(totalEarnings)} icon={IndianRupeeIcon} />
             <StatCard label="Pending payments" value={fmtMoney(pendingPayments)} icon={Clock} />
             <StatCard label="Campaign invites" value={invites} icon={Inbox} />
             <StatCard label="Unread messages" value={unreadCount} icon={MessageSquare} />
@@ -501,7 +502,7 @@ function CampaignInvites({ appsData }: { appsData: any[] }) {
               <p className="text-xs text-muted-foreground truncate">
                 {a.campaigns?.profiles?.display_name ?? "Brand"}
                 {(a.campaigns?.budget_min || a.campaigns?.budget_max) &&
-                  ` · $${a.campaigns.budget_min ?? "?"}–$${a.campaigns.budget_max ?? "?"}`}
+                  ` · ₹${a.campaigns.budget_min ?? "?"}–₹${a.campaigns.budget_max ?? "?"}`}
               </p>
             </div>
             <Button
@@ -533,7 +534,7 @@ function greeting() {
   return "Good evening";
 }
 function fmtMoney(n: number) {
-  return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  return `₹${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
 function bucketSum<T extends { created_at: string }>(rows: T[], value: (r: T) => number) {
   const b: Record<string, number> = {};

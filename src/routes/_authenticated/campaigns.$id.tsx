@@ -236,7 +236,7 @@ function CampaignDetail() {
       )}
 
       <div className="grid sm:grid-cols-3 gap-4">
-        <Stat label="Budget" value={c.budget_min || c.budget_max ? `$${c.budget_min ?? "?"} – $${c.budget_max ?? "?"}` : "—"} />
+        <Stat label="Budget" value={c.budget_min || c.budget_max ? `₹${c.budget_min ?? "?"} – ₹${c.budget_max ?? "?"}` : "—"} />
         <Stat label="Deadline" value={c.deadline ? format(new Date(c.deadline), "MMM d, yyyy") : "Open"} />
         <Stat label="Creator size" value={tierLabel ?? "Any"} />
       </div>
