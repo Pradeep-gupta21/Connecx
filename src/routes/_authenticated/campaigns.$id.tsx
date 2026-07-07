@@ -367,19 +367,21 @@ function CampaignDetail() {
 
                       </div>
                       {a.pitch && <p className="mt-3 text-sm text-muted-foreground whitespace-pre-line">{a.pitch}</p>}
-                      <div className="mt-3">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-2"
-                          onClick={async () => {
-                            const tid = await startConvoFromApp(a, c.id);
-                            if (tid) navigate({ to: "/messages/$threadId", params: { threadId: tid } });
-                          }}
-                        >
-                          <MessageSquare className="h-3.5 w-3.5" /> Message
-                        </Button>
-                      </div>
+                      {a.status !== "withdrawn" && (
+                        <div className="mt-3">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-2"
+                            onClick={async () => {
+                              const tid = await startConvoFromApp(a, c.id);
+                              if (tid) navigate({ to: "/messages/$threadId", params: { threadId: tid } });
+                            }}
+                          >
+                            <MessageSquare className="h-3.5 w-3.5" /> Message
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </li>

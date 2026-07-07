@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/common/Logo";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,14 +85,14 @@ function ResetPasswordPage() {
           <form onSubmit={onSubmit} className="mt-8 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="pw">New password</Label>
-              <Input id="pw" type="password" autoComplete="new-password" {...form.register("password")} />
+              <PasswordInput id="pw" autoComplete="new-password" {...form.register("password")} />
               {form.formState.errors.password && (
                 <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="pw2">Confirm password</Label>
-              <Input id="pw2" type="password" autoComplete="new-password" {...form.register("confirm")} />
+              <PasswordInput id="pw2" autoComplete="new-password" {...form.register("confirm")} />
               {form.formState.errors.confirm && (
                 <p className="text-xs text-destructive">{form.formState.errors.confirm.message}</p>
               )}

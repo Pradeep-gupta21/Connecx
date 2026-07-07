@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Building2, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -175,7 +176,7 @@ function SignInForm() {
                 Forgot password?
               </Link>
             </div>
-            <Input id="signin-password" type="password" autoComplete="current-password" {...form.register("password")} />
+            <PasswordInput id="signin-password" autoComplete="current-password" {...form.register("password")} />
             {form.formState.errors.password && <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>}
           </div>
           <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
@@ -282,7 +283,7 @@ function SignUpForm() {
 
           <div className="space-y-2">
             <Label htmlFor="signup-password">Password</Label>
-            <Input id="signup-password" type="password" autoComplete="new-password" {...form.register("password")} />
+            <PasswordInput id="signup-password" autoComplete="new-password" {...form.register("password")} />
             {form.formState.errors.password && <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>}
           </div>
 
