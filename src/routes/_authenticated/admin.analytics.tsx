@@ -18,7 +18,7 @@ function PlatformAnalytics() {
       />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="MAU" value={0} icon={Users2} />
-        <StatCard label="GMV (30d)" value={0} icon={TrendingUp} format={(v) => `$${Math.round(v).toLocaleString()}`} />
+        <StatCard label="GMV (30d)" value={0} icon={TrendingUp} format={(v) => `₹${Math.round(v).toLocaleString()}`} />
         <StatCard label="Take rate" value={0} icon={LineIcon} format={(v) => `${v.toFixed(1)}%`} />
         <StatCard label="Countries" value={0} icon={Globe2} />
       </div>
