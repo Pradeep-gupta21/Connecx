@@ -248,11 +248,11 @@ function Onboarding() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label htmlFor="rmin">Rate min ($)</Label>
+                      <Label htmlFor="rmin">Rate min (₹)</Label>
                       <Input id="rmin" type="number" min="0" value={rateMin} onChange={(e) => setRateMin(e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="rmax">Rate max ($)</Label>
+                      <Label htmlFor="rmax">Rate max (₹)</Label>
                       <Input id="rmax" type="number" min="0" value={rateMax} onChange={(e) => setRateMax(e.target.value)} />
                     </div>
                   </div>

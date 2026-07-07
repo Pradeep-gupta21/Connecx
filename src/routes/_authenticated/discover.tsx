@@ -206,7 +206,7 @@ function Discover() {
                 )}
                 {(c.rate_min || c.rate_max) && (
                   <p className="mt-4 text-xs font-medium tabular-nums">
-                    ${c.rate_min ?? "?"} – ${c.rate_max ?? "?"}{" "}
+                    ₹{c.rate_min ?? "?"} – ₹{c.rate_max ?? "?"}{" "}
                     <span className="text-muted-foreground font-normal">/ campaign</span>
                   </p>
                 )}
