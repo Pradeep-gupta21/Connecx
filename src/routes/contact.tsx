@@ -100,24 +100,19 @@ function ContactPage() {
             {
               icon: Mail,
               title: "Support email",
-              value: "support@connecx.in",
-              href: "mailto:support@connecx.in",
+              value: "connecxofficial@gmail.com",
+              href: "mailto:connecxofficial@gmail.com",
             },
             {
               icon: Briefcase,
               title: "Business inquiries",
-              value: "business@connecx.in",
-              href: "mailto:business@connecx.in",
+              value: "connecxofficial@gmail.com",
+              href: "mailto:connecxofficial@gmail.com",
             },
             {
               icon: Clock,
               title: "Response time",
               value: "Within 24–48 hours",
-            },
-            {
-              icon: MapPin,
-              title: "Office",
-              value: "Bengaluru, Karnataka, India",
             },
           ].map((c) => (
             <motion.a
@@ -165,10 +160,8 @@ function ContactPage() {
             </p>
             <div className="mt-3 flex items-center gap-2">
               {[
-                { icon: Twitter, href: "https://twitter.com", label: "Twitter" },
                 { icon: Instagram, href: "https://instagram.com", label: "Instagram" },
                 { icon: Linkedin, href: "https://linkedin.com", label: "LinkedIn" },
-                { icon: Youtube, href: "https://youtube.com", label: "YouTube" },
               ].map((s) => (
                 <a
                   key={s.label}
