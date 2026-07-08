@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { COUNTRIES, dialFor } from "@/lib/countries";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ProfileAppearanceEditor } from "@/components/profile/ProfileAppearanceEditor";
 import { PayoutMethods } from "@/components/settings/PayoutMethods";
+import { resolveCurrentLocation } from "@/lib/location";
 import type { BannerPosition } from "@/lib/profile-media";
 
 export const Route = createFileRoute("/_authenticated/settings")({
@@ -36,6 +37,7 @@ function SettingsPage() {
   const [country, setCountry] = useState("");
   const [phone, setPhone] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [detectingLocation, setDetectingLocation] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -47,6 +49,19 @@ function SettingsPage() {
       setPhone(profile.phone ?? "");
     }
   }, [profile]);
+
+  const handleUseCurrentLocation = async () => {
+    setDetectingLocation(true);
+    try {
+      const detected = await resolveCurrentLocation();
+      setLocation(detected);
+      toast.success("Location detected successfully");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to detect your location right now.");
+    } finally {
+      setDetectingLocation(false);
+    }
+  };
 
   const saveProfile = async () => {
     if (!user) return;
@@ -173,7 +188,13 @@ function SettingsPage() {
 
             <div className="space-y-2">
               <Label htmlFor="loc">Location</Label>
-              <Input id="loc" value={location} onChange={(e) => setLocation(e.target.value)} />
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input id="loc" value={location} onChange={(e) => setLocation(e.target.value)} className="flex-1" />
+                <Button type="button" variant="outline" onClick={handleUseCurrentLocation} disabled={detectingLocation} className="sm:w-auto w-full">
+                  {detectingLocation ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
+                  Use Current Location
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="bio">Bio</Label>

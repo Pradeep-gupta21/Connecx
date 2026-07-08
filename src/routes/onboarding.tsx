@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace, type AppRole } from "@/hooks/useWorkspace";
 import { supabase } from "@/integrations/supabase/client";
 import { CREATOR_CATEGORIES, INDUSTRIES } from "@/lib/constants";
+import { resolveCurrentLocation } from "@/lib/location";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/onboarding")({
@@ -43,6 +44,7 @@ function Onboarding() {
   const [website, setWebsite] = useState("");
 
   const [saving, setSaving] = useState(false);
+  const [detectingLocation, setDetectingLocation] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth", replace: true });
@@ -73,6 +75,19 @@ function Onboarding() {
 
   const toggleCategory = (c: string) =>
     setCategories((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
+
+  const handleUseCurrentLocation = async () => {
+    setDetectingLocation(true);
+    try {
+      const detected = await resolveCurrentLocation();
+      setLocation(detected);
+      toast.success("Location detected successfully");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to detect your location right now.");
+    } finally {
+      setDetectingLocation(false);
+    }
+  };
 
   const finish = async () => {
     if (!user) return;
@@ -187,7 +202,13 @@ function Onboarding() {
 
               <div className="space-y-2">
                 <Label htmlFor="location">Location</Label>
-                <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Lisbon, Portugal" />
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input id="location" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Lisbon, Portugal" className="flex-1" />
+                  <Button type="button" variant="outline" onClick={handleUseCurrentLocation} disabled={detectingLocation} className="sm:w-auto w-full">
+                    {detectingLocation ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
+                    Use Current Location
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="bio">Short bio</Label>
