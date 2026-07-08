@@ -74,9 +74,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     () => ({
       activeRole,
       setActiveRole,
-      roles: rolesQuery.data ?? [],
+      roles: rolesQuery.data && rolesQuery.data.length
+        ? rolesQuery.data
+        : [],
       profile: profileQuery.data ?? null,
-      loading: profileQuery.isLoading || rolesQuery.isLoading,
+      loading:
+        profileQuery.status === "pending" ||
+        rolesQuery.status === "pending" ||
+        profileQuery.isFetching ||
+        rolesQuery.isFetching,
     }),
     [activeRole, rolesQuery.data, profileQuery.data, profileQuery.isLoading, rolesQuery.isLoading]
   );
