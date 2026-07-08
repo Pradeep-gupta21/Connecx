@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Search, Ban, RotateCcw, Loader2 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { Search, Ban, RotateCcw, Loader2, Trash2, Eye, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { deleteUserAccount, getSuperAdminUserId } from "@/lib/admin/users.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/users")({
   component: AdminUsers,
@@ -21,15 +23,26 @@ export const Route = createFileRoute("/_authenticated/admin/users")({
 function AdminUsers() {
   const [search, setSearch] = useState("");
   const [confirm, setConfirm] = useState<{ id: string; name: string; suspend: boolean } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [reason, setReason] = useState("");
   const qc = useQueryClient();
+
+  const deleteFn = useServerFn(deleteUserAccount);
+  const superAdminFn = useServerFn(getSuperAdminUserId);
+
+  const superAdmin = useQuery({
+    queryKey: ["admin", "super-admin-id"],
+    queryFn: () => superAdminFn(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const superAdminId = superAdmin.data?.userId ?? null;
 
   const q = useQuery({
     queryKey: ["admin", "users", search],
     queryFn: async () => {
       let query = supabase
         .from("profiles")
-        .select("id, display_name, avatar_url, country, active_role, suspended_at, suspended_reason, created_at, user_roles(role)")
+        .select("id, display_name, avatar_url, country, active_role, suspended_at, suspended_reason, created_at, user_roles(role), username")
         .order("created_at", { ascending: false })
         .limit(100);
       if (search.trim()) query = query.ilike("display_name", `%${search.trim()}%`);
@@ -53,6 +66,18 @@ function AdminUsers() {
     onError: (e: any) => toast.error(e.message ?? "Failed"),
   });
 
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      await deleteFn({ data: { userId: id } });
+    },
+    onSuccess: () => {
+      toast.success("User deleted successfully.");
+      qc.invalidateQueries({ queryKey: ["admin"] });
+      setDeleteTarget(null);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed to delete user"),
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -64,41 +89,68 @@ function AdminUsers() {
       </div>
 
       <div className="surface-card overflow-hidden">
-        <div className="hidden md:grid grid-cols-[1fr_120px_120px_120px_140px] px-5 py-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground border-b border-border">
+        <div className="hidden md:grid grid-cols-[1fr_120px_120px_120px_260px] px-5 py-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground border-b border-border">
           <div>User</div><div>Role</div><div>Country</div><div>Status</div><div className="text-right">Actions</div>
         </div>
         {q.isLoading && <div className="p-8 flex justify-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>}
-        {(q.data ?? []).map((u: any) => (
-          <div key={u.id} className="grid grid-cols-1 md:grid-cols-[1fr_120px_120px_120px_140px] items-center gap-3 px-5 py-4 border-b border-border last:border-0 hover:bg-secondary/40 transition-colors">
-            <div className="flex items-center gap-3 min-w-0">
-              <Avatar className="h-9 w-9 shrink-0"><AvatarImage src={u.avatar_url ?? undefined} /><AvatarFallback>{(u.display_name ?? "?").slice(0,1)}</AvatarFallback></Avatar>
-              <div className="min-w-0">
-                <div className="font-medium truncate">{u.display_name ?? "Unnamed"}</div>
-                <code className="text-[10px] text-muted-foreground font-mono">{u.id.slice(0, 12)}</code>
+        {(q.data ?? []).map((u: any) => {
+          const isSuper = superAdminId && u.id === superAdminId;
+          return (
+            <div key={u.id} className="grid grid-cols-1 md:grid-cols-[1fr_120px_120px_120px_260px] items-center gap-3 px-5 py-4 border-b border-border last:border-0 hover:bg-secondary/40 transition-colors">
+              <div className="flex items-center gap-3 min-w-0">
+                <Avatar className="h-9 w-9 shrink-0"><AvatarImage src={u.avatar_url ?? undefined} /><AvatarFallback>{(u.display_name ?? "?").slice(0,1)}</AvatarFallback></Avatar>
+                <div className="min-w-0">
+                  <div className="font-medium truncate flex items-center gap-2">
+                    {u.display_name ?? "Unnamed"}
+                    {isSuper && (
+                      <Badge variant="outline" className="gap-1 text-[10px]"><ShieldCheck className="h-3 w-3" /> Super admin</Badge>
+                    )}
+                  </div>
+                  <code className="text-[10px] text-muted-foreground font-mono">{u.id.slice(0, 12)}</code>
+                </div>
+              </div>
+              <div className="text-sm text-muted-foreground capitalize">{u.active_role ?? "—"}</div>
+              <div className="text-sm text-muted-foreground">{u.country ?? "—"}</div>
+              <div>
+                {u.suspended_at ? (
+                  <Badge variant="destructive">Suspended</Badge>
+                ) : (
+                  <Badge variant="secondary">Active</Badge>
+                )}
+              </div>
+              <div className="flex md:justify-end gap-2 flex-wrap">
+                {u.username ? (
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to="/creators/$id" params={{ id: u.username }} target="_blank">
+                      <Eye className="h-3.5 w-3.5 mr-1" /> View
+                    </Link>
+                  </Button>
+                ) : null}
+                {u.suspended_at ? (
+                  <Button variant="outline" size="sm" onClick={() => setConfirm({ id: u.id, name: u.display_name ?? "user", suspend: false })}>
+                    <RotateCcw className="h-3.5 w-3.5 mr-1" /> Activate
+                  </Button>
+                ) : (
+                  !isSuper && (
+                    <Button variant="outline" size="sm" onClick={() => setConfirm({ id: u.id, name: u.display_name ?? "user", suspend: true })}>
+                      <Ban className="h-3.5 w-3.5 mr-1" /> Suspend
+                    </Button>
+                  )
+                )}
+                {!isSuper && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setDeleteTarget({ id: u.id, name: u.display_name ?? "user" })}
+                    disabled={del.isPending}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                  </Button>
+                )}
               </div>
             </div>
-            <div className="text-sm text-muted-foreground capitalize">{u.active_role ?? "—"}</div>
-            <div className="text-sm text-muted-foreground">{u.country ?? "—"}</div>
-            <div>
-              {u.suspended_at ? (
-                <Badge variant="destructive">Suspended</Badge>
-              ) : (
-                <Badge variant="secondary">Active</Badge>
-              )}
-            </div>
-            <div className="flex md:justify-end">
-              {u.suspended_at ? (
-                <Button variant="outline" size="sm" onClick={() => setConfirm({ id: u.id, name: u.display_name ?? "user", suspend: false })}>
-                  <RotateCcw className="h-3.5 w-3.5 mr-1" /> Reinstate
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" onClick={() => setConfirm({ id: u.id, name: u.display_name ?? "user", suspend: true })}>
-                  <Ban className="h-3.5 w-3.5 mr-1" /> Suspend
-                </Button>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
         {!q.isLoading && (q.data ?? []).length === 0 && (
           <div className="p-12 text-center text-sm text-muted-foreground">No users match.</div>
         )}
@@ -121,6 +173,30 @@ function AdminUsers() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => confirm && suspend.mutate({ id: confirm.id, suspend: confirm.suspend, reason })}>
               {suspend.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && !del.isPending && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to permanently delete {deleteTarget?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The user will be removed from authentication, the database, storage and all related tables.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={del.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleteTarget) del.mutate(deleteTarget.id);
+              }}
+              disabled={del.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {del.isPending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Deleting…</> : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
