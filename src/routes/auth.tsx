@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
+
 import {
   Select,
   SelectContent,
@@ -70,7 +71,7 @@ function AuthPage() {
       <div className="hidden md:flex flex-col justify-between p-10 bg-surface border-r border-border">
         <Logo />
         <div className="space-y-6 max-w-md">
-          <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+          <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground"  >
             Connecx
           </p>
           <h1 className="font-display text-4xl font-semibold leading-tight tracking-tight">
