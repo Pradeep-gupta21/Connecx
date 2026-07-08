@@ -25,6 +25,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const profileQuery = useQuery({
     queryKey: ["profile", user?.id],
     enabled: !!user?.id,
+    retry: false,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
@@ -33,40 +34,87 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         )
         .eq("id", user!.id)
         .maybeSingle();
+
       if (error) throw error;
-      if (!data) return null;
-      // Phone lives behind an owner-only RPC (column not readable via SELECT).
+
+      // User/profile deleted -> immediately sign out.
+      if (!data) {
+        await supabase.auth.signOut();
+        return null;
+      }
+
       const { data: phone } = await supabase.rpc("get_my_phone");
-      return { ...data, phone: (phone as string | null) ?? null } as Profile;
+
+      return {
+        ...data,
+        phone: (phone as string | null) ?? null,
+      } as Profile;
     },
   });
 
   const rolesQuery = useQuery({
     queryKey: ["user_roles", user?.id],
     enabled: !!user?.id,
+    retry: false,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", user!.id);
+
       if (error) throw error;
+
       return (data ?? []).map((r) => r.role as AppRole);
     },
   });
 
   useEffect(() => {
     if (!user || !rolesQuery.data) return;
-    const stored = (typeof window !== "undefined" && (localStorage.getItem(STORAGE_KEY) as AppRole | null)) || null;
-    const fromProfile = (profileQuery.data?.active_role as AppRole | null | undefined) ?? null;
-    const next = (stored && rolesQuery.data.includes(stored) ? stored : null) ?? fromProfile ?? rolesQuery.data[0] ?? null;
+
+    const stored =
+      typeof window !== "undefined"
+        ? (localStorage.getItem(STORAGE_KEY) as AppRole | null)
+        : null;
+
+    const fromProfile =
+      (profileQuery.data?.active_role as AppRole | null | undefined) ?? null;
+
+    const next =
+      (stored && rolesQuery.data.includes(stored) ? stored : null) ??
+      fromProfile ??
+      rolesQuery.data[0] ??
+      null;
+
     setActiveRoleState(next);
   }, [user, rolesQuery.data, profileQuery.data]);
 
+  // Safety check: if the profile disappears while logged in,
+  // immediately sign the user out.
+  useEffect(() => {
+    if (!user) return;
+
+    if (
+      !profileQuery.isLoading &&
+      profileQuery.data === null &&
+      profileQuery.status === "success"
+    ) {
+      supabase.auth.signOut();
+    }
+  }, [user, profileQuery.data, profileQuery.isLoading, profileQuery.status]);
+
   const setActiveRole = (r: AppRole) => {
     setActiveRoleState(r);
-    if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, r);
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEY, r);
+    }
+
     if (user) {
-      supabase.from("profiles").update({ active_role: r }).eq("id", user.id).then(() => {});
+      supabase
+        .from("profiles")
+        .update({ active_role: r })
+        .eq("id", user.id)
+        .then(() => {});
     }
   };
 
@@ -74,24 +122,38 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     () => ({
       activeRole,
       setActiveRole,
-      roles: rolesQuery.data && rolesQuery.data.length
-        ? rolesQuery.data
-        : [],
+      roles: rolesQuery.data ?? [],
       profile: profileQuery.data ?? null,
       loading:
-        profileQuery.status === "pending" ||
-        rolesQuery.status === "pending" ||
+        profileQuery.isLoading ||
+        rolesQuery.isLoading ||
         profileQuery.isFetching ||
         rolesQuery.isFetching,
     }),
-    [activeRole, rolesQuery.data, profileQuery.data, profileQuery.isLoading, rolesQuery.isLoading]
+    [
+      activeRole,
+      rolesQuery.data,
+      profileQuery.data,
+      profileQuery.isLoading,
+      rolesQuery.isLoading,
+      profileQuery.isFetching,
+      rolesQuery.isFetching,
+    ]
   );
 
-  return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
+  return (
+    <WorkspaceContext.Provider value={value}>
+      {children}
+    </WorkspaceContext.Provider>
+  );
 }
 
 export function useWorkspace() {
   const ctx = useContext(WorkspaceContext);
-  if (!ctx) throw new Error("useWorkspace must be used within WorkspaceProvider");
+
+  if (!ctx) {
+    throw new Error("useWorkspace must be used within WorkspaceProvider");
+  }
+
   return ctx;
 }
