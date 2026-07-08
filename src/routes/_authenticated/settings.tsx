@@ -94,14 +94,41 @@ function SettingsPage() {
     <div className="max-w-3xl space-y-8">
       <PageHeader title="Settings" description="Manage your profile, workspaces, and account." />
 
-      <Tabs defaultValue="profile">
+      <Tabs
+        defaultValue={
+          roles.includes("creator")
+            ? "creator"
+            : roles.includes("advertiser")
+            ? "advertiser"
+            : "profile"
+        }
+      >
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="appearance">Appearance</TabsTrigger>
-          <TabsTrigger value="payouts">Payouts</TabsTrigger>
-          <TabsTrigger value="creator">Creator</TabsTrigger>
-          <TabsTrigger value="advertiser">Advertiser</TabsTrigger>
-          <TabsTrigger value="account">Account</TabsTrigger>
+
+          <TabsTrigger value="appearance">
+            Appearance
+          </TabsTrigger>
+
+          <TabsTrigger value="payouts">
+            Payouts
+          </TabsTrigger>
+
+          {roles.includes("creator") && (
+            <TabsTrigger value="creator">
+              Creator
+            </TabsTrigger>
+          )}
+
+          {roles.includes("advertiser") && (
+            <TabsTrigger value="advertiser">
+              Advertiser
+            </TabsTrigger>
+          )}
+
+          <TabsTrigger value="account">
+            Account
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="payouts" className="mt-6">
@@ -184,13 +211,17 @@ function SettingsPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="creator" className="mt-6">
-          <CreatorSettings />
-        </TabsContent>
+        {roles.includes("creator") && (
+            <TabsContent value="creator" className="mt-6">
+              <CreatorSettings />
+            </TabsContent>
+          )}
 
-        <TabsContent value="advertiser" className="mt-6">
-          <AdvertiserSettings />
-        </TabsContent>
+          {roles.includes("advertiser") && (
+            <TabsContent value="advertiser" className="mt-6">
+              <AdvertiserSettings />
+            </TabsContent>
+          )}
 
         <TabsContent value="account" className="mt-6">
           <div className="surface-card p-6 space-y-5">

@@ -197,7 +197,7 @@ function CreatorProfilePage() {
           >
             <StatBlock icon={Users} label="Followers" value={c.follower_count ? c.follower_count.toLocaleString() : "—"} />
             <StatBlock icon={TrendingUp} label="Engagement" value={analytics.engagement_rate ? `${analytics.engagement_rate}%` : "—"} />
-            <StatBlock icon={Sparkles} label="Rate" value={c.rate_min || c.rate_max ? `$${c.rate_min ?? "?"}–${c.rate_max ?? "?"}` : "—"} />
+            <StatBlock icon={Sparkles} label="Rate" value={c.rate_min || c.rate_max ? `₹${c.rate_min ?? "?"}–${c.rate_max ?? "?"}` : "—"} />
             <StatBlock icon={CheckCircle2} label="Profile score" value={`${completion}%`} accent />
           </motion.div>
         </div>
