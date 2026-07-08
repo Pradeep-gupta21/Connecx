@@ -91,7 +91,7 @@ function SettingsPage() {
   };
 
   return (
-    <div className="max-w-3xl space-y-8">
+    <div className="w-full max-w-3xl mx-auto space-y-6 px-2 sm:px-0 sm:space-y-8">
       <PageHeader title="Settings" description="Manage your profile, workspaces, and account." />
 
       <Tabs
@@ -103,39 +103,39 @@ function SettingsPage() {
             : "profile"
         }
       >
-        <TabsList>
-          <TabsTrigger value="profile">Profile</TabsTrigger>
+        <TabsList className="flex-wrap h-auto gap-1 sm:gap-2">
+          <TabsTrigger value="profile" className="text-sm">Profile</TabsTrigger>
 
-          <TabsTrigger value="appearance">
+          <TabsTrigger value="appearance" className="text-sm">
             Appearance
           </TabsTrigger>
 
-          <TabsTrigger value="payouts">
+          <TabsTrigger value="payouts" className="text-sm">
             Payouts
           </TabsTrigger>
 
           {roles.includes("creator") && (
-            <TabsTrigger value="creator">
+            <TabsTrigger value="creator" className="text-sm">
               Creator
             </TabsTrigger>
           )}
 
           {roles.includes("advertiser") && (
-            <TabsTrigger value="advertiser">
+            <TabsTrigger value="advertiser" className="text-sm">
               Advertiser
             </TabsTrigger>
           )}
 
-          <TabsTrigger value="account">
+          <TabsTrigger value="account" className="text-sm">
             Account
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="payouts" className="mt-6">
+        <TabsContent value="payouts" className="mt-4 sm:mt-6">
           <PayoutMethods />
         </TabsContent>
 
-        <TabsContent value="appearance" className="mt-6">
+        <TabsContent value="appearance" className="mt-4 sm:mt-6">
           <ProfileAppearanceEditor
             displayName={profile?.display_name ?? ""}
             avatarValue={profile?.avatar_url ?? null}
@@ -144,9 +144,9 @@ function SettingsPage() {
           />
         </TabsContent>
 
-        <TabsContent value="profile" className="mt-6">
+        <TabsContent value="profile" className="mt-4 sm:mt-6">
 
-          <div className="surface-card p-6 space-y-5">
+          <div className="surface-card p-4 space-y-5 sm:p-6">
             <div className="space-y-2">
               <Label htmlFor="dn">Display name</Label>
               <Input id="dn" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
@@ -179,7 +179,7 @@ function SettingsPage() {
               <Label htmlFor="bio">Bio</Label>
               <Textarea id="bio" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Country</Label>
                 <Select value={country} onValueChange={setCountry}>
@@ -203,8 +203,8 @@ function SettingsPage() {
                 </div>
               </div>
             </div>
-            <div className="flex justify-end">
-              <Button onClick={saveProfile} disabled={savingProfile}>
+            <div className="flex justify-stretch sm:justify-end">
+              <Button onClick={saveProfile} disabled={savingProfile} className="w-full sm:w-auto">
                 {savingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save changes"}
               </Button>
             </div>
@@ -212,19 +212,19 @@ function SettingsPage() {
         </TabsContent>
 
         {roles.includes("creator") && (
-            <TabsContent value="creator" className="mt-6">
+            <TabsContent value="creator" className="mt-4 sm:mt-6">
               <CreatorSettings />
             </TabsContent>
           )}
 
           {roles.includes("advertiser") && (
-            <TabsContent value="advertiser" className="mt-6">
+            <TabsContent value="advertiser" className="mt-4 sm:mt-6">
               <AdvertiserSettings />
             </TabsContent>
           )}
 
-        <TabsContent value="account" className="mt-6">
-          <div className="surface-card p-6 space-y-5">
+        <TabsContent value="account" className="mt-4 sm:mt-6">
+          <div className="surface-card p-4 space-y-5 sm:p-6">
             <div>
               <p className="text-sm font-medium">Email</p>
               <p className="text-sm text-muted-foreground">{user?.email}</p>
@@ -233,7 +233,7 @@ function SettingsPage() {
               <p className="text-sm font-medium mb-3">Workspaces</p>
               <div className="space-y-3">
                 {(["advertiser", "creator"] as const).map((r) => (
-                  <div key={r} className="flex items-center justify-between">
+                  <div key={r} className="flex flex-col gap-3 rounded-md border border-border/70 p-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm capitalize">{r}</p>
                       <p className="text-xs text-muted-foreground">
@@ -304,7 +304,7 @@ function CreatorSettings() {
         <Label>Headline</Label>
         <Input value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="What you make and for whom" />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Rate min ($)</Label>
           <Input type="number" min="0" value={rateMin} onChange={(e) => setRateMin(e.target.value)} />
@@ -319,8 +319,8 @@ function CreatorSettings() {
         <Input value={categories} onChange={(e) => setCategories(e.target.value)} placeholder="Fashion, Beauty, Tech" />
         <p className="text-xs text-muted-foreground">Comma-separated.</p>
       </div>
-      <div className="flex justify-end">
-        <Button onClick={save} disabled={busy}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}</Button>
+      <div className="flex justify-stretch sm:justify-end">
+        <Button onClick={save} disabled={busy} className="w-full sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}</Button>
       </div>
     </div>
   );
@@ -366,12 +366,12 @@ function AdvertiserSettings() {
   };
 
   return (
-    <div className="surface-card p-6 space-y-5">
+    <div className="surface-card p-4 space-y-5 sm:p-6">
       <div className="space-y-2"><Label>Brand name</Label><Input value={brand} onChange={(e) => setBrand(e.target.value)} /></div>
       <div className="space-y-2"><Label>Website</Label><Input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://..." /></div>
       <div className="space-y-2"><Label>Industry</Label><Input value={industry} onChange={(e) => setIndustry(e.target.value)} /></div>
       <div className="space-y-2"><Label>About</Label><Textarea rows={4} value={about} onChange={(e) => setAbout(e.target.value)} /></div>
-      <div className="flex justify-end"><Button onClick={save} disabled={busy}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}</Button></div>
+      <div className="flex justify-stretch sm:justify-end"><Button onClick={save} disabled={busy} className="w-full sm:w-auto">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}</Button></div>
     </div>
   );
 }
