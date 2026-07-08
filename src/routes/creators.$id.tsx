@@ -55,6 +55,23 @@ function computeCompletion(data: any, profile: any, socials: any[], portfolio: a
   return Math.round((filled / fields.length) * 100);
 }
 
+function formatFollowerCount(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
+
+  if (value < 1000) return value.toLocaleString();
+
+  const abs = Math.abs(value);
+  const units = ["", "K", "M", "B"];
+  const unitIndex = Math.min(Math.floor(Math.log10(abs) / 3), units.length - 1);
+  const scaled = abs / 1000 ** unitIndex;
+  const precision = scaled < 10 && unitIndex > 0 ? 1 : 0;
+
+  return `${scaled.toLocaleString(undefined, {
+    minimumFractionDigits: precision,
+    maximumFractionDigits: precision,
+  })}${units[unitIndex]}`;
+}
+
 function CreatorProfilePage() {
   const { id } = Route.useParams();
   const { user } = useAuth();
@@ -140,6 +157,16 @@ function CreatorProfilePage() {
   const languages = (c.languages as string[]) ?? [];
   const avgRating = reviews.length ? reviews.reduce((s: number, r: any) => s + r.rating, 0) / reviews.length : null;
   const completion = computeCompletion(c, p, socials, portfolio);
+  const connectedSocials = (socials ?? []).filter((s: any) => Boolean(s?.platform));
+  const socialFollowerTotal = connectedSocials.reduce((sum: number, s: any) => {
+    return sum + (typeof s?.follower_count === "number" && s.follower_count > 0 ? s.follower_count : 0);
+  }, 0);
+  const followerCountValue = connectedSocials.length > 0
+    ? (socialFollowerTotal > 0 ? socialFollowerTotal : (typeof c.follower_count === "number" && c.follower_count > 0 ? c.follower_count : null))
+    : (typeof c.follower_count === "number" && c.follower_count > 0 ? c.follower_count : null);
+  const followersDisplay = followerCountValue ? formatFollowerCount(followerCountValue) : "Not Connected";
+  const followersSubtitle = connectedSocials.length === 0 ? "Connect your social accounts to display follower count." : undefined;
+  const followersValue = followersDisplay ?? "Not Connected";
   const availabilityLabel = c.availability_status === "unavailable"
     ? "Fully booked"
     : c.availability_status === "limited" ? "Limited availability" : "Available for work";
@@ -170,7 +197,7 @@ function CreatorProfilePage() {
             location={p?.location}
             meta={[
               (c.categories ?? [])[0],
-              c.follower_count ? `${c.follower_count.toLocaleString()} followers` : null,
+              followersDisplay !== "Not Connected" ? `${followersDisplay} followers` : null,
               availabilityLabel,
             ].filter(Boolean).join(" • ")}
             bio={p?.bio}
@@ -195,7 +222,7 @@ function CreatorProfilePage() {
             transition={{ duration: 0.5, delay: 0.15 }}
             className="grid grid-cols-2 md:grid-cols-4 gap-4"
           >
-            <StatBlock icon={Users} label="Followers" value={c.follower_count ? c.follower_count.toLocaleString() : "—"} />
+            <StatBlock icon={Users} label="Followers" value={followersValue} subtitle={followersSubtitle} />
             <StatBlock icon={TrendingUp} label="Engagement" value={analytics.engagement_rate ? `${analytics.engagement_rate}%` : "—"} />
             <StatBlock icon={Sparkles} label="Rate" value={c.rate_min || c.rate_max ? `₹${c.rate_min ?? "?"}–${c.rate_max ?? "?"}` : "—"} />
             <StatBlock icon={CheckCircle2} label="Profile score" value={`${completion}%`} accent />
@@ -342,7 +369,7 @@ function CreatorProfilePage() {
                         <p className="text-sm font-medium truncate capitalize">{s.platform}</p>
                         <p className="text-xs text-muted-foreground truncate">
                           @{s.handle}
-                          {s.follower_count ? ` · ${s.follower_count.toLocaleString()}` : ""}
+                          {typeof s.follower_count === "number" && s.follower_count > 0 ? ` · ${formatFollowerCount(s.follower_count)}` : ""}
                         </p>
                       </div>
                       {s.verified && <CheckCircle2 className="h-4 w-4 text-primary" />}
@@ -423,7 +450,7 @@ function CreatorProfilePage() {
   );
 }
 
-function StatBlock({ icon: Icon, label, value, accent }: { icon: any; label: string; value: string; accent?: boolean }) {
+function StatBlock({ icon: Icon, label, value, accent, subtitle }: { icon: any; label: string; value: string; accent?: boolean; subtitle?: string }) {
   return (
     <div className={cn(
       "rounded-2xl border p-5 backdrop-blur-sm",
@@ -433,6 +460,7 @@ function StatBlock({ icon: Icon, label, value, accent }: { icon: any; label: str
         <Icon className="h-3 w-3" /> {label}
       </div>
       <p className="mt-2 font-display text-2xl font-semibold tabular-nums">{value}</p>
+      {subtitle && <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{subtitle}</p>}
     </div>
   );
 }
