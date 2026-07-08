@@ -103,130 +103,263 @@ function Discover() {
   }, [query]);
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        title="Discover creators"
-        description="Browse vetted creators by category, skill, and location."
-      />
+  <div className="space-y-5">
+    <PageHeader
+      title="Discover creators"
+      description="Browse vetted creators by category, skill, and location."
+    />
 
-      <div className="grid gap-3 md:grid-cols-[1fr,200px,180px,180px]">
-        <div className="relative">
+    {/* Filters */}
+    <div className="w-full">
+      <div className="
+        flex flex-col gap-2
+        sm:flex-row sm:items-center
+        overflow-x-auto
+        scrollbar-hide
+      ">
+
+        {/* Search */}
+        <div className="relative flex-1 min-w-[220px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
           <Input
             value={qRaw}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by name, @username, headline…"
-            className="pl-9 h-10"
+            placeholder="Search creators..."
+            className="h-9 pl-9 text-sm"
             aria-label="Search creators"
           />
         </div>
+
+
+        {/* Category */}
         <Select value={cat} onValueChange={setCat}>
-          <SelectTrigger className="h-10" aria-label="Category">
+          <SelectTrigger
+            className="h-9 w-full sm:w-[170px] shrink-0 text-sm"
+            aria-label="Category"
+          >
             <SlidersHorizontal className="h-4 w-4 mr-2 text-muted-foreground" />
             <SelectValue placeholder="Category" />
           </SelectTrigger>
+
           <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
+            <SelectItem value="all">
+              All categories
+            </SelectItem>
+
             {CREATOR_CATEGORIES.map((c) => (
-              <SelectItem key={c} value={c}>{c}</SelectItem>
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
+
+
+        {/* Skill */}
         <Input
           value={skillRaw}
           onChange={(e) => setSkill(e.target.value)}
           placeholder="Skill"
-          className="h-10"
+          className="h-9 w-full sm:w-[140px] shrink-0 text-sm"
           aria-label="Skill"
         />
+
+
+        {/* Location */}
         <Input
           value={locationRaw}
           onChange={(e) => setLocation(e.target.value)}
           placeholder="Location"
-          className="h-10"
+          className="h-9 w-full sm:w-[140px] shrink-0 text-sm"
           aria-label="Location"
         />
+
+      </div>
+    </div>
+
+
+    {query.isLoading ? (
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <CardSkeleton key={i} />
+        ))}
       </div>
 
-      {query.isLoading ? (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />)}
-        </div>
-      ) : query.isError ? (
-        <EmptyState
-          icon={Search}
-          title="Couldn't load creators"
-          description={(query.error as Error)?.message ?? "Try again in a moment."}
-          action={{ label: "Retry", onClick: () => query.refetch() }}
-        />
+    ) : query.isError ? (
 
-      ) : rows.length === 0 ? (
-        <EmptyState
-          icon={Search}
-          title="No creators found"
-          description="Try adjusting your filters or check back soon."
-        />
-      ) : (
-        <>
-          <p className="text-xs text-muted-foreground tabular-nums">
-            {Number(total).toLocaleString()} creator{Number(total) === 1 ? "" : "s"}
-          </p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {rows.map((c) => (
-              <Link
-                key={c.user_id}
-                to="/creators/$id"
-                params={{ id: c.user_id }}
-                className="surface-card p-5 hover:shadow-elevated hover:-translate-y-px transition-all group"
-              >
-                <div className="flex items-start gap-3">
-                  <SmartAvatar
-                    className="h-12 w-12"
-                    value={c.avatar_url}
-                    name={c.display_name}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate group-hover:underline">
-                      {c.display_name ?? "Creator"}
-                    </div>
-                    <div className="text-xs text-muted-foreground truncate">
-                      {c.username ? `@${c.username}` : c.location ?? "—"}
-                    </div>
+      <EmptyState
+        icon={Search}
+        title="Couldn't load creators"
+        description={(query.error as Error)?.message ?? "Try again in a moment."}
+        action={{
+          label: "Retry",
+          onClick: () => query.refetch()
+        }}
+      />
+
+    ) : rows.length === 0 ? (
+
+      <EmptyState
+        icon={Search}
+        title="No creators found"
+        description="Try adjusting your filters or check back soon."
+      />
+
+    ) : (
+
+      <>
+        <p className="text-xs text-muted-foreground tabular-nums">
+          {Number(total).toLocaleString()} creator
+          {Number(total) === 1 ? "" : "s"}
+        </p>
+
+
+        <div className="
+          grid
+          grid-cols-1
+          sm:grid-cols-2
+          xl:grid-cols-3
+          gap-4
+        ">
+
+          {rows.map((c) => (
+            <Link
+              key={c.user_id}
+              to="/creators/$id"
+              params={{ id: c.user_id }}
+              className="
+                surface-card
+                p-5
+                hover:shadow-elevated
+                hover:-translate-y-px
+                transition-all
+                group
+              "
+            >
+
+              <div className="flex items-start gap-3">
+
+                <SmartAvatar
+                  className="h-12 w-12"
+                  value={c.avatar_url}
+                  name={c.display_name}
+                />
+
+                <div className="flex-1 min-w-0">
+
+                  <div className="
+                    font-medium
+                    truncate
+                    group-hover:underline
+                  ">
+                    {c.display_name ?? "Creator"}
                   </div>
+
+                  <div className="
+                    text-xs
+                    text-muted-foreground
+                    truncate
+                  ">
+                    {c.username
+                      ? `@${c.username}`
+                      : c.location ?? "—"}
+                  </div>
+
                 </div>
-                {c.headline && (
-                  <p className="mt-4 text-sm text-muted-foreground line-clamp-2">{c.headline}</p>
-                )}
-                {(c.categories ?? []).length > 0 && (
-                  <div className="mt-4 flex flex-wrap gap-1.5">
-                    {(c.categories ?? []).slice(0, 3).map((cat) => (
-                      <Badge key={cat} variant="secondary" className="text-[10px]">{cat}</Badge>
+              </div>
+
+
+              {c.headline && (
+                <p className="
+                  mt-4
+                  text-sm
+                  text-muted-foreground
+                  line-clamp-2
+                ">
+                  {c.headline}
+                </p>
+              )}
+
+
+              {(c.categories ?? []).length > 0 && (
+                <div className="
+                  mt-4
+                  flex
+                  flex-wrap
+                  gap-1.5
+                ">
+                  {(c.categories ?? [])
+                    .slice(0, 3)
+                    .map((cat) => (
+                      <Badge
+                        key={cat}
+                        variant="secondary"
+                        className="text-[10px]"
+                      >
+                        {cat}
+                      </Badge>
                     ))}
-                  </div>
-                )}
-                {(c.rate_min || c.rate_max) && (
-                  <p className="mt-4 text-xs font-medium tabular-nums">
-                    ₹{c.rate_min ?? "?"} – ₹{c.rate_max ?? "?"}{" "}
-                    <span className="text-muted-foreground font-normal">/ campaign</span>
-                  </p>
-                )}
-              </Link>
+                </div>
+              )}
+
+
+              {(c.rate_min || c.rate_max) && (
+                <p className="
+                  mt-4
+                  text-xs
+                  font-medium
+                  tabular-nums
+                ">
+                  ₹{c.rate_min ?? "?"} – ₹{c.rate_max ?? "?"}
+                  {" "}
+                  <span className="
+                    text-muted-foreground
+                    font-normal
+                  ">
+                    / campaign
+                  </span>
+                </p>
+              )}
+
+            </Link>
+          ))}
+
+        </div>
+
+
+        <div ref={sentinelRef} className="h-8" />
+
+
+        {query.isFetchingNextPage && (
+          <div className="
+            grid
+            grid-cols-1
+            sm:grid-cols-2
+            xl:grid-cols-3
+            gap-4
+          ">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <CardSkeleton key={i} />
             ))}
           </div>
+        )}
 
-          <div ref={sentinelRef} className="h-8" />
-          {query.isFetchingNextPage && (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />)}
-            </div>
-          )}
-          {!query.hasNextPage && rows.length > PAGE_SIZE && (
-            <p className="text-center text-xs text-muted-foreground py-4">
-              You've reached the end.
-            </p>
-          )}
-        </>
-      )}
-    </div>
-  );
+
+        {!query.hasNextPage && rows.length > PAGE_SIZE && (
+          <p className="
+            text-center
+            text-xs
+            text-muted-foreground
+            py-4
+          ">
+            You've reached the end.
+          </p>
+        )}
+
+      </>
+    )}
+
+  </div>
+);
 }
