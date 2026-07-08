@@ -1,6 +1,29 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+export const getSuperAdminUserId = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (!isAdmin) throw new Error("Forbidden");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Paginate through users to find super admin email
+    let page = 1;
+    const target = "ventroofficial@gmail.com";
+    while (page < 20) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 200 });
+      if (error) throw new Error(error.message);
+      const found = data.users.find((u) => (u.email ?? "").toLowerCase() === target);
+      if (found) return { userId: found.id };
+      if (data.users.length < 200) break;
+      page++;
+    }
+    return { userId: null as string | null };
+  });
+
 const SUPER_ADMIN_EMAIL = "ventroofficial@gmail.com";
 const USER_STORAGE_BUCKETS = [
   "avatars",
