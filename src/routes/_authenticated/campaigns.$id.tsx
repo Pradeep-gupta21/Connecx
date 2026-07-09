@@ -198,7 +198,7 @@ function CampaignDetail() {
             {c.platform && <Badge variant="secondary">{c.platform}</Badge>}
             {c.funded && (
               <Badge variant="secondary" className="bg-success/10 text-success border-success/20 gap-1">
-                <ShieldCheck className="h-3 w-3" /> Funded · escrowed
+                <ShieldCheck className="h-3 w-3" /> Payment received
               </Badge>
             )}
           </div>
@@ -539,7 +539,7 @@ function ApplicationStatusSelect({
         size="sm"
         className="h-8 gap-1.5"
         disabled={!canAccept || accept.isPending}
-        title={canAccept ? "Accept and hold funds in escrow" : "Fund this campaign to accept creators"}
+        title={canAccept ? "Accept creator and activate campaign" : "Purchase this campaign to accept creators"}
         onClick={() => accept.mutate({ campaignId, applicationId, creatorId })}
       >
         {accept.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Accept"}

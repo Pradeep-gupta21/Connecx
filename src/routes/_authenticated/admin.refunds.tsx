@@ -13,7 +13,7 @@ function Refunds() {
       <AdminPageHeader
         eyebrow="Money"
         title="Refund requests"
-        description="Approve, deny, or partially refund escrowed payments with full audit trail."
+        description="Approve, deny, or partially refund campaign payments with full audit trail."
       />
       <AdminEmptyState
         icon={RotateCcw}
