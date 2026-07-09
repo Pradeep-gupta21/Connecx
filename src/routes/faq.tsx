@@ -27,7 +27,7 @@ const groups: { title: string; items: { q: string; a: string }[] }[] = [
     items: [
       {
         q: "What is Connecx?",
-        a: "Connecx is a marketplace that connects brands and creators for paid campaigns — with escrow payments, verified profiles, and in-platform messaging.",
+        a: "Connecx is an influencer marketing platform that connects brands and creators for paid campaigns — with secure campaign payments, verified profiles, and in-platform messaging.",
       },
       {
         q: "Is Connecx free to sign up?",
@@ -44,7 +44,7 @@ const groups: { title: string; items: { q: string; a: string }[] }[] = [
     items: [
       {
         q: "How do payments work?",
-        a: "Brands fund a campaign upfront through Razorpay. Funds are held in escrow and released to the creator only after the brand approves the deliverables.",
+        a: "Brands purchase a campaign upfront through Razorpay. Creator earnings become eligible for payout only after the brand approves the deliverables.",
       },
       {
         q: "When do creators get paid?",

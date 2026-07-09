@@ -123,8 +123,8 @@ function AboutPage() {
               {
                 icon: ShieldCheck,
                 step: "03",
-                title: "Secure payments",
-                body: "Funds are held in escrow. Creators are paid only when deliverables are approved.",
+                title: "Secure campaign payments",
+                body: "Advertisers purchase campaigns upfront. Creator earnings are approved for payout only when deliverables are approved.",
               },
             ].map((s, i) => (
               <motion.div
@@ -169,8 +169,8 @@ function AboutPage() {
               },
               {
                 icon: Lock,
-                title: "Escrow payments",
-                body: "Funds are locked in escrow and released only when work is approved.",
+                title: "Verified payouts",
+                body: "Creator payouts are processed after the advertiser approves the deliverables.",
               },
               {
                 icon: Sparkles,
