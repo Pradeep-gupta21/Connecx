@@ -1,4 +1,4 @@
-import { Building2, ChevronsUpDown, Shield, ShieldCheck, Sparkles } from "lucide-react";
+import { Building2, ChevronsUpDown, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,21 +11,27 @@ import {
 import { useWorkspace, type AppRole } from "@/hooks/useWorkspace";
 import { useNavigate } from "@tanstack/react-router";
 
+const ALLOWED_SWITCH_ROLES: AppRole[] = ["creator", "advertiser"];
+
 const roleMeta: Record<AppRole, { label: string; icon: typeof Sparkles; description: string }> = {
   advertiser: { label: "Advertiser", icon: Building2, description: "Brand workspace" },
   creator: { label: "Creator", icon: Sparkles, description: "Creator workspace" },
-  admin: { label: "Admin", icon: Shield, description: "Platform operations" },
-  moderator: { label: "Moderator", icon: ShieldCheck, description: "Trust & safety" },
+  admin: { label: "Admin", icon: Sparkles, description: "Platform operations" },
+  moderator: { label: "Moderator", icon: Sparkles, description: "Trust & safety" },
 };
 
 export function WorkspaceSwitcher() {
   const { activeRole, roles, setActiveRole } = useWorkspace();
   const navigate = useNavigate();
 
-  if (!activeRole) return null;
+  const switchableRoles = ALLOWED_SWITCH_ROLES.filter((role) => roles.includes(role));
+  const currentRole = switchableRoles.find((role) => role === activeRole) ?? switchableRoles[0] ?? null;
 
-  const current = roleMeta[activeRole];
+  if (!currentRole) return null;
+
+  const current = roleMeta[currentRole];
   const Icon = current.icon;
+  const canSwitch = switchableRoles.length > 1;
 
   return (
     <DropdownMenu>
@@ -33,6 +39,7 @@ export function WorkspaceSwitcher() {
         <Button
           variant="outline"
           className="h-9 gap-2 rounded-full pl-2 pr-3 bg-surface hover:bg-secondary"
+          disabled={!canSwitch}
         >
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-foreground text-background">
             <Icon className="h-3 w-3" />
@@ -45,7 +52,7 @@ export function WorkspaceSwitcher() {
         <DropdownMenuLabel className="text-xs uppercase tracking-wide text-muted-foreground">
           Switch workspace
         </DropdownMenuLabel>
-        {(Object.keys(roleMeta) as AppRole[]).map((r) => {
+        {switchableRoles.map((r) => {
           const meta = roleMeta[r];
           const enabled = roles.includes(r);
           const RIcon = meta.icon;
@@ -67,7 +74,7 @@ export function WorkspaceSwitcher() {
                 <div className="text-sm font-medium">{meta.label}</div>
                 <div className="text-xs text-muted-foreground">{meta.description}</div>
               </div>
-              {activeRole === r && <span className="text-xs text-accent">Active</span>}
+              {currentRole === r && <span className="text-xs text-accent">Active</span>}
             </DropdownMenuItem>
           );
         })}
