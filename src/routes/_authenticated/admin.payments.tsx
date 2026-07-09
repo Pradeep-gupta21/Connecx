@@ -145,7 +145,7 @@ function AdminPayments() {
     <div className="space-y-6">
       <PageHeader
         title="Payment monitoring"
-        description="Live view of every transaction, escrow balance, refund, and payout across the platform."
+        description="Live view of every transaction, active campaign spend, refund, and payout across the platform."
         actions={
           <PaymentFilters
             search=""
@@ -171,7 +171,7 @@ function AdminPayments() {
           format={(v) => formatMoney(v, "INR", { compact: true, showZero: true })}
         />
         <StatCard
-          label="Held in escrow"
+          label="Active campaign spend"
           value={stats.held}
           icon={ShieldCheck}
           format={(v) => formatMoney(v, "INR", { compact: true, showZero: true })}
@@ -199,7 +199,7 @@ function AdminPayments() {
       <Tabs defaultValue="payments">
         <TabsList>
           <TabsTrigger value="payments">Payments</TabsTrigger>
-          <TabsTrigger value="escrow">Protected</TabsTrigger>
+          <TabsTrigger value="active">Active</TabsTrigger>
           <TabsTrigger value="refunds">Refunds</TabsTrigger>
           <TabsTrigger value="withdrawals">Withdrawal queue</TabsTrigger>
         </TabsList>
@@ -212,9 +212,9 @@ function AdminPayments() {
             onStatusChange={setStatus}
             statusOptions={[
               { value: "paid", label: "Paid" },
-              { value: "held", label: "Protected" },
-              { value: "released", label: "Released" },
-              { value: "withdrawn", label: "Withdrawn" },
+              { value: "held", label: "Campaign active" },
+              { value: "released", label: "Earnings approved" },
+              { value: "withdrawn", label: "Payout completed" },
               { value: "refunded", label: "Refunded" },
               { value: "failed", label: "Failed" },
               { value: "pending", label: "Pending" },
@@ -233,7 +233,7 @@ function AdminPayments() {
           />
         </TabsContent>
 
-        <TabsContent value="escrow" className="mt-6">
+        <TabsContent value="active" className="mt-6">
           {(() => {
             const held = filteredPayments.filter(
               (p) => p.status_v2 === "held" || p.status_v2 === "revision_requested",
@@ -242,8 +242,8 @@ function AdminPayments() {
               return (
                 <EmptyState
                   icon={ShieldCheck}
-                  title="No escrowed funds"
-                  description="Every held payment released or refunded — nothing waiting for approval."
+                  title="No active campaigns"
+                  description="Every active payment approved or refunded — nothing waiting for review."
                 />
               );
             return (

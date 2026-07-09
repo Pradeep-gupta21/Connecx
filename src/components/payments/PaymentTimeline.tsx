@@ -104,8 +104,8 @@ export function buildTimeline(
     },
     {
       key: "protected",
-      label: "Held in escrow",
-      helper: "Funds locked until deliverables approved",
+      label: "Campaign active",
+      helper: "Awaiting deliverables from creator",
       icon: ShieldCheck,
       done: protectedNow,
       active: protectedNow && !accepted,
@@ -113,7 +113,7 @@ export function buildTimeline(
     },
     {
       key: "accepted",
-      label: "Creator accepted",
+      label: "Creator assigned",
       helper: "Contract signed with the creator",
       icon: Handshake,
       done: accepted,
@@ -140,8 +140,8 @@ export function buildTimeline(
     },
     {
       key: "released",
-      label: "Released to creator wallet",
-      helper: "Available for withdrawal",
+      label: "Earnings approved",
+      helper: "Available for payout",
       icon: Coins,
       done: released,
       active: released && !withdrawn,
@@ -149,7 +149,7 @@ export function buildTimeline(
     },
     {
       key: "withdrawn",
-      label: "Paid out to creator",
+      label: "Payout completed",
       helper: withdrawal?.status === "processing" ? "Payout in progress" : "Transfer completed",
       icon: Banknote,
       done: withdrawn || withdrawal?.status === "completed",

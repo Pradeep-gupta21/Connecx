@@ -716,15 +716,15 @@ export const PaymentService = {
     await notify({
       userId: pay.payee_id,
       type: "payment_released",
-      title: "Payment released 🎉",
-      body: `₹${releaseAmt.toLocaleString("en-IN")} is now available in your wallet.`,
+      title: "Earnings approved 🎉",
+      body: `₹${releaseAmt.toLocaleString("en-IN")} is now eligible for payout.`,
       payload: { payment_id: paymentId, campaign_id: pay.campaign_id },
     });
     await notify({
       userId: pay.payer_id,
       type: "payment_released",
-      title: "Funds released to creator",
-      body: `Payment ${paymentId.slice(0, 8)} settled.`,
+      title: "Deliverables approved",
+      body: `Creator earnings for payment ${paymentId.slice(0, 8)} are now eligible for payout.`,
       payload: { payment_id: paymentId },
     });
   },

@@ -150,7 +150,7 @@ function AdminOverview() {
         {/* Money */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="Platform Revenue (30d)" value={d?.totalRevenue ?? 0} icon={CreditCard} format={money} />
-          <StatCard label="Escrow Balance" value={d?.escrowBalance ?? 0} icon={Wallet} format={money} />
+          <StatCard label="Active Campaign Balance" value={d?.escrowBalance ?? 0} icon={Wallet} format={money} />
           <StatCard label="Pending Withdrawals" value={d?.pendingWithdrawals ?? 0} icon={ArrowDownToLine} />
           <StatCard label="Pending Refunds" value={d?.pendingRefunds ?? 0} icon={Undo2} />
         </div>

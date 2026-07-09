@@ -72,10 +72,11 @@ function TermsPage() {
         <div>
           <h2>5. Payments</h2>
           <p>
-            All campaign payments are processed through our payment provider (Razorpay) and held in
-            escrow until deliverables are approved. Payouts to creators are made to the verified
-            default payout account on file. Connecx is not a bank and does not offer financial
-            services beyond escrow and payout facilitation.
+            All campaign payments are collected through our payment provider (Razorpay). Connecx
+            is an influencer marketing platform that processes campaign payments from advertisers
+            and manages creator payouts after successful campaign completion. Payouts to creators
+            are made to the verified default payout account on file. Connecx is not a bank,
+            licensed escrow service, or financial institution.
           </p>
         </div>
 

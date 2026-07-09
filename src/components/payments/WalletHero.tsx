@@ -71,9 +71,9 @@ export function WalletHero({ wallet }: { wallet: Snapshot }) {
       <div className="relative mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
         <MiniStat
           icon={ShieldCheck}
-          label="Held in escrow"
+          label="Pending earnings"
           value={<Money value={held} currency={currency} />}
-          helper="Waiting on approval"
+          helper="Awaiting advertiser approval"
         />
         <MiniStat
           icon={ArrowUpRight}
@@ -162,7 +162,7 @@ export function SpendHero({
       <div className="relative">
         <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
           <ShieldCheck className="h-3.5 w-3.5" />
-          Held in escrow across campaigns
+          Active campaign spend
         </div>
         <div className="mt-3 font-display text-5xl md:text-6xl font-semibold tracking-tight tabular-nums">
           <AnimatedNumber
@@ -171,8 +171,8 @@ export function SpendHero({
           />
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
-          Protected for {activeCount} active campaign{activeCount === 1 ? "" : "s"} — released
-          only when you approve deliverables.
+          Across {activeCount} active campaign{activeCount === 1 ? "" : "s"} — creator earnings
+          are approved once you sign off on the deliverables.
         </p>
       </div>
 
@@ -185,7 +185,7 @@ export function SpendHero({
         />
         <MiniStat
           icon={Wallet}
-          label="In escrow"
+          label="Active campaigns"
           value={<Money value={protectedAmount} currency={currency} />}
           helper="Awaiting deliverable approval"
         />

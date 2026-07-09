@@ -141,7 +141,7 @@ function CreatorPayments() {
     <div className="space-y-8">
       <PageHeader
         title="Wallet & payments"
-        description="Escrowed funds, transactions, invoices and withdrawal history — updated in real time."
+        description="Earnings, transactions, invoices and payout history — updated in real time."
       />
 
       {wallet.isLoading ? <WalletHeroSkeleton /> : <WalletHero wallet={w} />}
@@ -163,9 +163,9 @@ function CreatorPayments() {
             status={status}
             onStatusChange={setStatus}
             statusOptions={[
-              { value: "held", label: "Protected" },
-              { value: "released", label: "Released" },
-              { value: "withdrawn", label: "Withdrawn" },
+              { value: "held", label: "Campaign active" },
+              { value: "released", label: "Earnings approved" },
+              { value: "withdrawn", label: "Payout completed" },
               { value: "pending", label: "Pending" },
               { value: "failed", label: "Failed" },
             ]}
@@ -179,7 +179,7 @@ function CreatorPayments() {
             statusKey="status_v2"
             onRowClick={setOpenPayment}
             emptyTitle="No transactions yet"
-            emptyDescription="Your first campaign release will show up here."
+            emptyDescription="Your first approved earnings will show up here."
           />
         </TabsContent>
 
@@ -206,7 +206,7 @@ function CreatorPayments() {
             }
             renderType={(t) => t.description ?? (t.type ?? "").replace(/_/g, " ")}
             emptyTitle="No wallet activity"
-            emptyDescription="Every hold, release, and payout will be logged here."
+            emptyDescription="Every earning, approval, and payout will be logged here."
           />
         </TabsContent>
 
@@ -350,7 +350,7 @@ function AdvertiserPayments() {
     <div className="space-y-8">
       <PageHeader
         title="Payments"
-        description="Fund campaigns, track escrow, and manage invoices and refunds."
+        description="Purchase campaigns, track active spend, and manage invoices and refunds."
         actions={
           <Button asChild variant="outline" className="w-full sm:w-auto">
             <Link to="/campaigns/new">
@@ -370,7 +370,7 @@ function AdvertiserPayments() {
       <Tabs defaultValue="history">
         <TabsList className="flex-wrap h-auto gap-1.5 sm:gap-2">
           <TabsTrigger value="history">Payment history</TabsTrigger>
-          <TabsTrigger value="escrow">Protected ({held.length})</TabsTrigger>
+          <TabsTrigger value="active">Active ({held.length})</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="refunds">Refunds</TabsTrigger>
         </TabsList>
@@ -383,8 +383,8 @@ function AdvertiserPayments() {
             onStatusChange={setStatus}
             statusOptions={[
               { value: "paid", label: "Paid" },
-              { value: "held", label: "Protected" },
-              { value: "released", label: "Released" },
+              { value: "held", label: "Campaign active" },
+              { value: "released", label: "Earnings approved" },
               { value: "refunded", label: "Refunded" },
               { value: "failed", label: "Failed" },
             ]}
@@ -398,16 +398,16 @@ function AdvertiserPayments() {
             statusKey="status_v2"
             onRowClick={setOpenPayment}
             emptyTitle="No payments yet"
-            emptyDescription="Fund a campaign to hold the budget in escrow until deliverables are approved."
+            emptyDescription="Purchase a campaign to activate it until deliverables are approved."
           />
         </TabsContent>
 
-        <TabsContent value="escrow" className="mt-6 space-y-3">
+        <TabsContent value="active" className="mt-6 space-y-3">
           {held.length === 0 ? (
             <EmptyState
               icon={ShieldCheck}
-              title="No escrowed campaigns"
-              description="When you fund a campaign, the budget is protected here until deliverables are approved."
+              title="No active campaigns"
+              description="When you purchase a campaign, it stays active here until deliverables are approved."
             />
           ) : (
             held.map((p: any) => (
@@ -427,7 +427,7 @@ function AdvertiserPayments() {
                       <PaymentStatusBadge status={p.status_v2} />
                     </div>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      Held since {format(new Date(p.created_at), "MMM d, yyyy")} ·{" "}
+                      Active since {format(new Date(p.created_at), "MMM d, yyyy")} ·{" "}
                       <Link
                         to="/campaigns/$id"
                         params={{ id: p.campaign_id }}
@@ -470,7 +470,7 @@ function AdvertiserPayments() {
             <EmptyState
               icon={MegaphoneOff}
               title="No refunds requested"
-              description="Refunds are available on escrowed campaigns before creators are paid out."
+              description="Refunds are available on active campaigns before creator earnings are approved."
             />
           ) : (
             <div className="space-y-2">

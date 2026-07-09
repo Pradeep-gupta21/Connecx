@@ -30,14 +30,14 @@ export function FundCampaignDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" disabled={disabled} className="gap-2">
-          <Wallet className="h-4 w-4" /> Fund campaign
+          <Wallet className="h-4 w-4" /> Purchase campaign
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Fund "{campaignTitle}"</DialogTitle>
+          <DialogTitle>Purchase campaign "{campaignTitle}"</DialogTitle>
           <DialogDescription>
-            Funds are held in escrow and released to the creator only after you approve their deliverables.
+            Your payment activates the campaign. Creator earnings are approved for payout only after you sign off on the deliverables.
           </DialogDescription>
         </DialogHeader>
 
@@ -60,7 +60,7 @@ export function FundCampaignDialog({
 
         <div className="flex items-start gap-2 text-xs text-muted-foreground">
           <ShieldCheck className="h-4 w-4 mt-0.5 flex-shrink-0" />
-          <p>Secured by Razorpay. Your funds stay in escrow until you release them.</p>
+          <p>Secured by Razorpay. Payments are processed securely by Razorpay.</p>
         </div>
 
         <DialogFooter>

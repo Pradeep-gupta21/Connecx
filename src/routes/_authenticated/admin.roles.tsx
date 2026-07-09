@@ -11,7 +11,7 @@ export const Route = createFileRoute("/_authenticated/admin/roles")({
 const roles = [
   { name: "Admin", icon: Shield, description: "Unrestricted access to all admin surfaces, moderation, and privileged writes.", scope: "Platform" },
   { name: "Moderator", icon: ShieldCheck, description: "Content review, user suspension, and approvals — no financial actions.", scope: "Trust & safety" },
-  { name: "Advertiser", icon: Building2, description: "Brand workspaces: create campaigns, fund escrow, hire creators.", scope: "Marketplace" },
+  { name: "Advertiser", icon: Building2, description: "Brand workspaces: create campaigns, purchase campaigns, hire creators.", scope: "Marketplace" },
   { name: "Creator", icon: Sparkles, description: "Creator workspaces: apply to campaigns, deliver work, receive payouts.", scope: "Marketplace" },
 ];
 
