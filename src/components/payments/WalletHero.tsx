@@ -71,9 +71,9 @@ export function WalletHero({ wallet }: { wallet: Snapshot }) {
       <div className="relative mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
         <MiniStat
           icon={ShieldCheck}
-          label="Held in escrow"
+          label="Pending earnings"
           value={<Money value={held} currency={currency} />}
-          helper="Waiting on approval"
+          helper="Awaiting advertiser approval"
         />
         <MiniStat
           icon={ArrowUpRight}
