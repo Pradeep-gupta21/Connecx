@@ -35,9 +35,9 @@ export function FundCampaignDialog({
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Fund "{campaignTitle}"</DialogTitle>
+          <DialogTitle>Purchase campaign "{campaignTitle}"</DialogTitle>
           <DialogDescription>
-            Funds are held in escrow and released to the creator only after you approve their deliverables.
+            Your payment activates the campaign. Creator earnings are approved for payout only after you sign off on the deliverables.
           </DialogDescription>
         </DialogHeader>
 
