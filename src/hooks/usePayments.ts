@@ -50,7 +50,7 @@ export function useFundCampaign(campaignName?: string) {
       });
     },
     onSuccess: () => {
-      toast.success("Campaign funded — funds are held in escrow");
+      toast.success("Payment received — campaign is now active");
       qc.invalidateQueries({ queryKey: ["campaign"] });
       qc.invalidateQueries({ queryKey: ["payment-history"] });
     },

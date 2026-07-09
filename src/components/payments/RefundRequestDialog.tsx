@@ -61,7 +61,7 @@ export function RefundRequestDialog({
               </div>
               <DialogTitle>Request refund</DialogTitle>
               <DialogDescription>
-                Return <Money value={amount} currency={currency} /> from the escrow held for{" "}
+                Return <Money value={amount} currency={currency} /> from the payment for{" "}
                 <span className="font-medium text-foreground">{campaignTitle ?? "this campaign"}</span>.
                 An admin will review before processing.
               </DialogDescription>

@@ -212,7 +212,7 @@ function ReviewButtons({ contractId }: { contractId: string }) {
         onClick={() => review.mutate({ contractId, decision: "approve" })}
       >
         {review.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-        Approve & release funds
+        Approve deliverables
       </Button>
       <Button size="sm" variant="outline" className="gap-2" onClick={() => setRevOpen(true)}>
         <RotateCcw className="h-3.5 w-3.5" /> Request revision
