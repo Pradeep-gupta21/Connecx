@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { Logo } from "@/components/common/Logo";
 import { useAuth } from "@/hooks/useAuth";
-import { useWorkspace, type AppRole } from "@/hooks/useWorkspace";
+import { useWorkspace, type AppRole, type Profile } from "@/hooks/useWorkspace";
 import { supabase } from "@/integrations/supabase/client";
 import { CREATOR_CATEGORIES, INDUSTRIES } from "@/lib/constants";
 import { resolveCurrentLocation } from "@/lib/location";
@@ -24,6 +25,7 @@ function Onboarding() {
   const { user, loading } = useAuth();
   const { profile, activeRole, roles } = useWorkspace();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
 
   const [displayName, setDisplayName] = useState("");
@@ -115,6 +117,19 @@ function Onboarding() {
         .eq("id", user.id);
       if (profileErr) throw profileErr;
 
+      queryClient.setQueryData<Profile | null>(["profile", user.id], (current) =>
+        current
+          ? {
+              ...current,
+              display_name: displayName,
+              username: username.trim() || null,
+              bio: bio || null,
+              location: location || null,
+              onboarded: true,
+            }
+          : current
+      );
+      await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
 
       if (role === "creator") {
         const { error } = await supabase.from("creator_profiles").upsert(

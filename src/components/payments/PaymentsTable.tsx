@@ -98,7 +98,7 @@ export function LedgerTable({
   }
   return (
     <div className="surface-card overflow-hidden">
-      <div className="overflow-x-auto">
+      <div className="hidden overflow-x-auto sm:block">
         <table className="w-full text-sm">
           <thead className="bg-secondary/40 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             <tr>
@@ -205,6 +205,50 @@ export function LedgerTable({
             </AnimatePresence>
           </tbody>
         </table>
+      </div>
+
+      <div className="space-y-2 p-2 sm:hidden">
+        {list.map((row) => {
+          const currency = row[currencyKey] ?? "INR";
+          const sign = amountSign?.(row);
+          const content = (
+            <div className="rounded-2xl border border-border/60 bg-background/70 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-mono text-[11px] text-muted-foreground">
+                    {renderReference ? renderReference(row) : (
+                      row.receipt_number ?? row.invoice_number ?? row.id?.slice(0, 8) ?? "—"
+                    )}
+                  </div>
+                  <div className="mt-1 text-sm font-medium">
+                    {renderType ? renderType(row) : (row.type ?? "").replace(/_/g, " ")}
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {row[dateKey] ? format(new Date(row[dateKey]), "MMM d, yyyy") : "—"}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-semibold">
+                    <Money value={row[amountKey]} currency={currency} sign={sign} />
+                  </div>
+                  <div className="mt-1 flex justify-end">
+                    <PaymentStatusBadge kind={statusKind} status={row[statusKey]} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+
+          if (onRowClick) {
+            return (
+              <button key={row.id} type="button" className="w-full text-left" onClick={() => onRowClick(row)}>
+                {content}
+              </button>
+            );
+          }
+
+          return <div key={row.id}>{content}</div>;
+        })}
       </div>
     </div>
   );

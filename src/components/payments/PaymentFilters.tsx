@@ -46,8 +46,8 @@ export function PaymentFilters({
 }) {
   const active = !!search || (status && status !== "all") || (range && range !== "30d");
   return (
-    <div className={cn("flex flex-wrap items-center gap-2", className)}>
-      <div className="relative min-w-[240px] flex-1 max-w-md">
+    <div className={cn("flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center", className)}>
+      <div className="relative w-full sm:min-w-[240px] sm:flex-1 sm:max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         <Input
           value={search}
@@ -70,7 +70,7 @@ export function PaymentFilters({
 
       {statusOptions && onStatusChange && (
         <Select value={status ?? "all"} onValueChange={onStatusChange}>
-          <SelectTrigger className="h-9 w-[150px]">
+          <SelectTrigger className="h-9 w-full sm:w-[150px]">
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -86,7 +86,7 @@ export function PaymentFilters({
 
       {onRangeChange && (
         <Select value={range ?? "30d"} onValueChange={(v) => onRangeChange(v as RangeKey)}>
-          <SelectTrigger className="h-9 w-[130px]">
+          <SelectTrigger className="h-9 w-full sm:w-[130px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -105,7 +105,7 @@ export function PaymentFilters({
         <Button
           variant="ghost"
           size="sm"
-          className="h-9 gap-1 text-muted-foreground"
+          className="h-9 w-full gap-1 text-muted-foreground sm:w-auto"
           onClick={() => {
             onSearchChange("");
             onStatusChange?.("all");

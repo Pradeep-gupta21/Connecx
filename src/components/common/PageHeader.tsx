@@ -22,7 +22,7 @@ export function PageHeader({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
       className={cn(
-        "grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 sm:flex sm:flex-wrap sm:items-end sm:justify-between",
+        "flex flex-col gap-4 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:justify-between",
         className,
       )}
     >
@@ -32,7 +32,7 @@ export function PageHeader({
             {eyebrow}
           </p>
         )}
-        <h1 className="font-display text-2xl sm:text-3xl md:text-[34px] font-semibold tracking-tight leading-tight truncate">
+        <h1 className="font-display text-2xl sm:text-3xl md:text-[34px] font-semibold tracking-tight leading-tight break-words">
           {title}
         </h1>
         {description && (
@@ -42,7 +42,9 @@ export function PageHeader({
         )}
       </div>
       {actions && (
-        <div className="flex items-center gap-2 shrink-0">{actions}</div>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-2 sm:shrink-0">
+          {actions}
+        </div>
       )}
     </motion.div>
   );

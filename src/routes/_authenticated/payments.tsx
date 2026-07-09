@@ -148,7 +148,7 @@ function CreatorPayments() {
 
       <Tabs defaultValue="transactions">
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto gap-1.5 sm:gap-2">
             <TabsTrigger value="transactions">Transactions</TabsTrigger>
             <TabsTrigger value="wallet">Wallet ledger</TabsTrigger>
             <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
@@ -224,7 +224,7 @@ function CreatorPayments() {
               {(withdrawals.data ?? []).map((wd: any) => (
                 <div
                   key={wd.id}
-                  className="surface-card p-4 flex items-center justify-between gap-4 flex-wrap"
+                  className="surface-card p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0 flex items-start gap-3">
                     <div className="mt-0.5 grid h-9 w-9 place-items-center rounded-full bg-secondary text-muted-foreground">
@@ -352,7 +352,7 @@ function AdvertiserPayments() {
         title="Payments"
         description="Fund campaigns, track escrow, and manage invoices and refunds."
         actions={
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="w-full sm:w-auto">
             <Link to="/campaigns/new">
               <Sparkles className="h-4 w-4" /> New campaign
             </Link>
@@ -368,7 +368,7 @@ function AdvertiserPayments() {
       />
 
       <Tabs defaultValue="history">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1.5 sm:gap-2">
           <TabsTrigger value="history">Payment history</TabsTrigger>
           <TabsTrigger value="escrow">Protected ({held.length})</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
@@ -413,7 +413,7 @@ function AdvertiserPayments() {
             held.map((p: any) => (
               <div
                 key={p.id}
-                className="surface-card p-5 flex items-start justify-between gap-4 flex-wrap"
+                className="surface-card p-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
               >
                 <div className="min-w-0 flex items-start gap-3">
                   <div className="mt-0.5 grid h-10 w-10 place-items-center rounded-full bg-accent/10 text-accent">
@@ -438,7 +438,7 @@ function AdvertiserPayments() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <Button variant="ghost" size="sm" onClick={() => setOpenPayment(p)}>
                     <Receipt className="h-3.5 w-3.5" /> Details
                   </Button>
@@ -477,7 +477,7 @@ function AdvertiserPayments() {
               {(refunds.data ?? []).map((r: any) => (
                 <div
                   key={r.id}
-                  className="surface-card p-4 flex items-center justify-between gap-4"
+                  className="surface-card p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -543,7 +543,7 @@ function InvoiceList({
       {rows.map((r) => (
         <div
           key={r.id}
-          className="p-4 flex items-center justify-between gap-4 hover:bg-secondary/30 transition-colors"
+          className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between hover:bg-secondary/30 transition-colors"
         >
           <div className="flex items-center gap-3 min-w-0">
             <div className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-muted-foreground">
