@@ -77,7 +77,7 @@ function EditCampaign() {
           objective: (data.objective as any) ?? "Brand Awareness",
           content_types: Array.isArray(data.content_types) ? (data.content_types as string[]) : [],
           creators_required: (data.creators_required ?? 1) as number,
-          accepted_creators_count: (data.accepted_creators_count ?? 0) as number,
+          ...(data.accepted_creators_count !== undefined ? { accepted_creators_count: (data.accepted_creators_count ?? 0) as number } : {}),
           product_provided: Boolean(data.product_provided),
           product_name: data.product_name ?? "",
           product_value: (data.product_value ?? "") as any,
