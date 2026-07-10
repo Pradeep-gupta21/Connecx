@@ -249,14 +249,20 @@ export type Database = {
       campaigns: {
         Row: {
           advertiser_id: string
+          application_deadline: string | null
+          accepted_creators_count: number
           attachments: Json | null
           brief: string | null
           budget_max: number | null
           budget_min: number | null
           category: string | null
+          commission_details: string | null
+          content_delivery_deadline: string | null
+          content_types: string[] | null
           cover_url: string | null
           created_at: string
           creator_tier: string | null
+          creators_required: number
           deadline: string | null
           deleted_at: string | null
           deliverables: string | null
@@ -268,23 +274,37 @@ export type Database = {
           id: string
           languages: string[] | null
           location: string | null
+          objective: string | null
+          payment_type: string
           platform: string | null
           platform_fee_pct: number
+          product_name: string | null
+          product_provided: boolean
+          product_value: number | null
+          publication_status: string
           requirements: string | null
+          shipping_regions: string | null
           status: Database["public"]["Enums"]["campaign_status"]
           title: string
           updated_at: string
+          visibility: string
         }
         Insert: {
           advertiser_id: string
+          application_deadline?: string | null
+          accepted_creators_count?: number
           attachments?: Json | null
           brief?: string | null
           budget_max?: number | null
           budget_min?: number | null
           category?: string | null
+          commission_details?: string | null
+          content_delivery_deadline?: string | null
+          content_types?: string[] | null
           cover_url?: string | null
           created_at?: string
           creator_tier?: string | null
+          creators_required?: number
           deadline?: string | null
           deleted_at?: string | null
           deliverables?: string | null
@@ -296,23 +316,37 @@ export type Database = {
           id?: string
           languages?: string[] | null
           location?: string | null
+          objective?: string | null
+          payment_type?: string
           platform?: string | null
           platform_fee_pct?: number
+          product_name?: string | null
+          product_provided?: boolean
+          product_value?: number | null
+          publication_status?: string
           requirements?: string | null
+          shipping_regions?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
           title: string
           updated_at?: string
+          visibility?: string
         }
         Update: {
           advertiser_id?: string
+          application_deadline?: string | null
+          accepted_creators_count?: number
           attachments?: Json | null
           brief?: string | null
           budget_max?: number | null
           budget_min?: number | null
           category?: string | null
+          commission_details?: string | null
+          content_delivery_deadline?: string | null
+          content_types?: string[] | null
           cover_url?: string | null
           created_at?: string
           creator_tier?: string | null
+          creators_required?: number
           deadline?: string | null
           deleted_at?: string | null
           deliverables?: string | null
@@ -324,12 +358,20 @@ export type Database = {
           id?: string
           languages?: string[] | null
           location?: string | null
+          objective?: string | null
+          payment_type?: string
           platform?: string | null
           platform_fee_pct?: number
+          product_name?: string | null
+          product_provided?: boolean
+          product_value?: number | null
+          publication_status?: string
           requirements?: string | null
+          shipping_regions?: string | null
           status?: Database["public"]["Enums"]["campaign_status"]
           title?: string
           updated_at?: string
+          visibility?: string
         }
         Relationships: [
           {

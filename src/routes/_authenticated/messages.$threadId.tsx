@@ -40,6 +40,7 @@ function Thread() {
   const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastTypingSentRef = useRef(0);
   const pinIndexRef = useRef(0);
+  const presenceChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const hash = useRouterState({ select: (s) => s.location.hash });
 
   const convoQuery = useQuery({
@@ -126,6 +127,7 @@ function Thread() {
     const channel = supabase.channel(`presence-${threadId}`, {
       config: { presence: { key: user.id } },
     });
+    presenceChannelRef.current = channel;
     channel
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
@@ -143,7 +145,10 @@ function Thread() {
           await channel.track({ online_at: new Date().toISOString() });
         }
       });
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      presenceChannelRef.current = null;
+      supabase.removeChannel(channel);
+    };
   }, [threadId, user, otherId]);
 
   useEffect(() => {
@@ -154,11 +159,11 @@ function Thread() {
   }, [messagesQuery.data, user, markRead]);
 
   const sendTyping = () => {
-    if (!user) return;
+    if (!user || !presenceChannelRef.current) return;
     const now = Date.now();
     if (now - lastTypingSentRef.current < 1500) return;
     lastTypingSentRef.current = now;
-    supabase.channel(`presence-${threadId}`).send({
+    presenceChannelRef.current.send({
       type: "broadcast",
       event: "typing",
       payload: { userId: user.id },

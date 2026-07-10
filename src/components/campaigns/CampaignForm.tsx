@@ -243,7 +243,7 @@ export function CampaignForm({ initialValues, onSubmit, onCancel, submitLabel = 
   };
 
   const submit = form.handleSubmit(async (values) => {
-    await onSubmit({ ...values, languages, attachments } as CampaignFormValues);
+    await onSubmit({ ...values, languages, attachments } as unknown as CampaignFormValues);
   });
 
   return (

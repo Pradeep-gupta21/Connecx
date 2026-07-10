@@ -44,7 +44,7 @@ function AdminWithdrawals() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("withdrawals")
-        .select("id, amount, currency, method, destination, status, admin_notes, created_at, approved_at, payout_id, payout_ref, user_id, profiles:user_id(display_name, avatar_url)")
+        .select("id, amount, currency, method, destination, status, admin_notes, created_at, approved_at, payout_id, payout_ref, user_id, profiles(display_name, avatar_url)")
         .eq("status", status as any)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });

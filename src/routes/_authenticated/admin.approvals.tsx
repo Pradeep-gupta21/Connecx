@@ -31,7 +31,7 @@ function AdminApprovals() {
       const { data, error } = await supabase
         .from("creator_profiles")
         .select("user_id, headline, niches, approval_status, created_at, profiles!creator_profiles_profile_fkey(display_name, avatar_url, country)")
-        .eq("approval_status", "approved").order("created_at", { ascending: false });
+        .eq("approval_status", "pending").order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },

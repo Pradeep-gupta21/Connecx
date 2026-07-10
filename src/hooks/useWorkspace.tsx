@@ -126,9 +126,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       profile: profileQuery.data ?? null,
       loading:
         profileQuery.isLoading ||
-        rolesQuery.isLoading ||
-        profileQuery.isFetching ||
-        rolesQuery.isFetching,
+        rolesQuery.isLoading,
     }),
     [
       activeRole,
@@ -136,8 +134,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       profileQuery.data,
       profileQuery.isLoading,
       rolesQuery.isLoading,
-      profileQuery.isFetching,
-      rolesQuery.isFetching,
     ]
   );
 

@@ -76,7 +76,7 @@ function AdminPayouts() {
       const { data, error } = await supabase
         .from("payout_methods")
         .select(
-          "id, user_id, method_type, account_holder_name, bank_name, account_number_last4, ifsc, account_type, upi_id, is_default, verification_status, rejection_reason, created_at, profiles:user_id(display_name, avatar_url)",
+          "id, user_id, method_type, account_holder_name, bank_name, account_number_last4, ifsc, account_type, upi_id, is_default, verification_status, rejection_reason, created_at, profiles(display_name, avatar_url)",
         )
         .eq("verification_status", status)
         .order("created_at", { ascending: false });

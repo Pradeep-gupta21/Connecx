@@ -15,25 +15,42 @@ function AuthCallback() {
 
   useEffect(() => {
     (async () => {
-      // Supabase places tokens in the URL hash on verification/OAuth redirects.
-      const hash = window.location.hash.startsWith("#")
-        ? window.location.hash.slice(1)
-        : window.location.hash;
-      const params = new URLSearchParams(hash);
-      const access_token = params.get("access_token");
-      const refresh_token = params.get("refresh_token");
-      const type = params.get("type");
+      const searchParams = new URLSearchParams(window.location.search);
+      const code = searchParams.get("code");
+      const codeType = searchParams.get("type");
 
-      if (access_token && refresh_token) {
-        const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
           toast.error(error.message);
           navigate({ to: "/auth", replace: true });
           return;
         }
-        if (type === "recovery") {
+        if (codeType === "recovery") {
           navigate({ to: "/auth/reset-password", replace: true });
           return;
+        }
+      } else {
+        // Supabase places tokens in the URL hash on verification/OAuth redirects.
+        const hash = window.location.hash.startsWith("#")
+          ? window.location.hash.slice(1)
+          : window.location.hash;
+        const params = new URLSearchParams(hash);
+        const access_token = params.get("access_token");
+        const refresh_token = params.get("refresh_token");
+        const type = params.get("type");
+
+        if (access_token && refresh_token) {
+          const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+          if (error) {
+            toast.error(error.message);
+            navigate({ to: "/auth", replace: true });
+            return;
+          }
+          if (type === "recovery") {
+            navigate({ to: "/auth/reset-password", replace: true });
+            return;
+          }
         }
       }
 
