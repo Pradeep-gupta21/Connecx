@@ -20,7 +20,7 @@ function EditCampaign() {
   const { data, isLoading } = useQuery({
     queryKey: ["campaign-edit", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("campaigns").select("*").eq("id", id).maybeSingle();
+      const { data, error } = await supabase.from("campaigns").select("*").eq("id", id).maybeSingle<any>();
       if (error) throw error;
       return data;
     },
