@@ -74,7 +74,7 @@ function EditCampaign() {
           platform: data.platform ?? "",
           category: data.category ?? "",
           creator_tier: data.creator_tier ?? "",
-          objective: (data.objective as string | undefined) ?? "Brand Awareness",
+          objective: (data.objective as any) ?? "Brand Awareness",
           content_types: Array.isArray(data.content_types) ? (data.content_types as string[]) : [],
           creators_required: (data.creators_required ?? 1) as number,
           accepted_creators_count: (data.accepted_creators_count ?? 0) as number,
