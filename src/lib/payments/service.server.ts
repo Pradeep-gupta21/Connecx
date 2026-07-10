@@ -1377,6 +1377,72 @@ export const PaymentService = {
     });
   },
 
+  /**
+   * Razorpay reported the payout as failed. Restore the creator's available
+   * balance, undo the reserved 'withdrawn' bump, and reverse the ledger.
+   * Idempotent — only acts on withdrawals still in flight.
+   */
+  async markWithdrawalFailed(args: { withdrawalId: string; reason?: string }) {
+    const { data: wd } = await admin
+      .from("withdrawals")
+      .update({
+        status: "failed",
+        failure_reason: args.reason ?? "Payout failed",
+        processed_at: new Date().toISOString(),
+      })
+      .eq("id", args.withdrawalId)
+      .in("status", ["approved", "processing"])
+      .select("id, user_id, amount, currency")
+      .maybeSingle();
+    if (!wd) return;
+
+    const amt = Number(wd.amount);
+    await admin.rpc("ensure_wallet", { _user_id: wd.user_id });
+    const { data: wallet } = await admin
+      .from("wallets")
+      .select("id, available_balance, withdrawn_balance")
+      .eq("user_id", wd.user_id)
+      .single();
+    if (wallet) {
+      await admin.from("wallets").update({
+        available_balance: Number(wallet.available_balance) + amt,
+        withdrawn_balance: Math.max(Number(wallet.withdrawn_balance) - amt, 0),
+      }).eq("id", wallet.id);
+      await admin.from("wallet_transactions").insert({
+        wallet_id: wallet.id,
+        user_id: wd.user_id,
+        type: "adjustment",
+        amount: amt,
+        balance_after: Number(wallet.available_balance) + amt,
+        reference_type: "withdrawal",
+        reference_id: wd.id,
+        description: "Payout failed — funds restored",
+      });
+    }
+
+    await postLedger({
+      event: "withdrawal.failed",
+      amount: amt, currency: (wd.currency as string) ?? "INR",
+      debit: ACCT.platformPayoutsPending, credit: ACCT.userWallet(wd.user_id),
+      debitUser: null, creditUser: wd.user_id,
+      description: "Payout failed — reservation reversed",
+      idempotencyKey: `wd:${wd.id}:failed`,
+    });
+
+    await audit({
+      actorId: null, action: "withdrawal.failed",
+      entityType: "withdrawal", entityId: wd.id,
+      metadata: { reason: args.reason, amount: amt },
+    });
+    await notify({
+      userId: wd.user_id,
+      type: "withdrawal_completed",
+      title: "Payout failed",
+      body: args.reason ?? "Your payout did not go through. The amount has been returned to your wallet.",
+      payload: { withdrawal_id: wd.id },
+    });
+  },
+
   async markWithdrawalCompleted(args: { withdrawalId: string; payoutRef?: string }) {
     // Idempotent: only completes an in-flight withdrawal.
     const { data: wd, error } = await admin
