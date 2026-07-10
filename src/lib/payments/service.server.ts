@@ -346,24 +346,73 @@ export const PaymentService = {
 
     const { data: pay, error } = await admin
       .from("payments")
-      .select("id, amount, currency, payer_id, payee_id, campaign_id, status_v2, type, platform_fee, gst, creator_earnings, contract_id")
+      .select("id, status_v2")
       .eq("razorpay_order_id", input.razorpay_order_id)
       .single();
     if (error || !pay) throw new Error("Payment order not found");
+
+    // Persist signature for auditability (won't change once set)
+    await admin.from("payments")
+      .update({ razorpay_signature: input.razorpay_signature })
+      .eq("id", pay.id);
+
+    return this.finalizeCapture({
+      paymentId: pay.id,
+      razorpayPaymentId: input.razorpay_payment_id,
+      actorId: input.actorId,
+      source: "client",
+    });
+  },
+
+  /**
+   * Idempotent "mark payment as HELD" side-effects. Called from BOTH the
+   * client verifyAndCapture flow and the razorpay webhook safety net so
+   * campaigns activate even if the browser never round-trips back.
+   *
+   * Concurrency-safe via a compare-and-swap on status_v2 IN ('pending','failed').
+   * postLedger uses per-payment idempotency keys, so a duplicate call is a no-op.
+   */
+  async finalizeCapture(input: {
+    paymentId: string;
+    razorpayPaymentId: string;
+    actorId?: string | null;
+    fee?: number;   // in major units (rupees), from webhook
+    tax?: number;
+    source: "client" | "webhook";
+  }): Promise<{ paymentId: string; status: PaymentStatus }> {
+    const { data: pay, error } = await admin
+      .from("payments")
+      .select("id, amount, currency, payer_id, payee_id, campaign_id, status_v2, type, platform_fee, gst, creator_earnings, contract_id")
+      .eq("id", input.paymentId)
+      .single();
+    if (error || !pay) throw new Error("Payment not found");
     if (pay.status_v2 && !["pending", "failed"].includes(pay.status_v2)) {
+      // Already finalized — still safely record razorpay_payment_id + fee/tax.
+      await admin.from("payments").update({
+        razorpay_payment_id: input.razorpayPaymentId,
+        ...(input.fee !== undefined ? { fee: input.fee } : {}),
+        ...(input.tax !== undefined ? { tax: input.tax } : {}),
+      }).eq("id", pay.id);
       return { paymentId: pay.id, status: pay.status_v2 as PaymentStatus };
     }
 
-    // 1) Paid → 2) Held (funds escrowed by platform)
-    await admin.from("payments")
+    // CAS flip pending → held. Losing racer sees rowCount 0 and returns.
+    const { data: flipped } = await admin.from("payments")
       .update({
         status: "held",
         status_v2: "held",
-        razorpay_payment_id: input.razorpay_payment_id,
-        razorpay_signature: input.razorpay_signature,
+        razorpay_payment_id: input.razorpayPaymentId,
+        ...(input.fee !== undefined ? { fee: input.fee } : {}),
+        ...(input.tax !== undefined ? { tax: input.tax } : {}),
         processed_at: new Date().toISOString(),
       })
-      .eq("id", pay.id);
+      .eq("id", pay.id)
+      .in("status_v2", ["pending", "failed"])
+      .select("id")
+      .maybeSingle();
+    if (!flipped) {
+      return { paymentId: pay.id, status: "held" as PaymentStatus };
+    }
 
     // Mark campaign as funded
     if (pay.campaign_id) {
@@ -424,25 +473,24 @@ export const PaymentService = {
     await log({
       paymentId: pay.id,
       actorId: input.actorId,
-      action: "payment.captured",
+      action: `payment.captured.${input.source}`,
       from: "pending",
       to: "held",
-      metadata: { razorpay_payment_id: input.razorpay_payment_id },
+      metadata: { razorpay_payment_id: input.razorpayPaymentId },
     });
     await audit({
       actorId: input.actorId,
       action: "payment.captured",
       entityType: "payment",
       entityId: pay.id,
-      metadata: { campaign_id: pay.campaign_id },
+      metadata: { campaign_id: pay.campaign_id, source: input.source },
     });
 
-    // Notifications
     await notify({
       userId: pay.payer_id,
       type: "payment_success",
       title: "Payment successful",
-      body: `Your campaign is funded. Ref ${input.razorpay_payment_id}.`,
+      body: `Your campaign is funded. Ref ${input.razorpayPaymentId}.`,
       payload: { payment_id: pay.id, campaign_id: pay.campaign_id },
     });
     if (pay.campaign_id) {
