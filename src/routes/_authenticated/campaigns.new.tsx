@@ -62,7 +62,7 @@ function NewCampaign() {
         visibility: values.visibility,
         publication_status: values.publication_status,
         status: values.publication_status === "published" ? "open" : "draft",
-      })
+      } as any)
       .select("id")
       .single();
     if (error) { toast.error(error.message); return; }

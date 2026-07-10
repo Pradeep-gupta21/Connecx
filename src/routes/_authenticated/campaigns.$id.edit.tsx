@@ -20,7 +20,7 @@ function EditCampaign() {
   const { data, isLoading } = useQuery({
     queryKey: ["campaign-edit", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("campaigns").select("*").eq("id", id).maybeSingle();
+      const { data, error } = await supabase.from("campaigns").select("*").eq("id", id).maybeSingle<any>();
       if (error) throw error;
       return data;
     },
@@ -58,7 +58,7 @@ function EditCampaign() {
       visibility: values.visibility,
       publication_status: values.publication_status,
       status: values.publication_status === "published" ? "open" : "draft",
-    }).eq("id", id);
+    } as any).eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("Campaign updated");
     navigate({ to: "/campaigns/$id", params: { id } });
@@ -74,10 +74,10 @@ function EditCampaign() {
           platform: data.platform ?? "",
           category: data.category ?? "",
           creator_tier: data.creator_tier ?? "",
-          objective: (data.objective as string | undefined) ?? "Brand Awareness",
+          objective: (data.objective as any) ?? "Brand Awareness",
           content_types: Array.isArray(data.content_types) ? (data.content_types as string[]) : [],
           creators_required: (data.creators_required ?? 1) as number,
-          accepted_creators_count: (data.accepted_creators_count ?? 0) as number,
+          ...(data.accepted_creators_count !== undefined ? { accepted_creators_count: (data.accepted_creators_count ?? 0) as number } : {}),
           product_provided: Boolean(data.product_provided),
           product_name: data.product_name ?? "",
           product_value: (data.product_value ?? "") as any,
@@ -95,7 +95,7 @@ function EditCampaign() {
           attachments: ((data.attachments ?? []) as any),
           visibility: (data.visibility as any) ?? "public",
           publication_status: (data.publication_status as any) ?? (data.status === "open" ? "published" : "draft"),
-        }}
+        } as any}
         onSubmit={onSubmit}
         onCancel={() => navigate({ to: "/campaigns/$id", params: { id } })}
         submitLabel="Save changes"
