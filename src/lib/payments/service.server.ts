@@ -202,12 +202,16 @@ export const PaymentService = {
   }): Promise<CreateOrderResult & { breakdown: FeeBreakdown }> {
     const { data: c, error } = await admin
       .from("campaigns")
-      .select("id, advertiser_id, title, budget_max, budget_min, platform_fee_pct, gst_pct, funded, status")
+      .select("id, advertiser_id, title, budget_max, budget_min, platform_fee_pct, gst_pct, funded, status, deleted_at")
       .eq("id", input.campaignId)
       .single();
     if (error || !c) throw new Error("Campaign not found");
+    if (c.deleted_at) throw new Error("Campaign has been deleted");
     if (c.advertiser_id !== input.payerId) throw new Error("Only the campaign owner can fund it");
     if (c.funded) throw new Error("Campaign is already funded");
+    if (c.status && !["draft", "open"].includes(c.status as string)) {
+      throw new Error(`Cannot fund a ${c.status} campaign`);
+    }
 
     const budget = Number(c.budget_max ?? c.budget_min ?? 0);
     if (!budget || budget <= 0) throw new Error("Set a campaign budget before funding");
