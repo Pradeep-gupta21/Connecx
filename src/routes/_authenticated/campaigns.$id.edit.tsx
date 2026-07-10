@@ -95,7 +95,7 @@ function EditCampaign() {
           attachments: ((data.attachments ?? []) as any),
           visibility: (data.visibility as any) ?? "public",
           publication_status: (data.publication_status as any) ?? (data.status === "open" ? "published" : "draft"),
-        }}
+        } as any}
         onSubmit={onSubmit}
         onCancel={() => navigate({ to: "/campaigns/$id", params: { id } })}
         submitLabel="Save changes"
