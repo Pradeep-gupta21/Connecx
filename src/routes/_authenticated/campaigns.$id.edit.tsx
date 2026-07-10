@@ -58,7 +58,7 @@ function EditCampaign() {
       visibility: values.visibility,
       publication_status: values.publication_status,
       status: values.publication_status === "published" ? "open" : "draft",
-    }).eq("id", id);
+    } as any).eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("Campaign updated");
     navigate({ to: "/campaigns/$id", params: { id } });
