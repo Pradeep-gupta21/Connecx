@@ -179,7 +179,7 @@ const parseSelectionValue = (value?: string | string[] | null) => {
 
 export function CampaignForm({ initialValues, onSubmit, onCancel, submitLabel = "Save campaign" }: CampaignFormProps) {
   const form = useForm<z.infer<typeof schema>>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as any,
     defaultValues: {
       title: initialValues?.title ?? "",
       brief: initialValues?.brief ?? "",
