@@ -202,12 +202,16 @@ export const PaymentService = {
   }): Promise<CreateOrderResult & { breakdown: FeeBreakdown }> {
     const { data: c, error } = await admin
       .from("campaigns")
-      .select("id, advertiser_id, title, budget_max, budget_min, platform_fee_pct, gst_pct, funded, status")
+      .select("id, advertiser_id, title, budget_max, budget_min, platform_fee_pct, gst_pct, funded, status, deleted_at")
       .eq("id", input.campaignId)
       .single();
     if (error || !c) throw new Error("Campaign not found");
+    if (c.deleted_at) throw new Error("Campaign has been deleted");
     if (c.advertiser_id !== input.payerId) throw new Error("Only the campaign owner can fund it");
     if (c.funded) throw new Error("Campaign is already funded");
+    if (c.status && !["draft", "open"].includes(c.status as string)) {
+      throw new Error(`Cannot fund a ${c.status} campaign`);
+    }
 
     const budget = Number(c.budget_max ?? c.budget_min ?? 0);
     if (!budget || budget <= 0) throw new Error("Set a campaign budget before funding");
@@ -346,24 +350,73 @@ export const PaymentService = {
 
     const { data: pay, error } = await admin
       .from("payments")
-      .select("id, amount, currency, payer_id, payee_id, campaign_id, status_v2, type, platform_fee, gst, creator_earnings, contract_id")
+      .select("id, status_v2")
       .eq("razorpay_order_id", input.razorpay_order_id)
       .single();
     if (error || !pay) throw new Error("Payment order not found");
+
+    // Persist signature for auditability (won't change once set)
+    await admin.from("payments")
+      .update({ razorpay_signature: input.razorpay_signature })
+      .eq("id", pay.id);
+
+    return this.finalizeCapture({
+      paymentId: pay.id,
+      razorpayPaymentId: input.razorpay_payment_id,
+      actorId: input.actorId,
+      source: "client",
+    });
+  },
+
+  /**
+   * Idempotent "mark payment as HELD" side-effects. Called from BOTH the
+   * client verifyAndCapture flow and the razorpay webhook safety net so
+   * campaigns activate even if the browser never round-trips back.
+   *
+   * Concurrency-safe via a compare-and-swap on status_v2 IN ('pending','failed').
+   * postLedger uses per-payment idempotency keys, so a duplicate call is a no-op.
+   */
+  async finalizeCapture(input: {
+    paymentId: string;
+    razorpayPaymentId: string;
+    actorId?: string | null;
+    fee?: number;   // in major units (rupees), from webhook
+    tax?: number;
+    source: "client" | "webhook";
+  }): Promise<{ paymentId: string; status: PaymentStatus }> {
+    const { data: pay, error } = await admin
+      .from("payments")
+      .select("id, amount, currency, payer_id, payee_id, campaign_id, status_v2, type, platform_fee, gst, creator_earnings, contract_id")
+      .eq("id", input.paymentId)
+      .single();
+    if (error || !pay) throw new Error("Payment not found");
     if (pay.status_v2 && !["pending", "failed"].includes(pay.status_v2)) {
+      // Already finalized — still safely record razorpay_payment_id + fee/tax.
+      await admin.from("payments").update({
+        razorpay_payment_id: input.razorpayPaymentId,
+        ...(input.fee !== undefined ? { fee: input.fee } : {}),
+        ...(input.tax !== undefined ? { tax: input.tax } : {}),
+      }).eq("id", pay.id);
       return { paymentId: pay.id, status: pay.status_v2 as PaymentStatus };
     }
 
-    // 1) Paid → 2) Held (funds escrowed by platform)
-    await admin.from("payments")
+    // CAS flip pending → held. Losing racer sees rowCount 0 and returns.
+    const { data: flipped } = await admin.from("payments")
       .update({
         status: "held",
         status_v2: "held",
-        razorpay_payment_id: input.razorpay_payment_id,
-        razorpay_signature: input.razorpay_signature,
+        razorpay_payment_id: input.razorpayPaymentId,
+        ...(input.fee !== undefined ? { fee: input.fee } : {}),
+        ...(input.tax !== undefined ? { tax: input.tax } : {}),
         processed_at: new Date().toISOString(),
       })
-      .eq("id", pay.id);
+      .eq("id", pay.id)
+      .in("status_v2", ["pending", "failed"])
+      .select("id")
+      .maybeSingle();
+    if (!flipped) {
+      return { paymentId: pay.id, status: "held" as PaymentStatus };
+    }
 
     // Mark campaign as funded
     if (pay.campaign_id) {
@@ -424,25 +477,24 @@ export const PaymentService = {
     await log({
       paymentId: pay.id,
       actorId: input.actorId,
-      action: "payment.captured",
+      action: `payment.captured.${input.source}`,
       from: "pending",
       to: "held",
-      metadata: { razorpay_payment_id: input.razorpay_payment_id },
+      metadata: { razorpay_payment_id: input.razorpayPaymentId },
     });
     await audit({
       actorId: input.actorId,
       action: "payment.captured",
       entityType: "payment",
       entityId: pay.id,
-      metadata: { campaign_id: pay.campaign_id },
+      metadata: { campaign_id: pay.campaign_id, source: input.source },
     });
 
-    // Notifications
     await notify({
       userId: pay.payer_id,
       type: "payment_success",
       title: "Payment successful",
-      body: `Your campaign is funded. Ref ${input.razorpay_payment_id}.`,
+      body: `Your campaign is funded. Ref ${input.razorpayPaymentId}.`,
       payload: { payment_id: pay.id, campaign_id: pay.campaign_id },
     });
     if (pay.campaign_id) {
@@ -752,7 +804,7 @@ export const PaymentService = {
   }) {
     const { data: pay, error } = await admin
       .from("payments")
-      .select("id, amount, currency, payer_id, payee_id, campaign_id, razorpay_payment_id, status_v2")
+      .select("id, amount, creator_earnings, currency, payer_id, payee_id, campaign_id, razorpay_payment_id, status_v2")
       .eq("id", args.paymentId)
       .single();
     if (error || !pay) throw new Error("Payment not found");
@@ -761,8 +813,17 @@ export const PaymentService = {
       throw new Error(`Cannot refund from ${pay.status_v2 ?? "unknown"}`);
     }
 
-    const refundAmount = args.amount ?? Number(pay.amount);
-    if (refundAmount <= 0 || refundAmount > Number(pay.amount)) throw new Error("Invalid refund amount");
+    // Cap refund at the creator earnings component. Platform fee + GST are
+    // non-refundable revenue; refunding beyond that would leave the ledger
+    // and Razorpay refund amount out of sync.
+    const refundCap = Number(pay.creator_earnings ?? pay.amount ?? 0);
+    const refundAmount = args.amount ?? refundCap;
+    if (refundAmount <= 0) throw new Error("Invalid refund amount");
+    if (refundAmount > refundCap) {
+      throw new Error(
+        `Refund cannot exceed the creator earnings portion (₹${refundCap.toLocaleString("en-IN")}). Platform fee and GST are non-refundable.`,
+      );
+    }
 
     const { data: refundRow, error: rErr } = await admin
       .from("refunds")
@@ -1019,7 +1080,54 @@ export const PaymentService = {
     });
   },
 
+  /**
+   * Razorpay reported the refund as failed. Roll the refund row to 'failed'
+   * and restore the payment's status_v2 so it can be retried. Idempotent.
+   */
+  async markRefundFailed(args: { refundId: string; reason?: string }) {
+    const { data: refund } = await admin
+      .from("refunds").select("id, payment_id, amount, requested_by, status")
+      .eq("id", args.refundId).single();
+    if (!refund) return;
+    if (refund.status === "failed" || refund.status === "completed") return;
+
+    await admin.from("refunds")
+      .update({ status: "failed", failure_reason: args.reason ?? "Razorpay refund failed" })
+      .eq("id", refund.id);
+
+    // If the payment was flipped to refund_pending, put it back to held so it
+    // can be released or refunded again. Only touch payments still in that state.
+    const { data: pay } = await admin
+      .from("payments")
+      .select("id, status_v2")
+      .eq("id", refund.payment_id).single();
+    if (pay?.status_v2 === "refund_pending") {
+      await admin.from("payments")
+        .update({ status: "held", status_v2: "held" })
+        .eq("id", pay.id);
+      await log({
+        paymentId: pay.id, action: "refund.failed",
+        from: "refund_pending", to: "held",
+        metadata: { refund_id: refund.id, reason: args.reason },
+      });
+    } else {
+      await log({
+        paymentId: refund.payment_id, action: "refund.failed",
+        metadata: { refund_id: refund.id, reason: args.reason },
+      });
+    }
+
+    await notify({
+      userId: refund.requested_by,
+      type: "refund_rejected",
+      title: "Refund failed",
+      body: args.reason ?? "The payment provider could not process this refund. Please try again or contact support.",
+      payload: { payment_id: refund.payment_id, refund_id: refund.id },
+    });
+  },
+
   // -------- Withdrawals (Creator → Admin approve → Payout) --------
+
 
   async requestWithdrawal(args: {
     userId: string;
@@ -1265,6 +1373,72 @@ export const PaymentService = {
       type: "withdrawal_completed",
       title: "Withdrawal rejected",
       body: args.reason ?? "Your withdrawal was rejected. Funds returned to wallet.",
+      payload: { withdrawal_id: wd.id },
+    });
+  },
+
+  /**
+   * Razorpay reported the payout as failed. Restore the creator's available
+   * balance, undo the reserved 'withdrawn' bump, and reverse the ledger.
+   * Idempotent — only acts on withdrawals still in flight.
+   */
+  async markWithdrawalFailed(args: { withdrawalId: string; reason?: string }) {
+    const { data: wd } = await admin
+      .from("withdrawals")
+      .update({
+        status: "failed",
+        failure_reason: args.reason ?? "Payout failed",
+        processed_at: new Date().toISOString(),
+      })
+      .eq("id", args.withdrawalId)
+      .in("status", ["approved", "processing"])
+      .select("id, user_id, amount, currency")
+      .maybeSingle();
+    if (!wd) return;
+
+    const amt = Number(wd.amount);
+    await admin.rpc("ensure_wallet", { _user_id: wd.user_id });
+    const { data: wallet } = await admin
+      .from("wallets")
+      .select("id, available_balance, withdrawn_balance")
+      .eq("user_id", wd.user_id)
+      .single();
+    if (wallet) {
+      await admin.from("wallets").update({
+        available_balance: Number(wallet.available_balance) + amt,
+        withdrawn_balance: Math.max(Number(wallet.withdrawn_balance) - amt, 0),
+      }).eq("id", wallet.id);
+      await admin.from("wallet_transactions").insert({
+        wallet_id: wallet.id,
+        user_id: wd.user_id,
+        type: "adjustment",
+        amount: amt,
+        balance_after: Number(wallet.available_balance) + amt,
+        reference_type: "withdrawal",
+        reference_id: wd.id,
+        description: "Payout failed — funds restored",
+      });
+    }
+
+    await postLedger({
+      event: "withdrawal.failed",
+      amount: amt, currency: (wd.currency as string) ?? "INR",
+      debit: ACCT.platformPayoutsPending, credit: ACCT.userWallet(wd.user_id),
+      debitUser: null, creditUser: wd.user_id,
+      description: "Payout failed — reservation reversed",
+      idempotencyKey: `wd:${wd.id}:failed`,
+    });
+
+    await audit({
+      actorId: null, action: "withdrawal.failed",
+      entityType: "withdrawal", entityId: wd.id,
+      metadata: { reason: args.reason, amount: amt },
+    });
+    await notify({
+      userId: wd.user_id,
+      type: "withdrawal_completed",
+      title: "Payout failed",
+      body: args.reason ?? "Your payout did not go through. The amount has been returned to your wallet.",
       payload: { withdrawal_id: wd.id },
     });
   },

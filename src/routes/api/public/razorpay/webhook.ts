@@ -38,35 +38,28 @@ export const Route = createFileRoute("/api/public/razorpay/webhook")({
 
         const eventId = event.id ?? `${event.event}:${event.created_at ?? Date.now()}`;
 
-        const { data: existing } = await admin
+        // Upsert dedupe row — race-safe: concurrent deliveries never 500
+        // each other; the existing row's `processed` flag decides work.
+        const { data: upserted, error: upErr } = await admin
           .from("payment_webhooks")
-          .select("id, processed")
-          .eq("provider", "razorpay")
-          .eq("event_id", eventId)
-          .maybeSingle();
-
-        let webhookRowId: string;
-        if (existing) {
-          if (existing.processed) return new Response("ok", { status: 200 });
-          webhookRowId = existing.id;
-        } else {
-          const { data: inserted, error: insErr } = await admin
-            .from("payment_webhooks")
-            .insert({
+          .upsert(
+            {
               provider: "razorpay",
               event_id: eventId,
               event_type: event.event,
               signature,
               payload: event,
-            })
-            .select("id")
-            .single();
-          if (insErr || !inserted) {
-            console.error("[razorpay-webhook] persist failed", insErr);
-            return new Response("persist failed", { status: 500 });
-          }
-          webhookRowId = inserted.id;
+            },
+            { onConflict: "provider,event_id", ignoreDuplicates: false },
+          )
+          .select("id, processed")
+          .single();
+        if (upErr || !upserted) {
+          console.error("[razorpay-webhook] persist failed", upErr);
+          return new Response("persist failed", { status: 500 });
         }
+        if (upserted.processed) return new Response("ok", { status: 200 });
+        const webhookRowId = upserted.id;
 
         try {
           await handleEvent(event, { admin, PaymentService });
@@ -113,21 +106,16 @@ async function handleEvent(
         .eq("razorpay_order_id", pay.order_id)
         .maybeSingle();
       if (!row) return;
-      if (row.status_v2 === "held" || row.status_v2 === "released") return;
-      // Delegate to PaymentService.verifyAndCapture-like path via direct update;
-      // most captures come through the client callback first. This is a safety net.
-      await admin
-        .from("payments")
-        .update({
-          fee: (pay.fee ?? 0) / 100,
-          tax: (pay.tax ?? 0) / 100,
-          razorpay_payment_id: pay.id,
-        })
-        .eq("id", row.id);
-      await PaymentService._log({
+      // Safety net for missed / lost client callback: run the same held +
+      // ledger + campaign-funded + notify flow. finalizeCapture is CAS-guarded
+      // and per-payment idempotent, so this is a no-op when the client already
+      // finalized the payment.
+      await PaymentService.finalizeCapture({
         paymentId: row.id,
-        action: "webhook.payment.captured",
-        metadata: { razorpay_payment_id: pay.id },
+        razorpayPaymentId: pay.id,
+        fee: (pay.fee ?? 0) / 100,
+        tax: (pay.tax ?? 0) / 100,
+        source: "webhook",
       });
       return;
     }
@@ -173,6 +161,23 @@ async function handleEvent(
       await PaymentService.markRefundCompleted({ refundId: refundRow.id });
       return;
     }
+    case "refund.failed": {
+      const refund = payload.refund?.entity as
+        | { id: string; payment_id: string; error_description?: string; status_details?: { reason?: string } }
+        | undefined;
+      if (!refund) return;
+      const { data: refundRow } = await admin
+        .from("refunds")
+        .select("id")
+        .eq("razorpay_refund_id", refund.id)
+        .maybeSingle();
+      if (!refundRow) return;
+      await PaymentService.markRefundFailed({
+        refundId: refundRow.id,
+        reason: refund.error_description ?? refund.status_details?.reason,
+      });
+      return;
+    }
     case "payout.processed": {
       const payout = payload.payout?.entity as
         | { id: string; amount: number; reference_id?: string; status: string }
@@ -188,6 +193,24 @@ async function handleEvent(
       await PaymentService.markWithdrawalCompleted({
         withdrawalId: wd.id,
         payoutRef: payout.id,
+      });
+      return;
+    }
+    case "payout.failed":
+    case "payout.reversed": {
+      const payout = payload.payout?.entity as
+        | { id: string; failure_reason?: string; status_details?: { reason?: string } }
+        | undefined;
+      if (!payout) return;
+      const { data: wd } = await admin
+        .from("withdrawals")
+        .select("id")
+        .or(`payout_id.eq.${payout.id},razorpay_payout_id.eq.${payout.id}`)
+        .maybeSingle();
+      if (!wd) return;
+      await PaymentService.markWithdrawalFailed({
+        withdrawalId: wd.id,
+        reason: payout.failure_reason ?? payout.status_details?.reason,
       });
       return;
     }
