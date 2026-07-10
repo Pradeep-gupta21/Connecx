@@ -1080,7 +1080,52 @@ export const PaymentService = {
     });
   },
 
-  // -------- Withdrawals (Creator → Admin approve → Payout) --------
+  /**
+   * Razorpay reported the refund as failed. Roll the refund row to 'failed'
+   * and restore the payment's status_v2 so it can be retried. Idempotent.
+   */
+  async markRefundFailed(args: { refundId: string; reason?: string }) {
+    const { data: refund } = await admin
+      .from("refunds").select("id, payment_id, amount, requested_by, status")
+      .eq("id", args.refundId).single();
+    if (!refund) return;
+    if (refund.status === "failed" || refund.status === "completed") return;
+
+    await admin.from("refunds")
+      .update({ status: "failed", failure_reason: args.reason ?? "Razorpay refund failed" })
+      .eq("id", refund.id);
+
+    // If the payment was flipped to refund_pending, put it back to held so it
+    // can be released or refunded again. Only touch payments still in that state.
+    const { data: pay } = await admin
+      .from("payments")
+      .select("id, status_v2")
+      .eq("id", refund.payment_id).single();
+    if (pay?.status_v2 === "refund_pending") {
+      await admin.from("payments")
+        .update({ status: "held", status_v2: "held" })
+        .eq("id", pay.id);
+      await log({
+        paymentId: pay.id, action: "refund.failed",
+        from: "refund_pending", to: "held",
+        metadata: { refund_id: refund.id, reason: args.reason },
+      });
+    } else {
+      await log({
+        paymentId: refund.payment_id, action: "refund.failed",
+        metadata: { refund_id: refund.id, reason: args.reason },
+      });
+    }
+
+    await notify({
+      userId: refund.requested_by,
+      type: "refund_rejected",
+      title: "Refund failed",
+      body: args.reason ?? "The payment provider could not process this refund. Please try again or contact support.",
+      payload: { payment_id: refund.payment_id, refund_id: refund.id },
+    });
+  },
+
 
   async requestWithdrawal(args: {
     userId: string;
