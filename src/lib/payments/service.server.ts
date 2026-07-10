@@ -804,7 +804,7 @@ export const PaymentService = {
   }) {
     const { data: pay, error } = await admin
       .from("payments")
-      .select("id, amount, currency, payer_id, payee_id, campaign_id, razorpay_payment_id, status_v2")
+      .select("id, amount, creator_earnings, currency, payer_id, payee_id, campaign_id, razorpay_payment_id, status_v2")
       .eq("id", args.paymentId)
       .single();
     if (error || !pay) throw new Error("Payment not found");
@@ -813,8 +813,17 @@ export const PaymentService = {
       throw new Error(`Cannot refund from ${pay.status_v2 ?? "unknown"}`);
     }
 
-    const refundAmount = args.amount ?? Number(pay.amount);
-    if (refundAmount <= 0 || refundAmount > Number(pay.amount)) throw new Error("Invalid refund amount");
+    // Cap refund at the creator earnings component. Platform fee + GST are
+    // non-refundable revenue; refunding beyond that would leave the ledger
+    // and Razorpay refund amount out of sync.
+    const refundCap = Number(pay.creator_earnings ?? pay.amount ?? 0);
+    const refundAmount = args.amount ?? refundCap;
+    if (refundAmount <= 0) throw new Error("Invalid refund amount");
+    if (refundAmount > refundCap) {
+      throw new Error(
+        `Refund cannot exceed the creator earnings portion (₹${refundCap.toLocaleString("en-IN")}). Platform fee and GST are non-refundable.`,
+      );
+    }
 
     const { data: refundRow, error: rErr } = await admin
       .from("refunds")
