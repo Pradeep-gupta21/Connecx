@@ -14,8 +14,10 @@ import {
   TrendingUp,
   CheckCircle2,
   X,
+  Bell,
+  Pin,
 } from "lucide-react";
-import { format, subDays } from "date-fns";
+import { format, subDays, formatDistanceToNow } from "date-fns";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -54,6 +56,21 @@ export function CreatorDashboardView() {
   const { profile } = useWorkspace();
   const qc = useQueryClient();
   const navigate = useNavigate();
+
+  const { data: notifications = [], isLoading: notifsLoading } = useQuery({
+    queryKey: ["recent-notifications", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   // -------- Realtime: refresh dashboard slices + premium toasts --------
   useEffect(() => {
@@ -421,6 +438,49 @@ export function CreatorDashboardView() {
             ))}
           </div>
         )}
+      </section>
+
+      <section className="grid lg:grid-cols-2 gap-6 mt-10">
+        <div className="surface-card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-base font-semibold flex items-center gap-2">
+              <Bell className="h-4.5 w-4.5 text-accent" />
+              Recent activity
+            </h2>
+            <Link to="/notifications" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+              See all <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          {notifsLoading ? (
+            <div className="space-y-3">
+              <div className="h-10 w-full bg-secondary rounded animate-pulse" />
+              <div className="h-10 w-full bg-secondary rounded animate-pulse" />
+              <div className="h-10 w-full bg-secondary rounded animate-pulse" />
+            </div>
+          ) : notifications.length === 0 ? (
+            <EmptyState icon={Bell} title="No activity yet" description="Your alerts will show up here." />
+          ) : (
+            <ul className="space-y-4">
+              {notifications.map((n: any) => {
+                const isMsg = n.type === "message" || n.type === "mention";
+                const isPin = n.type === "pin_update";
+                const Icon = isMsg ? MessageSquare : isPin ? Pin : Bell;
+                return (
+                  <li key={n.id} className="flex gap-3 text-sm">
+                    <div className="p-2 rounded-lg bg-secondary h-fit">
+                      <Icon className="h-4 w-4 text-foreground/80" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground leading-tight">{n.title}</p>
+                      {n.body && <p className="text-xs text-muted-foreground truncate mt-0.5">{n.body}</p>}
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       </section>
     </div>
   );
