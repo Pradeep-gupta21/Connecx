@@ -164,9 +164,30 @@ function CreatorProfilePage() {
   const followerCountValue = connectedSocials.length > 0
     ? (socialFollowerTotal > 0 ? socialFollowerTotal : (typeof c.follower_count === "number" && c.follower_count > 0 ? c.follower_count : null))
     : (typeof c.follower_count === "number" && c.follower_count > 0 ? c.follower_count : null);
-  const followersDisplay = followerCountValue ? formatFollowerCount(followerCountValue) : "Not Connected";
-  const followersSubtitle = connectedSocials.length === 0 ? "Connect your social accounts to display follower count." : undefined;
-  const followersValue = followersDisplay ?? "Not Connected";
+  
+  const followersDisplay = followerCountValue ? formatFollowerCount(followerCountValue) : "—";
+  const isOwner = user?.id === id;
+  const followersSubtitle = isOwner && connectedSocials.length === 0 && !followerCountValue
+    ? "Connect your social accounts to display follower count."
+    : undefined;
+  const followersValue = followersDisplay;
+
+  // Calculate Average Engagement Rate from connected socials
+  const connectedSocialsWithER = connectedSocials.filter(
+    (s: any) => typeof s.engagement_rate === "number" && s.engagement_rate > 0
+  );
+  const avgEngagementRate = connectedSocialsWithER.length > 0
+    ? connectedSocialsWithER.reduce((sum: number, s: any) => sum + s.engagement_rate, 0) / connectedSocialsWithER.length
+    : null;
+  
+  const engagementRateValue = avgEngagementRate ?? analytics.engagement_rate ?? null;
+  const formatEngagementRate = (val: number | null) => {
+    if (val === null) return "—";
+    const percent = val <= 1.0 ? val * 100 : val;
+    return `${percent.toFixed(2)}%`;
+  };
+  const engagementDisplay = formatEngagementRate(engagementRateValue);
+
   const availabilityLabel = c.availability_status === "unavailable"
     ? "Fully booked"
     : c.availability_status === "limited" ? "Limited availability" : "Available for work";
@@ -197,12 +218,12 @@ function CreatorProfilePage() {
             location={p?.location}
             meta={[
               (c.categories ?? [])[0],
-              followersDisplay !== "Not Connected" ? `${followersDisplay} followers` : null,
+              followersDisplay !== "—" ? `${followersDisplay} followers` : null,
               availabilityLabel,
             ].filter(Boolean).join(" • ")}
             bio={p?.bio}
             verified={!!c.is_verified}
-            isOwner={user?.id === id}
+            isOwner={isOwner}
             actions={
               <Button onClick={startConversation} className="gap-2">
                 <MessageSquare className="h-4 w-4" /> Message
@@ -223,7 +244,7 @@ function CreatorProfilePage() {
             className="grid grid-cols-2 md:grid-cols-4 gap-4"
           >
             <StatBlock icon={Users} label="Followers" value={followersValue} subtitle={followersSubtitle} />
-            <StatBlock icon={TrendingUp} label="Engagement" value={analytics.engagement_rate ? `${analytics.engagement_rate}%` : "—"} />
+            <StatBlock icon={TrendingUp} label="Engagement" value={engagementDisplay} />
             <StatBlock icon={Sparkles} label="Rate" value={c.rate_min || c.rate_max ? `₹${c.rate_min ?? "?"}–${c.rate_max ?? "?"}` : "—"} />
             <StatBlock icon={CheckCircle2} label="Profile score" value={`${completion}%`} accent />
           </motion.div>

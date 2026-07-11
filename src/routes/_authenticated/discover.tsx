@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, Instagram, Youtube, Twitter, Globe, Music2 } from "lucide-react";
 import { SmartAvatar } from "@/components/profile/SmartAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,24 @@ export const Route = createFileRoute("/_authenticated/discover")({
 });
 
 const PAGE_SIZE = 24;
+
+const socialIcons: Record<string, any> = {
+  instagram: Instagram,
+  youtube: Youtube,
+  twitter: Twitter,
+  tiktok: Music2,
+  website: Globe,
+};
+
+function formatFollowers(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
+  if (value < 1000) return value.toString();
+  const units = ["", "K", "M", "B"];
+  const unitIndex = Math.min(Math.floor(Math.log10(value) / 3), units.length - 1);
+  const scaled = value / 1000 ** unitIndex;
+  const precision = scaled < 10 && unitIndex > 0 ? 1 : 0;
+  return `${scaled.toFixed(precision)}${units[unitIndex]}`;
+}
 
 // Debounce hook (avoid firing on every keystroke)
 function useDebounced<T>(value: T, ms = 300): T {
@@ -44,6 +62,13 @@ type CreatorRow = {
   location: string | null;
   bio: string | null;
   updated_at: string | null;
+  socials: Array<{
+    platform: string;
+    handle: string;
+    follower_count: number | null;
+    engagement_rate: number | null;
+    is_primary: boolean;
+  }> | null;
   total_count: number;
 };
 
@@ -304,23 +329,30 @@ function Discover() {
               )}
 
 
-              {(c.rate_min || c.rate_max) && (
-                <p className="
-                  mt-4
-                  text-xs
-                  font-medium
-                  tabular-nums
-                ">
-                  ₹{c.rate_min ?? "?"} – ₹{c.rate_max ?? "?"}
-                  {" "}
-                  <span className="
-                    text-muted-foreground
-                    font-normal
-                  ">
-                    / campaign
-                  </span>
-                </p>
-              )}
+              <div className="mt-4 flex items-center justify-between">
+                {(c.rate_min || c.rate_max) ? (
+                  <p className="text-xs font-semibold tabular-nums text-foreground">
+                    ₹{c.rate_min ?? "?"} – ₹{c.rate_max ?? "?"}{" "}
+                    <span className="text-muted-foreground font-normal text-[10px]">/ campaign</span>
+                  </p>
+                ) : (
+                  <div />
+                )}
+
+                {c.socials && c.socials.length > 0 && (
+                  (() => {
+                    const primarySocial = c.socials[0];
+                    const Icon = socialIcons[primarySocial.platform] ?? Globe;
+                    const formatted = formatFollowers(primarySocial.follower_count);
+                    return (
+                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-semibold bg-secondary/80 py-1 px-2.5 rounded-full border border-border/40">
+                        <Icon className="h-3 w-3 text-muted-foreground/80" />
+                        <span>{formatted ? `${formatted}` : `@${primarySocial.handle}`}</span>
+                      </div>
+                    );
+                  })()
+                )}
+              </div>
 
             </Link>
           ))}

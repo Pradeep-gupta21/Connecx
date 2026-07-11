@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { Loader2, MapPin } from "lucide-react";
+import { Loader2, MapPin, Instagram, Youtube, Twitter, Globe, Music2, Plus, Trash, Star } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -233,8 +234,9 @@ function SettingsPage() {
         </TabsContent>
 
         {roles.includes("creator") && (
-            <TabsContent value="creator" className="mt-4 sm:mt-6">
+            <TabsContent value="creator" className="mt-4 sm:mt-6 space-y-6">
               <CreatorSettings />
+              <SocialAccountsManager />
             </TabsContent>
           )}
 
@@ -272,6 +274,203 @@ function SettingsPage() {
           </div>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function SocialAccountsManager() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const [platform, setPlatform] = useState("instagram");
+  const [handle, setHandle] = useState("");
+  const [followers, setFollowers] = useState("");
+  const [er, setEr] = useState("");
+  const [url, setUrl] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const { data: socials, isLoading } = useQuery({
+    queryKey: ["creator_socials", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase.from("social_accounts").select("*").eq("user_id", user!.id).is("deleted_at", null);
+      return data ?? [];
+    },
+  });
+
+  const handleAdd = async () => {
+    if (!user || !handle) return;
+    setBusy(true);
+    const isFirst = !socials || socials.length === 0;
+    const { error } = await supabase.from("social_accounts").insert({
+      user_id: user.id,
+      platform: platform as any,
+      handle: handle.trim(),
+      follower_count: followers ? Number(followers) : null,
+      engagement_rate: er ? Number(er) / 100 : null,
+      url: url.trim() || null,
+      is_primary: isFirst,
+    });
+    setBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Social account added");
+    setHandle("");
+    setFollowers("");
+    setEr("");
+    setUrl("");
+    setShowAddForm(false);
+    qc.invalidateQueries({ queryKey: ["creator_socials", user.id] });
+  };
+
+  const handleSetPrimary = async (accountId: string) => {
+    if (!user) return;
+    const { error: err1 } = await supabase.from("social_accounts").update({ is_primary: false }).eq("user_id", user.id);
+    if (err1) {
+      toast.error(err1.message);
+      return;
+    }
+    const { error: err2 } = await supabase.from("social_accounts").update({ is_primary: true }).eq("id", accountId);
+    if (err2) {
+      toast.error(err2.message);
+      return;
+    }
+    toast.success("Primary account updated");
+    qc.invalidateQueries({ queryKey: ["creator_socials", user.id] });
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!user) return;
+    const { error } = await supabase.from("social_accounts").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Social account removed");
+    qc.invalidateQueries({ queryKey: ["creator_socials", user.id] });
+  };
+
+  const socialIcons: Record<string, any> = {
+    instagram: Instagram,
+    youtube: Youtube,
+    twitter: Twitter,
+    tiktok: Music2,
+    website: Globe,
+  };
+
+  if (isLoading) return <div className="flex justify-center p-6"><Loader2 className="h-5 w-5 animate-spin" /></div>;
+
+  return (
+    <div className="surface-card p-6 space-y-6">
+      <div className="flex items-center justify-between border-b pb-4 border-border/40">
+        <div>
+          <h3 className="font-semibold text-lg">Social Accounts</h3>
+          <p className="text-sm text-muted-foreground">Link your platforms to showcase your audience size and engagement.</p>
+        </div>
+        {!showAddForm && (
+          <Button onClick={() => setShowAddForm(true)} size="sm" className="gap-1">
+            <Plus className="h-4 w-4" /> Add
+          </Button>
+        )}
+      </div>
+
+      {showAddForm && (
+        <div className="p-4 rounded-xl border border-border/80 bg-secondary/20 space-y-4">
+          <h4 className="font-medium text-sm">Add Social Media</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Platform</Label>
+              <Select value={platform} onValueChange={setPlatform}>
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="Select platform" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="instagram">Instagram</SelectItem>
+                  <SelectItem value="youtube">YouTube</SelectItem>
+                  <SelectItem value="tiktok">TikTok</SelectItem>
+                  <SelectItem value="twitter">Twitter</SelectItem>
+                  <SelectItem value="website">Website</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Handle / Name</Label>
+              <Input placeholder="e.g. ishan_gupta" value={handle} onChange={(e) => setHandle(e.target.value)} className="bg-background" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Follower Count</Label>
+              <Input type="number" min="0" placeholder="e.g. 50000" value={followers} onChange={(e) => setFollowers(e.target.value)} className="bg-background" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Engagement Rate (%)</Label>
+              <Input type="number" step="0.01" min="0" placeholder="e.g. 4.5" value={er} onChange={(e) => setEr(e.target.value)} className="bg-background" />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Profile URL (Optional)</Label>
+              <Input placeholder="https://..." value={url} onChange={(e) => setUrl(e.target.value)} className="bg-background" />
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end pt-2">
+            <Button variant="ghost" size="sm" onClick={() => setShowAddForm(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleAdd} disabled={busy || !handle}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Link account"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {(!socials || socials.length === 0) ? (
+        <div className="text-center py-8 text-muted-foreground text-sm border-2 border-dashed rounded-xl border-border/40">
+          No social accounts linked yet. Link one to display metrics on your profile.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {socials.map((s) => {
+            const Icon = socialIcons[s.platform] ?? Globe;
+            const erPercent = s.engagement_rate ? (Number(s.engagement_rate) * 100).toFixed(2) : null;
+            return (
+              <div key={s.id} className="flex items-center justify-between p-4 rounded-xl border border-border bg-card/50 hover:bg-card transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-secondary/80">
+                    <Icon className="h-5 w-5 text-foreground/80" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm capitalize">{s.platform}</p>
+                    <p className="text-xs text-muted-foreground">
+                      @{s.handle} 
+                      {s.follower_count ? ` · ${Number(s.follower_count).toLocaleString()} followers` : ""}
+                      {erPercent ? ` · ${erPercent}% ER` : ""}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "h-8 text-xs gap-1",
+                      s.is_primary 
+                        ? "text-amber-500 hover:text-amber-500 hover:bg-transparent cursor-default font-semibold" 
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => !s.is_primary && handleSetPrimary(s.id)}
+                  >
+                    <Star className={cn("h-3.5 w-3.5", s.is_primary ? "fill-amber-500 text-amber-500" : "text-muted-foreground")} />
+                    {s.is_primary ? "Primary" : "Set Primary"}
+                  </Button>
+
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(s.id)}>
+                    <Trash className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
