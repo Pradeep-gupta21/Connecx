@@ -61,17 +61,92 @@ function AuthCallback() {
         return;
       }
 
+      // Check if profile exists, if not create it
+      const { data: existingProfile, error: getProfileError } = await supabase
+        .from("profiles")
+        .select("id, onboarded, active_role")
+        .eq("id", data.user.id)
+        .maybeSingle();
+
+      let profileData = existingProfile;
+
+      if (!profileData) {
+        const defaultRole = data.user.user_metadata?.role || "creator";
+        const fallbackDisplayName = data.user.user_metadata?.full_name || data.user.user_metadata?.name || data.user.email?.split("@")[0] || "New User";
+        const fallbackCountry = data.user.user_metadata?.country || null;
+        const fallbackPhone = data.user.user_metadata?.phone || null;
+
+        const { data: inserted, error: insertProfileError } = await supabase
+          .from("profiles")
+          .insert({
+            id: data.user.id,
+            display_name: fallbackDisplayName,
+            avatar_url: data.user.user_metadata?.avatar_url || null,
+            country: fallbackCountry,
+            phone: fallbackPhone,
+            active_role: defaultRole,
+            onboarded: false
+          })
+          .select("id, onboarded, active_role")
+          .maybeSingle();
+
+        if (!insertProfileError && inserted) {
+          profileData = inserted;
+        }
+
+        // Also ensure user_roles exists
+        await supabase
+          .from("user_roles")
+          .insert({
+            user_id: data.user.id,
+            role: defaultRole
+          });
+      }
+
       // Admins go straight to the admin console — never through onboarding.
       const { data: roleRows } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", data.user.id);
+
       if (roleRows?.some((r) => r.role === "admin")) {
         navigate({ to: "/admin", replace: true });
         return;
       }
 
-      navigate({ to: "/dashboard", replace: true });
+      // Preserve any redirectTo parameter if present, but default to the onboarding/dashboard flow
+      const redirectTo = searchParams.get("redirectTo") || searchParams.get("next");
+      if (redirectTo) {
+        try {
+          const url = new URL(redirectTo, window.location.origin);
+          if (url.origin === window.location.origin) {
+            navigate({ to: url.pathname + url.search + url.hash, replace: true });
+            return;
+          }
+        } catch (_) {
+          if (redirectTo.startsWith("/")) {
+            navigate({ to: redirectTo, replace: true });
+            return;
+          }
+        }
+      }
+
+      if (profileData) {
+        if (!profileData.onboarded) {
+          navigate({ to: "/onboarding", replace: true });
+        } else {
+          const role = profileData.active_role || "creator";
+          if (role === "admin") {
+            navigate({ to: "/admin", replace: true });
+          } else if (role === "advertiser") {
+            navigate({ to: "/dashboard/advertiser", replace: true });
+          } else {
+            navigate({ to: "/dashboard/creator", replace: true });
+          }
+        }
+      } else {
+        navigate({ to: "/onboarding", replace: true });
+      }
     })();
   }, [navigate]);
 

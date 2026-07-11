@@ -65,6 +65,16 @@ function Onboarding() {
   }, [user, loading, navigate]);
 
   useEffect(() => {
+    if (loading) return;
+    if (profile && profile.onboarded) {
+      navigate({
+        to: activeRole === "advertiser" ? "/dashboard/advertiser" : "/dashboard/creator",
+        replace: true,
+      });
+    }
+  }, [profile, activeRole, loading, navigate]);
+
+  useEffect(() => {
     if (profile) {
       setDisplayName(profile.display_name ?? "");
       setUsername(profile.username ?? "");

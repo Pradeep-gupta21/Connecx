@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import type { Database } from "@/integrations/supabase/types";
@@ -21,6 +21,7 @@ const STORAGE_KEY = "brandbridge-active-role";
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [activeRole, setActiveRoleState] = useState<AppRole | null>(null);
+  const queryClient = useQueryClient();
 
   const profileQuery = useQuery({
     queryKey: ["profile", user?.id],
@@ -37,10 +38,49 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
 
-      // User/profile deleted -> immediately sign out.
+      // User/profile deleted -> try to create a fallback profile row
       if (!data) {
-        await supabase.auth.signOut();
-        return null;
+        const defaultRole = user!.user_metadata?.role || "creator";
+        const fallbackDisplayName = user!.user_metadata?.full_name || user!.user_metadata?.name || user!.email?.split("@")[0] || "New User";
+        const fallbackCountry = user!.user_metadata?.country || null;
+        const fallbackPhone = user!.user_metadata?.phone || null;
+
+        const { data: inserted, error: insertError } = await supabase
+          .from("profiles")
+          .insert({
+            id: user!.id,
+            display_name: fallbackDisplayName,
+            avatar_url: user!.user_metadata?.avatar_url || null,
+            country: fallbackCountry,
+            phone: fallbackPhone,
+            active_role: defaultRole,
+            onboarded: false
+          })
+          .select(
+            "id, display_name, avatar_url, bio, location, active_role, onboarded, created_at, updated_at, country, deleted_at, suspended_at, suspended_reason, banner_url, banner_position, avatar_updated_at, banner_updated_at, username"
+          )
+          .maybeSingle();
+
+        if (insertError || !inserted) {
+          console.error("Failed to create fallback profile in useWorkspace:", insertError);
+          await supabase.auth.signOut();
+          return null;
+        }
+
+        // Also ensure user_roles row exists
+        await supabase
+          .from("user_roles")
+          .insert({
+            user_id: user!.id,
+            role: defaultRole
+          });
+
+        queryClient.invalidateQueries({ queryKey: ["user_roles", user!.id] });
+
+        return {
+          ...inserted,
+          phone: fallbackPhone
+        } as Profile;
       }
 
       const { data: phone } = await supabase.rpc("get_my_phone");
