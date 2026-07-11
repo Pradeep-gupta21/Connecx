@@ -343,3 +343,94 @@ export const releasePayment = createServerFn({ method: "POST" })
     await PaymentService.releasePayment(data.paymentId, context.userId);
     return { ok: true };
   });
+
+// Fetch creator profile, email, payout methods, and withdrawal request details (Admin only)
+const payoutDetailsSchema = z.object({ paymentId: z.string().uuid() });
+export const getAdminPaymentPayoutDetails = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => payoutDetailsSchema.parse(raw))
+  .handler(async ({ data, context }) => {
+    // 1. Enforce Admin only
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (!isAdmin) throw new Error("Unauthorized: Admin role required");
+
+    // 2. Fetch payment
+    const { data: payment, error: pErr } = await context.supabase
+      .from("payments")
+      .select("*")
+      .eq("id", data.paymentId)
+      .maybeSingle();
+    if (pErr || !payment) throw new Error("Payment not found");
+
+    // 3. Fetch creator profile
+    const { data: profile } = await context.supabase
+      .from("profiles")
+      .select("id, display_name")
+      .eq("id", payment.payee_id)
+      .maybeSingle();
+
+    // 4. Fetch creator email from auth.users (requires service role / supabaseAdmin)
+    let email = "";
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: creatorUser } = await supabaseAdmin.auth.admin.getUserById(payment.payee_id);
+      email = creatorUser?.user?.email ?? "";
+    } catch (e) {
+      console.warn("Failed to fetch user email in adminPayoutDetails", e);
+    }
+
+    // 5. Fetch default payout method
+    const { data: payoutMethod } = await context.supabase
+      .from("payout_methods")
+      .select("*")
+      .eq("user_id", payment.payee_id)
+      .eq("is_default", true)
+      .maybeSingle();
+
+    // 6. Fetch linked or most recent withdrawal request
+    const { data: withdrawal } = await context.supabase
+      .from("withdrawals")
+      .select("*")
+      .or(`payment_id.eq.${payment.id},and(user_id.eq.${payment.payee_id},status.neq.cancelled)`)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return {
+      payment,
+      creator: {
+        id: payment.payee_id,
+        name: profile?.display_name ?? "Creator",
+        email: email || "N/A",
+      },
+      payoutMethod: payoutMethod ? {
+        id: payoutMethod.id,
+        methodType: payoutMethod.method_type,
+        accountHolderName: payoutMethod.account_holder_name,
+        bankName: payoutMethod.bank_name,
+        accountNumberLast4: payoutMethod.account_number_last4,
+        ifsc: payoutMethod.ifsc,
+        upiId: payoutMethod.upi_id,
+        verificationStatus: payoutMethod.verification_status,
+        razorpayContactId: (payoutMethod as any).razorpay_contact_id,
+        razorpayFundAccountId: (payoutMethod as any).razorpay_fund_account_id,
+      } : null,
+      withdrawal: withdrawal ? {
+        id: withdrawal.id,
+        amount: Number(withdrawal.amount),
+        status: withdrawal.status,
+        method: withdrawal.method,
+        destination: withdrawal.destination,
+        razorpayPayoutId: withdrawal.razorpay_payout_id,
+        failureReason: withdrawal.failure_reason,
+        requestedAt: withdrawal.created_at,
+        approvedAt: withdrawal.approved_at,
+        processedAt: withdrawal.processed_at,
+        completedAt: withdrawal.completed_at,
+        adminNotes: withdrawal.admin_notes,
+      } : null,
+    };
+  });

@@ -360,6 +360,7 @@ function AdminPayments() {
         open={!!openPayment}
         onOpenChange={(v) => !v && setOpenPayment(null)}
         payment={openPayment}
+        isAdmin={true}
       />
     </div>
   );

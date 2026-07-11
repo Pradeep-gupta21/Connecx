@@ -1204,7 +1204,7 @@ export const PaymentService = {
     // Move funds out of available immediately to prevent double-spend.
     await applyWalletTxn({
       userId: args.userId,
-      type: "withdrawal",
+      type: "withdrawal_request",
       amount: args.amount,
       referenceType: "withdrawal",
       referenceId: wd.id,
@@ -1249,7 +1249,7 @@ export const PaymentService = {
       })
       .eq("id", args.withdrawalId)
       .eq("status", "requested")
-      .select("id, user_id, amount, currency, method, destination")
+      .select("id, user_id, amount, currency, method, destination, payout_method_id")
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!wd) throw new Error("Withdrawal is no longer pending");
@@ -1268,40 +1268,117 @@ export const PaymentService = {
       payload: { withdrawal_id: wd.id },
     });
 
-    // Optional payout via RazorpayX (requires a fund_account_id in destination)
+    // Optional payout via RazorpayX (self-bootstraps contacts & fund accounts if needed)
     if (args.triggerPayout) {
       try {
-        const dest = wd.destination as Record<string, unknown>;
-        const fundAccountId = dest?.fund_account_id as string | undefined;
         const accountNumber = process.env.RAZORPAYX_ACCOUNT_NUMBER;
-        if (fundAccountId && accountNumber) {
-          const payout = await razorpay.createPayout({
-            accountNumber,
-            fundAccountId,
-            amountMinor: Math.round(Number(wd.amount) * 100),
-            currency: wd.currency ?? "INR",
-            mode: (wd.method === "upi" ? "UPI" : "IMPS") as "IMPS" | "UPI",
-            purpose: "payout",
-            referenceId: wd.id,
-          });
-          await admin.from("withdrawals").update({
-            status: "processing",
-            payout_id: payout.id,
-            payout_ref: payout.id,
-            razorpay_payout_id: payout.id,
-          }).eq("id", wd.id);
-
-        } else {
-          // Manual payout — mark processing; ops will mark completed
-          await admin.from("withdrawals").update({ status: "processing" }).eq("id", wd.id);
+        if (!accountNumber) {
+          throw new Error("RAZORPAYX_ACCOUNT_NUMBER env variable is not configured");
         }
+
+        // Fetch payout method
+        const { data: pm } = await admin
+          .from("payout_methods")
+          .select("*")
+          .eq("id", wd.payout_method_id)
+          .maybeSingle();
+
+        if (!pm) {
+          throw new Error("Payout method not found for this withdrawal");
+        }
+
+        // Fetch creator details
+        let email = "";
+        try {
+          const { data: creatorUser } = await admin.auth.admin.getUserById(wd.user_id);
+          email = creatorUser?.user?.email ?? "";
+        } catch (authErr) {
+          console.warn("[payout] Failed to fetch creator email", authErr);
+        }
+
+        const { data: creatorProfile } = await admin
+          .from("profiles")
+          .select("display_name")
+          .eq("id", wd.user_id)
+          .maybeSingle();
+        const name = creatorProfile?.display_name ?? "Creator";
+
+        // Create contact
+        let contactId = pm.razorpay_contact_id;
+        if (!contactId) {
+          const contact = await razorpay.createContact({
+            name,
+            email,
+            referenceId: wd.user_id,
+          });
+          contactId = contact.id;
+          await admin
+            .from("payout_methods")
+            .update({ razorpay_contact_id: contactId })
+            .eq("id", pm.id);
+        }
+
+        // Create fund account
+        let fundAccountId = pm.razorpay_fund_account_id;
+        if (!fundAccountId) {
+          const fa = await razorpay.createFundAccount({
+            contactId,
+            accountType: pm.method_type === "bank" ? "bank_account" : "vpa",
+            bankAccount: pm.method_type === "bank" ? {
+              name,
+              ifsc: pm.ifsc,
+              accountNumber: pm.account_number,
+            } : undefined,
+            vpa: pm.method_type === "upi" ? {
+              address: pm.upi_id,
+            } : undefined,
+          });
+          fundAccountId = fa.id;
+          await admin
+            .from("payout_methods")
+            .update({ razorpay_fund_account_id: fundAccountId })
+            .eq("id", pm.id);
+        }
+
+        // Create payout
+        const payout = await razorpay.createPayout({
+          accountNumber,
+          fundAccountId,
+          amountMinor: Math.round(Number(wd.amount) * 100),
+          currency: wd.currency ?? "INR",
+          mode: (wd.method === "upi" ? "UPI" : "IMPS") as "IMPS" | "UPI",
+          purpose: "payout",
+          referenceId: wd.id,
+        });
+
+        // Update withdrawal with processing status and transfer reference
+        await admin.from("withdrawals").update({
+          status: "processing",
+          payout_id: payout.id,
+          payout_ref: payout.id,
+          razorpay_payout_id: payout.id,
+        }).eq("id", wd.id);
+
+        // Also trigger completion immediately if it is mock/sandbox mode!
+        const isMockPayout = payout.id.startsWith("payout_mock_");
+        if (isMockPayout) {
+          await PaymentService.markWithdrawalCompleted({
+            withdrawalId: wd.id,
+            payoutRef: payout.id,
+          });
+        }
+
       } catch (e) {
         console.error("[payout] failed", e);
         await admin.from("withdrawals").update({
           status: "failed",
           failure_reason: e instanceof Error ? e.message : String(e),
         }).eq("id", wd.id);
+        throw e;
       }
+    } else {
+      // Manual payout — mark processing; ops will mark completed
+      await admin.from("withdrawals").update({ status: "processing" }).eq("id", wd.id);
     }
   },
 
@@ -1326,31 +1403,16 @@ export const PaymentService = {
     if (error) throw new Error(error.message);
     if (!wd) throw new Error("Withdrawal is no longer pending");
 
-    // Restore the reserved amount to available AND unwind the withdrawn_balance
-    // that requestWithdrawal bumped.
+    // Restore the reserved amount to available (which also reverses the transaction)
     const amt = Number(wd.amount);
-    await admin.rpc("ensure_wallet", { _user_id: wd.user_id });
-    const { data: wallet } = await admin
-      .from("wallets")
-      .select("id, available_balance, withdrawn_balance")
-      .eq("user_id", wd.user_id)
-      .single();
-    if (wallet) {
-      await admin.from("wallets").update({
-        available_balance: Number(wallet.available_balance) + amt,
-        withdrawn_balance: Math.max(Number(wallet.withdrawn_balance) - amt, 0),
-      }).eq("id", wallet.id);
-      await admin.from("wallet_transactions").insert({
-        wallet_id: wallet.id,
-        user_id: wd.user_id,
-        type: "adjustment",
-        amount: amt,
-        balance_after: Number(wallet.available_balance) + amt,
-        reference_type: "withdrawal",
-        reference_id: wd.id,
-        description: "Withdrawal rejected — funds restored",
-      });
-    }
+    await applyWalletTxn({
+      userId: wd.user_id,
+      type: "withdrawal_failed",
+      amount: amt,
+      referenceType: "withdrawal",
+      referenceId: wd.id,
+      description: "Withdrawal rejected — funds restored",
+    });
 
     // Ledger: reverse the reservation
     await postLedger({
@@ -1397,28 +1459,14 @@ export const PaymentService = {
     if (!wd) return;
 
     const amt = Number(wd.amount);
-    await admin.rpc("ensure_wallet", { _user_id: wd.user_id });
-    const { data: wallet } = await admin
-      .from("wallets")
-      .select("id, available_balance, withdrawn_balance")
-      .eq("user_id", wd.user_id)
-      .single();
-    if (wallet) {
-      await admin.from("wallets").update({
-        available_balance: Number(wallet.available_balance) + amt,
-        withdrawn_balance: Math.max(Number(wallet.withdrawn_balance) - amt, 0),
-      }).eq("id", wallet.id);
-      await admin.from("wallet_transactions").insert({
-        wallet_id: wallet.id,
-        user_id: wd.user_id,
-        type: "adjustment",
-        amount: amt,
-        balance_after: Number(wallet.available_balance) + amt,
-        reference_type: "withdrawal",
-        reference_id: wd.id,
-        description: "Payout failed — funds restored",
-      });
-    }
+    await applyWalletTxn({
+      userId: wd.user_id,
+      type: "withdrawal_failed",
+      amount: amt,
+      referenceType: "withdrawal",
+      referenceId: wd.id,
+      description: "Payout failed — funds restored",
+    });
 
     await postLedger({
       event: "withdrawal.failed",
@@ -1459,6 +1507,16 @@ export const PaymentService = {
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!wd) return; // already completed or not eligible
+
+    // Update creator's withdrawn balance upon successful completion of payout
+    await applyWalletTxn({
+      userId: wd.user_id,
+      type: "withdrawal_completed",
+      amount: Number(wd.amount),
+      referenceType: "withdrawal",
+      referenceId: wd.id,
+      description: "Payout completed — withdrawn balance updated",
+    });
 
     // Ledger: payouts_pending → cash out (leaves the platform bank)
     await postLedger({

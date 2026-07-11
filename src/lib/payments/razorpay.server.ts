@@ -199,6 +199,69 @@ export const razorpay = {
     });
   },
 
+  async createContact(args: {
+    name: string;
+    email?: string;
+    contact?: string;
+    type?: string;
+    referenceId?: string;
+  }): Promise<{ id: string }> {
+    const creds = getCreds();
+    if (creds.isMock) {
+      return { id: "cont_mock_" + Math.random().toString(36).substring(2, 15) };
+    }
+
+    return rzpFetch<{ id: string }>("/contacts", {
+      method: "POST",
+      body: JSON.stringify({
+        name: args.name,
+        email: args.email,
+        contact: args.contact,
+        type: args.type ?? "employee",
+        reference_id: args.referenceId,
+      }),
+    });
+  },
+
+  async createFundAccount(args: {
+    contactId: string;
+    accountType: "bank_account" | "vpa";
+    bankAccount?: {
+      name: string;
+      ifsc: string;
+      accountNumber: string;
+    };
+    vpa?: {
+      address: string;
+    };
+  }): Promise<{ id: string }> {
+    const creds = getCreds();
+    if (creds.isMock) {
+      return { id: "fa_mock_" + Math.random().toString(36).substring(2, 15) };
+    }
+
+    const body: Record<string, any> = {
+      contact_id: args.contactId,
+      account_type: args.accountType,
+    };
+    if (args.accountType === "bank_account" && args.bankAccount) {
+      body.bank_account = {
+        name: args.bankAccount.name,
+        ifsc: args.bankAccount.ifsc,
+        account_number: args.bankAccount.accountNumber,
+      };
+    } else if (args.accountType === "vpa" && args.vpa) {
+      body.vpa = {
+        address: args.vpa.address,
+      };
+    }
+
+    return rzpFetch<{ id: string }>("/fund_accounts", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
   verifyCheckoutSignature(args: {
     orderId: string;
     paymentId: string;

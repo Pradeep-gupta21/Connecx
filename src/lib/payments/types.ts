@@ -21,7 +21,10 @@ export type WalletTxnType =
   | "withdrawal"
   | "refund"
   | "fee"
-  | "adjustment";
+  | "adjustment"
+  | "withdrawal_request"
+  | "withdrawal_completed"
+  | "withdrawal_failed";
 
 export type WithdrawalStatus =
   | "requested"
