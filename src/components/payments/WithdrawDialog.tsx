@@ -126,7 +126,7 @@ export function WithdrawDialog({
     refetch();
   };
 
-  const quick = [0.25, 0.5, 1].map((frac) => Math.floor(available * frac));
+  const quick = [0.25, 0.5, 1].map((frac) => frac === 1 ? available : Math.floor(available * frac));
 
   const hasVerified = verified.length > 0;
   const hasAny = methods.length > 0;
