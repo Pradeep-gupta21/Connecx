@@ -30,7 +30,7 @@ function AdminApprovals() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("creator_profiles")
-        .select("user_id, headline, niches, approval_status, created_at, profiles!creator_profiles_profile_fkey(display_name, avatar_url, country)")
+        .select("user_id, headline, niches, approval_status, created_at, profiles!creator_profiles_user_id_fkey(display_name, avatar_url, country)")
         .eq("approval_status", "pending").order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -42,7 +42,7 @@ function AdminApprovals() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("advertiser_profiles")
-        .select("user_id, company_name, industry, approval_status, created_at, profiles!advertiser_profiles_profile_fkey(display_name, avatar_url, country)")
+        .select("user_id, company_name, industry, approval_status, created_at, profiles!advertiser_profiles_user_id_fkey(display_name, avatar_url, country)")
         .eq("approval_status", "pending").order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
