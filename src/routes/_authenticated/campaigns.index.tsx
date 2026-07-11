@@ -47,8 +47,8 @@ function Campaigns() {
         .is("deleted_at", null);
       if (tab === "mine") q = q.eq("advertiser_id", user!.id);
       else if (tab === "browse") q = q.eq("status", "open");
-      if (category !== "all") q = q.eq("category", category);
-      if (platform !== "all") q = q.eq("platform", platform);
+      if (category !== "all") q = q.ilike("category", `%${category}%`);
+      if (platform !== "all") q = q.ilike("platform", `%${platform}%`);
       if (tab === "mine" && status !== "all") q = q.eq("status", status as any);
       const { data, error } = await q.order("created_at", { ascending: false });
       if (error) throw error;
@@ -254,8 +254,8 @@ function applyClientFilters({ search, category, platform, status }: { search: st
       const hay = `${c.title ?? ""} ${c.brief ?? ""} ${c.profiles?.display_name ?? ""}`.toLowerCase();
       if (!hay.includes(s)) return false;
     }
-    if (category !== "all" && c.category !== category) return false;
-    if (platform !== "all" && c.platform !== platform) return false;
+    if (category !== "all" && !(c.category && c.category.split(", ").map((x: string) => x.trim().toLowerCase()).includes(category.toLowerCase()))) return false;
+    if (platform !== "all" && !(c.platform && c.platform.split(", ").map((x: string) => x.trim().toLowerCase()).includes(platform.toLowerCase()))) return false;
     if (status !== "all" && c.status !== status) return false;
     return true;
   };

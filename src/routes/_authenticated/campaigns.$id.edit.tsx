@@ -71,8 +71,8 @@ function EditCampaign() {
         initialValues={{
           title: data.title,
           brief: data.brief ?? "",
-          platform: data.platform ?? "",
-          category: data.category ?? "",
+          platform: data.platform ? data.platform.split(", ") : [],
+          category: data.category ? data.category.split(", ") : [],
           creator_tier: data.creator_tier ?? "",
           objective: (data.objective as any) ?? "Brand Awareness",
           content_types: Array.isArray(data.content_types) ? (data.content_types as string[]) : [],
