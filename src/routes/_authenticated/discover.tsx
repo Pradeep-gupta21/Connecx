@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, SlidersHorizontal, Instagram, Youtube, Twitter, Globe, Music2 } from "lucide-react";
+import { Search, SlidersHorizontal, Instagram, Youtube, Twitter, Globe, Music2, Facebook } from "lucide-react";
 import { SmartAvatar } from "@/components/profile/SmartAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ const socialIcons: Record<string, any> = {
   twitter: Twitter,
   tiktok: Music2,
   website: Globe,
+  facebook: Facebook,
 };
 
 function formatFollowers(value: number | null | undefined) {

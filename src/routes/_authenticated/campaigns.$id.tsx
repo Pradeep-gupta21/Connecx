@@ -135,7 +135,7 @@ function CampaignDetail() {
 
   const deleteMut = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("campaigns").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+      const { error } = await supabase.from("campaigns").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, MessageSquare, MapPin, Loader2, Star, Sparkles,
   Instagram, Youtube, Twitter, Globe, Music2, CheckCircle2,
-  Calendar, Users, TrendingUp, Languages as LangIcon, Mail, ExternalLink,
+  Calendar, Users, TrendingUp, Languages as LangIcon, Mail, ExternalLink, Facebook,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +34,7 @@ const socialIcons: Record<string, any> = {
   twitter: Twitter,
   tiktok: Music2,
   website: Globe,
+  facebook: Facebook,
 };
 
 function computeCompletion(data: any, profile: any, socials: any[], portfolio: any[]) {

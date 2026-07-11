@@ -10,6 +10,19 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 -- Add is_primary column to social_accounts table
 ALTER TABLE public.social_accounts ADD COLUMN IF NOT EXISTS is_primary boolean DEFAULT false NOT NULL;
 
+-- Add 'facebook' value to social_platform enum
+ALTER TYPE public.social_platform ADD VALUE IF NOT EXISTS 'facebook';
+
+-- Recreate foreign key constraint on campaign_payment_summary to guarantee ON DELETE CASCADE
+ALTER TABLE public.campaign_payment_summary
+  DROP CONSTRAINT IF EXISTS campaign_payment_summary_campaign_id_fkey;
+
+ALTER TABLE public.campaign_payment_summary
+  ADD CONSTRAINT campaign_payment_summary_campaign_id_fkey
+  FOREIGN KEY (campaign_id)
+  REFERENCES public.campaigns(id)
+  ON DELETE CASCADE;
+
 -- Drop the old search_creators function to redefine its return columns
 DROP FUNCTION IF EXISTS public.search_creators(text, text, text, text, int, int);
 

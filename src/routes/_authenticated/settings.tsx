@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { Loader2, MapPin, Instagram, Youtube, Twitter, Globe, Music2, Plus, Trash, Star } from "lucide-react";
+import { Loader2, MapPin, Instagram, Youtube, Twitter, Globe, Music2, Plus, Trash, Star, Facebook } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { scrapeSocialData } from "@/lib/social/socialScraper.functions";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -281,13 +282,17 @@ function SettingsPage() {
 function SocialAccountsManager() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [platform, setPlatform] = useState("instagram");
-  const [handle, setHandle] = useState("");
-  const [followers, setFollowers] = useState("");
-  const [er, setEr] = useState("");
   const [url, setUrl] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scrapedData, setScrapedData] = useState<{
+    platform: string;
+    handle: string;
+    follower_count: number | null;
+    engagement_rate: number | null;
+    url: string;
+  } | null>(null);
 
   const { data: socials, isLoading } = useQuery({
     queryKey: ["creator_socials", user?.id],
@@ -298,17 +303,44 @@ function SocialAccountsManager() {
     },
   });
 
+  const handleScan = async () => {
+    if (!url.trim()) return;
+    setScanning(true);
+    try {
+      const res = await scrapeSocialData({ data: url.trim() });
+      setScrapedData({
+        platform: res.platform,
+        handle: res.handle,
+        follower_count: res.follower_count,
+        engagement_rate: res.engagement_rate ? Math.round(res.engagement_rate * 10000) / 100 : null,
+        url: res.url,
+      });
+      toast.success(`Scanned ${res.platform} profile successfully!`);
+    } catch (e: any) {
+      toast.error("Could not scan profile automatically. You can enter manually.");
+      setScrapedData({
+        platform: "instagram",
+        handle: "",
+        follower_count: null,
+        engagement_rate: null,
+        url: url.trim(),
+      });
+    } finally {
+      setScanning(false);
+    }
+  };
+
   const handleAdd = async () => {
-    if (!user || !handle) return;
+    if (!user || !scrapedData || !scrapedData.handle) return;
     setBusy(true);
     const isFirst = !socials || socials.length === 0;
     const { error } = await supabase.from("social_accounts").insert({
       user_id: user.id,
-      platform: platform as any,
-      handle: handle.trim(),
-      follower_count: followers ? Number(followers) : null,
-      engagement_rate: er ? Number(er) / 100 : null,
-      url: url.trim() || null,
+      platform: scrapedData.platform as any,
+      handle: scrapedData.handle.trim(),
+      follower_count: scrapedData.follower_count ? Number(scrapedData.follower_count) : null,
+      engagement_rate: scrapedData.engagement_rate ? Number(scrapedData.engagement_rate) / 100 : null,
+      url: scrapedData.url.trim() || null,
       is_primary: isFirst,
     });
     setBusy(false);
@@ -316,11 +348,9 @@ function SocialAccountsManager() {
       toast.error(error.message);
       return;
     }
-    toast.success("Social account added");
-    setHandle("");
-    setFollowers("");
-    setEr("");
+    toast.success("Social account linked");
     setUrl("");
+    setScrapedData(null);
     setShowAddForm(false);
     qc.invalidateQueries({ queryKey: ["creator_socials", user.id] });
   };
@@ -343,7 +373,7 @@ function SocialAccountsManager() {
 
   const handleDelete = async (id: string) => {
     if (!user) return;
-    const { error } = await supabase.from("social_accounts").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+    const { error } = await supabase.from("social_accounts").delete().eq("id", id);
     if (error) {
       toast.error(error.message);
       return;
@@ -358,6 +388,7 @@ function SocialAccountsManager() {
     twitter: Twitter,
     tiktok: Music2,
     website: Globe,
+    facebook: Facebook,
   };
 
   if (isLoading) return <div className="flex justify-center p-6"><Loader2 className="h-5 w-5 animate-spin" /></div>;
@@ -371,53 +402,93 @@ function SocialAccountsManager() {
         </div>
         {!showAddForm && (
           <Button onClick={() => setShowAddForm(true)} size="sm" className="gap-1">
-            <Plus className="h-4 w-4" /> Add
+            <Plus className="h-4 w-4" /> Link Profile
           </Button>
         )}
       </div>
 
       {showAddForm && (
         <div className="p-4 rounded-xl border border-border/80 bg-secondary/20 space-y-4">
-          <h4 className="font-medium text-sm">Add Social Media</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Platform</Label>
-              <Select value={platform} onValueChange={setPlatform}>
-                <SelectTrigger className="bg-background">
-                  <SelectValue placeholder="Select platform" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="instagram">Instagram</SelectItem>
-                  <SelectItem value="youtube">YouTube</SelectItem>
-                  <SelectItem value="tiktok">TikTok</SelectItem>
-                  <SelectItem value="twitter">Twitter</SelectItem>
-                  <SelectItem value="website">Website</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Handle / Name</Label>
-              <Input placeholder="e.g. ishan_gupta" value={handle} onChange={(e) => setHandle(e.target.value)} className="bg-background" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Follower Count</Label>
-              <Input type="number" min="0" placeholder="e.g. 50000" value={followers} onChange={(e) => setFollowers(e.target.value)} className="bg-background" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Engagement Rate (%)</Label>
-              <Input type="number" step="0.01" min="0" placeholder="e.g. 4.5" value={er} onChange={(e) => setEr(e.target.value)} className="bg-background" />
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label>Profile URL (Optional)</Label>
-              <Input placeholder="https://..." value={url} onChange={(e) => setUrl(e.target.value)} className="bg-background" />
-            </div>
-          </div>
-          <div className="flex gap-2 justify-end pt-2">
-            <Button variant="ghost" size="sm" onClick={() => setShowAddForm(false)}>Cancel</Button>
-            <Button size="sm" onClick={handleAdd} disabled={busy || !handle}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Link account"}
+          <h4 className="font-medium text-sm">Scan Profile URL</h4>
+          <div className="flex gap-2">
+            <Input
+              placeholder="e.g. https://youtube.com/@mrbeast or https://instagram.com/handle"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              disabled={scanning}
+              className="bg-background flex-1"
+            />
+            <Button onClick={handleScan} disabled={scanning || !url.trim()} className="shrink-0">
+              {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : "Scan"}
             </Button>
           </div>
+
+          {scrapedData && (
+            <div className="border border-border/60 bg-card p-4 rounded-lg space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="flex items-center justify-between border-b pb-2 border-border/40">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Confirm Details</span>
+                <span className="text-xs capitalize font-medium px-2 py-0.5 rounded bg-secondary flex items-center gap-1.5">
+                  {scrapedData.platform}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Handle / Name</Label>
+                  <Input
+                    value={scrapedData.handle}
+                    onChange={(e) => setScrapedData({ ...scrapedData, handle: e.target.value })}
+                    className="bg-background"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Follower Count</Label>
+                  <Input
+                    type="number"
+                    value={scrapedData.follower_count ?? ""}
+                    onChange={(e) => setScrapedData({ ...scrapedData, follower_count: e.target.value ? Number(e.target.value) : null })}
+                    className="bg-background"
+                    placeholder="e.g. 50000"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Engagement Rate (%)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={scrapedData.engagement_rate ?? ""}
+                    onChange={(e) => setScrapedData({ ...scrapedData, engagement_rate: e.target.value ? Number(e.target.value) : null })}
+                    className="bg-background"
+                    placeholder="e.g. 4.5"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Verify Platform Type</Label>
+                  <Select
+                    value={scrapedData.platform}
+                    onValueChange={(val) => setScrapedData({ ...scrapedData, platform: val })}
+                  >
+                    <SelectTrigger className="bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="instagram">Instagram</SelectItem>
+                      <SelectItem value="youtube">YouTube</SelectItem>
+                      <SelectItem value="tiktok">TikTok</SelectItem>
+                      <SelectItem value="twitter">Twitter</SelectItem>
+                      <SelectItem value="facebook">Facebook</SelectItem>
+                      <SelectItem value="website">Website</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end pt-2 border-t border-border/40">
+                <Button variant="ghost" size="sm" onClick={() => setScrapedData(null)}>Cancel</Button>
+                <Button size="sm" onClick={handleAdd} disabled={busy || !scrapedData.handle}>
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Link account"}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
