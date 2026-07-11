@@ -177,7 +177,9 @@ function MessagesLayout() {
                         <div className="flex items-center justify-between gap-2">
                           <p className={cn("truncate", unread ? "font-semibold" : "font-medium")}>{name}</p>
                           <span className="text-[10px] text-muted-foreground shrink-0">
-                            {formatDistanceToNow(new Date(c.last_message_at), { addSuffix: false })}
+                            {c.last_message_at
+                              ? formatDistanceToNow(new Date(c.last_message_at), { addSuffix: false })
+                              : "Just now"}
                           </span>
                         </div>
                         <div className="flex items-center justify-between gap-2">
