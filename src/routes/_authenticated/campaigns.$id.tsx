@@ -557,8 +557,8 @@ async function startConvoFromApp(a: any, campaignId: string): Promise<string | n
   const { data: existing } = await supabase
     .from("conversations")
     .select("id")
-    .eq("advertiser_id", uid)
-    .eq("creator_id", a.creator_id)
+    .or(`advertiser_id.eq.${uid},creator_id.eq.${uid}`)
+    .or(`advertiser_id.eq.${a.creator_id},creator_id.eq.${a.creator_id}`)
     .eq("campaign_id", campaignId)
     .maybeSingle();
   if (existing?.id) return existing.id;
@@ -567,6 +567,19 @@ async function startConvoFromApp(a: any, campaignId: string): Promise<string | n
     .insert({ advertiser_id: uid, creator_id: a.creator_id, campaign_id: campaignId })
     .select("id")
     .single();
-  if (error) { toast.error(error.message); return null; }
+  if (error) {
+    if (error.code === "23505") {
+      const { data: retry } = await supabase
+        .from("conversations")
+        .select("id")
+        .or(`advertiser_id.eq.${uid},creator_id.eq.${uid}`)
+        .or(`advertiser_id.eq.${a.creator_id},creator_id.eq.${a.creator_id}`)
+        .eq("campaign_id", campaignId)
+        .maybeSingle();
+      return retry?.id ?? null;
+    }
+    toast.error(error.message);
+    return null;
+  }
   return created.id;
 }

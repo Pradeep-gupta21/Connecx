@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { MessageSquare, Search, SearchCode } from "lucide-react";
@@ -21,6 +21,7 @@ export const Route = createFileRoute("/_authenticated/messages")({
 function MessagesLayout() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const activeThread = pathname.startsWith("/messages/") ? pathname.split("/")[2] || null : null;
   const [q, setQ] = useState("");
@@ -75,8 +76,34 @@ function MessagesLayout() {
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") await channel.track({ at: new Date().toISOString() });
       });
-    return () => { supabase.removeChannel(channel); };
   }, [user]);
+  
+  // Realtime subscription for global updates to conversations and unread messages
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("global-messages-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "messages" },
+        () => {
+          void qc.invalidateQueries({ queryKey: ["conversations", user.id] });
+          void qc.invalidateQueries({ queryKey: ["unread-per-convo", user.id] });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversations" },
+        () => {
+          void qc.invalidateQueries({ queryKey: ["conversations", user.id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, qc]);
 
   const filtered = useMemo(() => {
     if (!conversations) return [];

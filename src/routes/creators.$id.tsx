@@ -110,8 +110,8 @@ function CreatorProfilePage() {
     const { data: existing } = await supabase
       .from("conversations")
       .select("id")
-      .eq("advertiser_id", user.id)
-      .eq("creator_id", id)
+      .or(`advertiser_id.eq.${user.id},creator_id.eq.${user.id}`)
+      .or(`advertiser_id.eq.${id},creator_id.eq.${id}`)
       .is("campaign_id", null)
       .maybeSingle();
     let convoId = existing?.id;
@@ -121,8 +121,24 @@ function CreatorProfilePage() {
         .insert({ advertiser_id: user.id, creator_id: id, campaign_id: null })
         .select("id")
         .single();
-      if (error) { toast.error(error.message); return; }
-      convoId = created.id;
+      if (error) {
+        // If there was a concurrent race condition and it already inserted, retry lookup
+        if (error.code === "23505") {
+          const { data: retry } = await supabase
+            .from("conversations")
+            .select("id")
+            .or(`advertiser_id.eq.${user.id},creator_id.eq.${user.id}`)
+            .or(`advertiser_id.eq.${id},creator_id.eq.${id}`)
+            .is("campaign_id", null)
+            .maybeSingle();
+          convoId = retry?.id;
+        } else {
+          toast.error(error.message);
+          return;
+        }
+      } else {
+        convoId = created.id;
+      }
     }
     navigate({ to: "/messages/$threadId", params: { threadId: convoId! } });
   };
