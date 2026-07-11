@@ -53,6 +53,8 @@ export function NotificationBell() {
           qc.invalidateQueries({ queryKey: ["notifications", user.id] });
           const n: any = payload.new;
           const meta = typeMeta[n.type] ?? typeMeta.system;
+          
+          // Show in-app toast
           toast(n.title, {
             description: n.body,
             icon: <meta.icon className="h-4 w-4" />,
@@ -61,6 +63,26 @@ export function NotificationBell() {
               onClick: () => navigate({ to: "/messages/$threadId", params: { threadId: n.payload.conversation_id } }),
             } : undefined,
           });
+
+          // Also trigger a system/home screen notification if permitted
+          if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+            try {
+              const sysNotif = new window.Notification(n.title, {
+                body: n.body || undefined,
+                icon: "/favicon.ico",
+              });
+              sysNotif.onclick = () => {
+                window.focus();
+                if (n.payload?.conversation_id) {
+                  navigate({ to: "/messages/$threadId", params: { threadId: n.payload.conversation_id } });
+                } else {
+                  navigate({ to: "/notifications" });
+                }
+              };
+            } catch (err) {
+              console.error("Failed to trigger native notification:", err);
+            }
+          }
         }
       )
       .on(
