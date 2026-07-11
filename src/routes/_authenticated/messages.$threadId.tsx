@@ -91,13 +91,34 @@ function Thread() {
 
   const markRead = useCallback(async () => {
     if (!user) return;
-    await supabase
-      .from("messages")
-      .update({ read_at: new Date().toISOString() })
+    
+    // 1. Mark incoming sent messages as delivered
+    await (supabase.from("messages") as any)
+      .update({
+        status: "delivered",
+        delivered_at: new Date().toISOString()
+      })
       .eq("conversation_id", threadId)
       .neq("sender_id", user.id)
-      .is("read_at", null);
-  }, [user, threadId]);
+      .eq("status", "sent");
+
+    // 2. Mark incoming messages as seen
+    const { error } = await (supabase.from("messages") as any)
+      .update({
+        status: "seen",
+        seen_at: new Date().toISOString(),
+        read_at: new Date().toISOString()
+      })
+      .eq("conversation_id", threadId)
+      .neq("sender_id", user.id)
+      .in("status", ["sent", "delivered"]);
+
+    if (!error) {
+      qc.invalidateQueries({ queryKey: ["messages", threadId] });
+      qc.invalidateQueries({ queryKey: ["unread-per-convo", user.id] });
+      qc.invalidateQueries({ queryKey: ["conversations", user.id] });
+    }
+  }, [user, threadId, qc]);
 
   const c = convoQuery.data;
   const other = c ? (user?.id === c.advertiser_id ? c.creator : c.advertiser) : null;
@@ -177,11 +198,15 @@ function Thread() {
     const attachments = pending;
     setText("");
     setPending([]);
-    const { error } = await supabase.from("messages").insert({
+    const isOtherOnline = otherId ? otherOnline : false;
+    const { error } = await (supabase.from("messages") as any).insert({
       conversation_id: threadId,
       sender_id: user.id,
+      recipient_id: otherId,
       body: body || "",
       attachments: attachments as any,
+      status: isOtherOnline ? "delivered" : "sent",
+      delivered_at: isOtherOnline ? new Date().toISOString() : null,
     });
     setSending(false);
     if (error) {

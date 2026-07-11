@@ -16,6 +16,9 @@ export type MessageRow = {
   attachments: Attachment[];
   created_at: string;
   read_at: string | null;
+  status?: "sent" | "delivered" | "seen";
+  delivered_at?: string | null;
+  seen_at?: string | null;
   pinned: boolean;
   edited_at?: string | null;
   edit_count?: number;
@@ -147,7 +150,15 @@ export function MessageBubble({
                 · edited
               </span>
             )}
-            {mine && !isDeleted && (msg.read_at ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />)}
+            {mine && !isDeleted && (
+              msg.status === "seen" ? (
+                <CheckCheck className="h-3 w-3 text-sky-400" />
+              ) : msg.status === "delivered" ? (
+                <CheckCheck className="h-3 w-3 text-white/50" />
+              ) : (
+                <Check className="h-3 w-3 text-white/50" />
+              )
+            )}
           </div>
         </div>
 
