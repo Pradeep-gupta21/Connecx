@@ -197,14 +197,7 @@ function MessagesLayout() {
               {filtered.map((c: any) => {
                 const other = user?.id === c.advertiser_id ? c.creator : c.advertiser;
                 const name = other?.display_name ?? "Conversation";
-                const unread = conversations
-                  ? conversations
-                      .filter((x: any) => 
-                        (x.advertiser_id === c.advertiser_id && x.creator_id === c.creator_id) ||
-                        (x.advertiser_id === c.creator_id && x.creator_id === c.advertiser_id)
-                      )
-                      .reduce((sum: number, x: any) => sum + (unreadMap?.[x.id] ?? 0), 0)
-                  : 0;
+                const unread = unreadMap?.[c.id] ?? 0;
                 const online = other?.id && onlineIds.has(other.id);
                 return (
                   <li key={c.id}>
