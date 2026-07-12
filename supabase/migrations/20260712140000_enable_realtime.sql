@@ -42,3 +42,44 @@ BEGIN
   END IF;
 END;
 $$;
+
+-- Fix the guard_contract_from_withdrawn_app trigger function to compare status as text
+CREATE OR REPLACE FUNCTION public.guard_contract_from_withdrawn_app()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.applications a
+    WHERE a.campaign_id = NEW.campaign_id
+      AND a.creator_id  = NEW.creator_id
+      AND a.status = 'withdrawn'
+  ) THEN
+    RAISE EXCEPTION 'Cannot create contract: creator has withdrawn from this campaign';
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+-- Fix the guard_application_withdrawn_lock trigger function to compare status as text
+CREATE OR REPLACE FUNCTION public.guard_application_withdrawn_lock()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD.status = 'withdrawn'
+       AND NEW.status IS DISTINCT FROM OLD.status THEN
+      RAISE EXCEPTION 'Application has been withdrawn by the creator and cannot be modified';
+    END IF;
+    IF NEW.status = 'withdrawn'
+       AND OLD.status IS DISTINCT FROM NEW.status
+       AND NEW.withdrawn_at IS NULL THEN
+      NEW.withdrawn_at := now();
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$function$;
