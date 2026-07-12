@@ -310,7 +310,7 @@ export const PaymentService = {
       .single();
     if (cErr || !contract) {
       console.error("[PaymentService.createContractPaymentOrder] Contract not found in DB. Error:", cErr, "contractId:", input.contractId);
-      throw new Error("Contract not found");
+      throw new Error(cErr ? `Database error: ${cErr.message}` : "Contract not found");
     }
     console.log("[PaymentService.createContractPaymentOrder] Contract found:", contract);
     if (contract.advertiser_id !== input.payerId) throw new Error("Only the contract advertiser can fund it");
@@ -674,7 +674,7 @@ export const PaymentService = {
       .single();
     if (error || !c) {
       console.error("[PaymentService.acceptCreator] Campaign not found in DB. Error:", error, "campaignId:", args.campaignId);
-      throw new Error("Campaign not found");
+      throw new Error(error ? `Database error: ${error.message}` : "Campaign not found");
     }
     console.log("[PaymentService.acceptCreator] Campaign found:", c);
     if (c.advertiser_id !== args.actorId) throw new Error("Only the campaign owner can accept creators");
