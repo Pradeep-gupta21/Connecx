@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState } from "react";
+import { subscribeToPush } from "@/lib/push";
 
 export const Route = createFileRoute("/_authenticated/notifications")({
   head: () => ({ meta: [{ title: "Notifications · Connecx" }] }),
@@ -33,6 +34,9 @@ function NotificationsPage() {
       setPermission(res);
       if (res === "granted") {
         toast.success("Desktop notifications enabled!");
+        if (user) {
+          await subscribeToPush(user.id);
+        }
         new window.Notification("Notifications Enabled", {
           body: "You will now receive notifications on your device home screen/notification tray.",
           icon: "/favicon.ico",

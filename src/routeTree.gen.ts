@@ -36,6 +36,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard.index'
 import { Route as AuthenticatedCampaignsIndexRouteImport } from './routes/_authenticated/campaigns.index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as ApiPublicNotificationsRouteImport } from './routes/api/public/notifications'
 import { Route as AuthenticatedMessagesThreadIdRouteImport } from './routes/_authenticated/messages.$threadId'
 import { Route as AuthenticatedDashboardCreatorRouteImport } from './routes/_authenticated/dashboard.creator'
 import { Route as AuthenticatedDashboardAdvertiserRouteImport } from './routes/_authenticated/dashboard.advertiser'
@@ -203,6 +204,11 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const ApiPublicNotificationsRoute = ApiPublicNotificationsRouteImport.update({
+  id: '/api/public/notifications',
+  path: '/api/public/notifications',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedMessagesThreadIdRoute =
   AuthenticatedMessagesThreadIdRouteImport.update({
@@ -425,6 +431,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/advertiser': typeof AuthenticatedDashboardAdvertiserRoute
   '/dashboard/creator': typeof AuthenticatedDashboardCreatorRoute
   '/messages/$threadId': typeof AuthenticatedMessagesThreadIdRoute
+  '/api/public/notifications': typeof ApiPublicNotificationsRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/campaigns/': typeof AuthenticatedCampaignsIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
@@ -481,6 +488,7 @@ export interface FileRoutesByTo {
   '/dashboard/advertiser': typeof AuthenticatedDashboardAdvertiserRoute
   '/dashboard/creator': typeof AuthenticatedDashboardCreatorRoute
   '/messages/$threadId': typeof AuthenticatedMessagesThreadIdRoute
+  '/api/public/notifications': typeof ApiPublicNotificationsRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/campaigns': typeof AuthenticatedCampaignsIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
@@ -540,6 +548,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard/advertiser': typeof AuthenticatedDashboardAdvertiserRoute
   '/_authenticated/dashboard/creator': typeof AuthenticatedDashboardCreatorRoute
   '/_authenticated/messages/$threadId': typeof AuthenticatedMessagesThreadIdRoute
+  '/api/public/notifications': typeof ApiPublicNotificationsRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/campaigns/': typeof AuthenticatedCampaignsIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
@@ -599,6 +608,7 @@ export interface FileRouteTypes {
     | '/dashboard/advertiser'
     | '/dashboard/creator'
     | '/messages/$threadId'
+    | '/api/public/notifications'
     | '/admin/'
     | '/campaigns/'
     | '/dashboard/'
@@ -655,6 +665,7 @@ export interface FileRouteTypes {
     | '/dashboard/advertiser'
     | '/dashboard/creator'
     | '/messages/$threadId'
+    | '/api/public/notifications'
     | '/admin'
     | '/campaigns'
     | '/dashboard'
@@ -713,6 +724,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard/advertiser'
     | '/_authenticated/dashboard/creator'
     | '/_authenticated/messages/$threadId'
+    | '/api/public/notifications'
     | '/_authenticated/admin/'
     | '/_authenticated/campaigns/'
     | '/_authenticated/dashboard/'
@@ -732,6 +744,7 @@ export interface RootRouteChildren {
   RefundRoute: typeof RefundRoute
   TermsRoute: typeof TermsRoute
   CreatorsIdRoute: typeof CreatorsIdRoute
+  ApiPublicNotificationsRoute: typeof ApiPublicNotificationsRoute
   ApiPublicRazorpayWebhookRoute: typeof ApiPublicRazorpayWebhookRoute
 }
 
@@ -925,6 +938,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/api/public/notifications': {
+      id: '/api/public/notifications'
+      path: '/api/public/notifications'
+      fullPath: '/api/public/notifications'
+      preLoaderRoute: typeof ApiPublicNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/messages/$threadId': {
       id: '/_authenticated/messages/$threadId'
@@ -1281,6 +1301,7 @@ const rootRouteChildren: RootRouteChildren = {
   RefundRoute: RefundRoute,
   TermsRoute: TermsRoute,
   CreatorsIdRoute: CreatorsIdRoute,
+  ApiPublicNotificationsRoute: ApiPublicNotificationsRoute,
   ApiPublicRazorpayWebhookRoute: ApiPublicRazorpayWebhookRoute,
 }
 export const routeTree = rootRouteImport

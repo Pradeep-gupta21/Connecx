@@ -10,6 +10,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { subscribeToPush } from "@/lib/push";
 
 const typeMeta: Record<string, { icon: any; tint: string; label: string }> = {
   new_message: { icon: MessageSquare, tint: "text-sky-500 bg-sky-500/10", label: "Message" },
@@ -123,6 +124,7 @@ export function NotificationBell() {
                 const res = await window.Notification.requestPermission();
                 if (res === "granted") {
                   toast.success("Desktop alerts active!");
+                  await subscribeToPush(user.id);
                   if (navigator.serviceWorker && navigator.serviceWorker.ready) {
                     const reg = await navigator.serviceWorker.ready;
                     reg.showNotification("Notifications Enabled", {

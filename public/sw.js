@@ -1,3 +1,24 @@
+self.addEventListener("push", function (event) {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    // Fallback if payload is plain text instead of JSON
+    data = { title: "Connecx Alert", body: event.data ? event.data.text() : "" };
+  }
+
+  const title = data.title || "Connecx Alert";
+  const options = {
+    body: data.body || "",
+    icon: "/favicon.ico",
+    badge: "/favicon.ico",
+    tag: data.payload?.notification_id || "connecx-notification",
+    data: data.payload || {},
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
 self.addEventListener("notificationclick", function (event) {
   event.notification.close();
 

@@ -3,6 +3,7 @@
 // stay in one place.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { razorpay } from "./razorpay.server";
+import { sendPushNotification } from "@/lib/push.server";
 import type {
   CreateOrderInput,
   CreateOrderResult,
@@ -105,6 +106,13 @@ async function notify(args: {
     body: args.body ?? null,
     payload: args.payload ?? {},
   });
+
+  // Send OS-level push notification for background/closed-tab alerts
+  try {
+    await sendPushNotification(args.userId, args.title, args.body ?? "", args.payload);
+  } catch (err) {
+    console.error("Failed to send background push notification:", err);
+  }
 }
 
 async function applyWalletTxn(args: {
