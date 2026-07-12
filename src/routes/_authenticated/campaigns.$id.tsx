@@ -267,7 +267,7 @@ function CampaignDetail() {
         </div>
       )}
 
-      {canApply && (
+      {(!isOwner && activeRole === "creator") && (myApplication || canApply) && (
         <div>
           {myApplication ? (
             <div className="surface-card p-6 flex items-start justify-between gap-4">
@@ -275,13 +275,28 @@ function CampaignDetail() {
                 <p className="text-sm">Your application is <Badge variant="secondary" className="capitalize ml-1">{myApplication.status}</Badge></p>
                 {myApplication.pitch && <p className="mt-3 text-sm text-muted-foreground whitespace-pre-line">"{myApplication.pitch}"</p>}
               </div>
-              {myApplication.status !== "withdrawn" && (
-                <Button variant="outline" size="sm" onClick={async () => {
-                  await supabase.from("applications").update({ status: "withdrawn" }).eq("id", myApplication.id);
-                  qc.invalidateQueries({ queryKey: ["campaign-apps", id] });
-                  toast.success("Application withdrawn");
-                }}>Withdraw</Button>
-              )}
+              <div className="flex items-center gap-2">
+                {myApplication.status !== "withdrawn" && (
+                  <>
+                    <PitchNegotiationDialog
+                      pitchId={myApplication.id}
+                      campaignTitle={c.title}
+                      isOwner={false}
+                      triggerBtn={
+                        <Button size="sm" variant="outline" className="gap-1.5 h-8">
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          Chat & Negotiate
+                        </Button>
+                      }
+                    />
+                    <Button variant="outline" size="sm" className="h-8" onClick={async () => {
+                      await supabase.from("applications").update({ status: "withdrawn" }).eq("id", myApplication.id);
+                      qc.invalidateQueries({ queryKey: ["campaign-apps", id] });
+                      toast.success("Application withdrawn");
+                    }}>Withdraw</Button>
+                  </>
+                )}
+              </div>
             </div>
           ) : (
             <ApplyDialog campaignId={id} />
