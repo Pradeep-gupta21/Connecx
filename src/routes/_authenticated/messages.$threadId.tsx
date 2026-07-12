@@ -111,7 +111,7 @@ function Thread() {
       })
       .eq("conversation_id", threadId)
       .neq("sender_id", user.id)
-      .in("status", ["sent", "delivered"]);
+      .is("read_at", null);
 
     if (!error) {
       qc.invalidateQueries({ queryKey: ["messages", threadId] });
