@@ -26,16 +26,31 @@ export const Route = createFileRoute("/_authenticated/campaigns/")({
 
 type FilterTab = "browse" | "mine" | "saved";
 
+function formatStatus(status: string) {
+  if (status === "open") return "Published";
+  if (status === "payment_secured") return "Payment Secured";
+  if (status === "creator_selected") return "In Progress";
+  if (status === "under_review") return "Under Review";
+  if (status === "completed") return "Completed";
+  return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function Campaigns() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const { activeRole } = useWorkspace();
+  const { activeRole, loading } = useWorkspace();
   const isAdvertiser = activeRole === "advertiser";
-  const [tab, setTab] = useState<FilterTab>(isAdvertiser ? "mine" : "browse");
+  const [tab, setTab] = useState<FilterTab>("browse");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("all");
   const [platform, setPlatform] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
+
+  useEffect(() => {
+    if (!loading && activeRole) {
+      setTab(activeRole === "advertiser" ? "mine" : "browse");
+    }
+  }, [activeRole, loading]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["campaigns", tab, user?.id, category, platform, status],
@@ -45,11 +60,27 @@ function Campaigns() {
         .from("campaigns")
         .select("id, title, brief, status, category, platform, budget_min, budget_max, deadline, created_at, advertiser_id, profiles:advertiser_id(display_name, avatar_url)")
         .is("deleted_at", null);
-      if (tab === "mine") q = q.eq("advertiser_id", user!.id);
-      else if (tab === "browse") q = q.eq("status", "open");
+
+      if (tab === "mine") {
+        if (isAdvertiser) {
+          q = q.eq("advertiser_id", user!.id);
+        } else {
+          const { data: pitches } = await supabase
+            .from("campaign_pitches")
+            .select("campaign_id")
+            .eq("creator_id", user!.id);
+          const campaignIds = Array.from(new Set((pitches ?? []).map((p) => p.campaign_id)));
+          if (campaignIds.length === 0) return [];
+          q = q.in("id", campaignIds);
+        }
+      } else if (tab === "browse") {
+        q = q.eq("status", "open");
+      }
+
       if (category !== "all") q = q.ilike("category", `%${category}%`);
       if (platform !== "all") q = q.ilike("platform", `%${platform}%`);
       if (tab === "mine" && status !== "all") q = q.eq("status", status as any);
+
       const { data, error } = await q.order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -102,15 +133,19 @@ function Campaigns() {
   const list =
     tab === "saved"
       ? (savedQ.data ?? []).map((s: any) => s.campaigns).filter(Boolean).filter(applyClientFilters({ search, category, platform, status: "all" }))
-      : (data ?? []).filter(applyClientFilters({ search, category, platform, status }));
+      : (data ?? []).filter(applyClientFilters({ search, category, platform, status: tab === "mine" ? status : "all" }));
 
   return (
     <div className="space-y-8">
       <PageHeader
         title="Campaigns"
         description={
-          isAdvertiser
-            ? "Every brief you've published — plus what's open across the marketplace."
+          tab === "mine"
+            ? isAdvertiser
+              ? "Every brief you've published — plus what's open across the marketplace."
+              : "Campaigns you've applied to or are active in."
+            : tab === "saved"
+            ? "Your bookmarked campaigns."
             : "Open briefs from brands ready to collaborate."
         }
         actions={
@@ -125,7 +160,7 @@ function Campaigns() {
       <div className="space-y-4">
         <Tabs value={tab} onValueChange={(v) => setTab(v as FilterTab)}>
           <TabsList>
-            {isAdvertiser && <TabsTrigger value="mine">My campaigns</TabsTrigger>}
+            <TabsTrigger value="mine">My campaigns</TabsTrigger>
             <TabsTrigger value="browse">Browse</TabsTrigger>
             <TabsTrigger value="saved">Saved</TabsTrigger>
           </TabsList>
@@ -160,9 +195,13 @@ function Campaigns() {
               <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
+                {isAdvertiser && <SelectItem value="draft">Draft</SelectItem>}
                 <SelectItem value="open">Published</SelectItem>
                 <SelectItem value="paused">Paused</SelectItem>
+                <SelectItem value="payment_secured">Payment Secured</SelectItem>
+                <SelectItem value="creator_selected">In Progress</SelectItem>
+                <SelectItem value="under_review">Under Review</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="closed">Closed</SelectItem>
                 <SelectItem value="archived">Archived</SelectItem>
               </SelectContent>
@@ -214,8 +253,8 @@ function Campaigns() {
                       {c.profiles?.display_name ?? "Brand"}
                     </p>
                   </div>
-                  <Badge variant={c.status === "open" ? "default" : "secondary"} className="capitalize text-[10px] shrink-0">
-                    {c.status === "open" ? "Published" : c.status}
+                  <Badge variant={c.status === "open" ? "default" : "secondary"} className="text-[10px] shrink-0">
+                    {formatStatus(c.status)}
                   </Badge>
                 </div>
                 {c.brief && <p className="mt-4 text-sm text-muted-foreground line-clamp-3">{c.brief}</p>}
