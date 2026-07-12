@@ -108,7 +108,7 @@ function CampaignDetail() {
     if (!campaignQuery.data) return;
     const channel = supabase
       .channel(`camp-${id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "applications", filter: `campaign_id=eq.${id}` },
+      .on("postgres_changes", { event: "*", schema: "public", table: "campaign_pitches", filter: `campaign_id=eq.${id}` },
         () => qc.invalidateQueries({ queryKey: ["campaign-apps", id] })
       )
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "campaigns", filter: `id=eq.${id}` },

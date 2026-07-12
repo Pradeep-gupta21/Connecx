@@ -78,7 +78,7 @@ export function CreatorDashboardView() {
     const channel = supabase
       .channel(`creator-dashboard-${user.id}`)
       // Applications: invite state changes → toast
-      .on("postgres_changes", { event: "*", schema: "public", table: "applications", filter: `creator_id=eq.${user.id}` }, (payload: any) => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "campaign_pitches", filter: `creator_id=eq.${user.id}` }, (payload: any) => {
         qc.invalidateQueries({ queryKey: ["creator-apps", user.id] });
         if (payload.eventType === "UPDATE" && payload.old?.status !== payload.new?.status) {
           const s = payload.new.status;

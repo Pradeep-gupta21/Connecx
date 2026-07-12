@@ -96,7 +96,7 @@ export function AdvertiserDashboardView() {
     if (!user) return;
     const ch = supabase
       .channel(`adv-dash-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "applications" }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "campaign_pitches" }, () => {
         qc.invalidateQueries({ queryKey: ["adv-dashboard", user.id] });
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "campaigns", filter: `advertiser_id=eq.${user.id}` }, () => {

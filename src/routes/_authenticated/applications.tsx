@@ -56,7 +56,7 @@ function ApplicationsPage() {
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("applications").update({ status: status as any }).eq("id", id);
+      const { error } = await (supabase.from("campaign_pitches" as any) as any).update({ status }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -68,7 +68,7 @@ function ApplicationsPage() {
 
   const withdraw = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("applications").update({ status: "withdrawn" as any }).eq("id", id);
+      const { error } = await (supabase.from("campaign_pitches" as any) as any).update({ status: "withdrawn" }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -82,7 +82,7 @@ function ApplicationsPage() {
     if (!user) return;
     const ch = supabase
       .channel(`apps-page-${user.id}-${activeRole}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "applications" }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "campaign_pitches" }, () => {
         qc.invalidateQueries({ queryKey: ["applications-page", user.id, activeRole] });
       })
       .subscribe();

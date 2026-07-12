@@ -302,12 +302,17 @@ export const PaymentService = {
     contractId: string;
     payerId: string;
   }): Promise<CreateOrderResult & { breakdown: FeeBreakdown }> {
+    console.log("[PaymentService.createContractPaymentOrder] called with input:", input);
     const { data: contract, error: cErr } = await admin
       .from("contracts")
       .select("id, advertiser_id, creator_id, campaign_id, title, amount, currency, application_id")
       .eq("id", input.contractId)
       .single();
-    if (cErr || !contract) throw new Error("Contract not found");
+    if (cErr || !contract) {
+      console.error("[PaymentService.createContractPaymentOrder] Contract not found in DB. Error:", cErr, "contractId:", input.contractId);
+      throw new Error("Contract not found");
+    }
+    console.log("[PaymentService.createContractPaymentOrder] Contract found:", contract);
     if (contract.advertiser_id !== input.payerId) throw new Error("Only the contract advertiser can fund it");
 
     const { data: c, error } = await admin

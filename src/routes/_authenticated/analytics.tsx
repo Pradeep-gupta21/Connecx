@@ -34,23 +34,23 @@ function AnalyticsPage() {
     queryFn: async () => {
       const since = subDays(new Date(), days - 1).toISOString();
       const [apps, pays] = await Promise.all([
-        supabase.from("applications").select("id, status, created_at").eq("creator_id", user!.id).gte("created_at", since),
+        supabase.from("campaign_pitches" as any).select("id, status, created_at").eq("creator_id", user!.id).gte("created_at", since),
         supabase.from("payments").select("amount, status, created_at").eq("payee_id", user!.id).is("deleted_at", null).gte("created_at", since),
       ]);
-      return { apps: apps.data ?? [], pays: pays.data ?? [] };
+      return { apps: (apps.data as any) ?? [], pays: pays.data ?? [] };
     },
   });
 
   useEffect(() => {
     if (!user) return;
     const ch = supabase.channel(`analytics-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "applications", filter: `creator_id=eq.${user.id}` }, () => qc.invalidateQueries({ queryKey: ["analytics", user.id] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "campaign_pitches", filter: `creator_id=eq.${user.id}` }, () => qc.invalidateQueries({ queryKey: ["analytics", user.id] }))
       .on("postgres_changes", { event: "*", schema: "public", table: "payments", filter: `payee_id=eq.${user.id}` }, () => qc.invalidateQueries({ queryKey: ["analytics", user.id] }))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [user, qc]);
 
-  const apps = q.data?.apps ?? [];
+  const apps = (q.data?.apps ?? []) as any[];
   const pays = q.data?.pays ?? [];
   const sent = apps.length;
   const accepted = apps.filter((a) => a.status === "accepted").length;
