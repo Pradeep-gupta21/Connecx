@@ -92,20 +92,33 @@ function Thread() {
   const markRead = useCallback(async () => {
     if (!user) return;
     
-    // 1. Mark incoming sent messages as delivered
-    await (supabase.from("messages") as any)
-      .update({
-        status: "delivered",
-        delivered_at: new Date().toISOString()
-      })
-      .eq("conversation_id", threadId)
-      .neq("sender_id", user.id)
-      .eq("status", "sent");
+    // 1. Optimistically clear unread count for this thread instantly
+    qc.setQueryData(["unread-per-convo", user.id], (old: any) => {
+      if (!old) return old;
+      return { ...old, [threadId]: 0 };
+    });
 
-    // 2. Mark incoming messages as seen
+    // 2. Optimistically mark all incoming messages as seen in local cache
+    qc.setQueryData(["messages", threadId], (old: any) => {
+      if (!old) return old;
+      return old.map((m: any) => {
+        if (m.sender_id !== user.id && !m.read_at) {
+          return {
+            ...m,
+            status: "seen",
+            seen_at: new Date().toISOString(),
+            read_at: new Date().toISOString()
+          };
+        }
+        return m;
+      });
+    });
+
+    // 3. Mark incoming messages as seen/read (also sets status & delivered_at/seen_at)
     const { error } = await (supabase.from("messages") as any)
       .update({
         status: "seen",
+        delivered_at: new Date().toISOString(),
         seen_at: new Date().toISOString(),
         read_at: new Date().toISOString()
       })
@@ -113,11 +126,14 @@ function Thread() {
       .neq("sender_id", user.id)
       .is("read_at", null);
 
-    if (!error) {
-      qc.invalidateQueries({ queryKey: ["messages", threadId] });
-      qc.invalidateQueries({ queryKey: ["unread-per-convo", user.id] });
-      qc.invalidateQueries({ queryKey: ["conversations", user.id] });
+    if (error) {
+      console.error("Error marking messages as read:", error);
     }
+
+    // 4. Force background refetch to guarantee synchronization
+    qc.invalidateQueries({ queryKey: ["messages", threadId] });
+    qc.invalidateQueries({ queryKey: ["unread-per-convo", user.id] });
+    qc.invalidateQueries({ queryKey: ["conversations", user.id] });
   }, [user, threadId, qc]);
 
   const c = convoQuery.data;
