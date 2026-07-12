@@ -267,6 +267,7 @@ export function PitchNegotiationDialog({
 
   const handleAcceptCreator = () => {
     if (!p) return;
+    console.log("[PitchNegotiationDialog] Mutating acceptCreator with p:", p);
     acceptCreatorMut.mutate({
       campaignId: p.campaign_id,
       applicationId: p.id,

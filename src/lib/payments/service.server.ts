@@ -661,12 +661,17 @@ export const PaymentService = {
     creatorId: string;
     actorId: string;
   }) {
+    console.log("[PaymentService.acceptCreator] called with:", args);
     const { data: c, error } = await admin
       .from("campaigns")
       .select("id, advertiser_id, title")
       .eq("id", args.campaignId)
       .single();
-    if (error || !c) throw new Error("Campaign not found");
+    if (error || !c) {
+      console.error("[PaymentService.acceptCreator] Campaign not found in DB. Error:", error, "campaignId:", args.campaignId);
+      throw new Error("Campaign not found");
+    }
+    console.log("[PaymentService.acceptCreator] Campaign found:", c);
     if (c.advertiser_id !== args.actorId) throw new Error("Only the campaign owner can accept creators");
 
     // Get the accepted pitch price
