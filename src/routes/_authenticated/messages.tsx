@@ -35,8 +35,8 @@ function MessagesLayout() {
         .from("conversations")
         .select(`
           id, last_message_at, campaign_id, advertiser_id, creator_id,
-          advertiser:profiles!conversations_advertiser_profile_fkey(id, display_name, avatar_url),
-          creator:profiles!conversations_creator_profile_fkey(id, display_name, avatar_url),
+          advertiser:profiles!advertiser_id(id, display_name, avatar_url),
+          creator:profiles!creator_id(id, display_name, avatar_url),
           campaigns(title)
         `)
         .or(`advertiser_id.eq.${user!.id},creator_id.eq.${user!.id}`)
@@ -76,6 +76,9 @@ function MessagesLayout() {
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") await channel.track({ at: new Date().toISOString() });
       });
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
   
   // Realtime subscription for global updates to conversations and unread messages
@@ -105,18 +108,33 @@ function MessagesLayout() {
     };
   }, [user, qc]);
 
-  const filtered = useMemo(() => {
+  const deduplicated = useMemo(() => {
     if (!conversations) return [];
-    if (!q.trim()) return conversations;
-    const s = q.toLowerCase();
+    const seen = new Set<string>();
     return conversations.filter((c: any) => {
+      const u1 = c.advertiser_id < c.creator_id ? c.advertiser_id : c.creator_id;
+      const u2 = c.advertiser_id > c.creator_id ? c.advertiser_id : c.creator_id;
+      const key = `${u1}:${u2}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+  }, [conversations]);
+
+  const filtered = useMemo(() => {
+    if (!deduplicated) return [];
+    if (!q.trim()) return deduplicated;
+    const s = q.toLowerCase();
+    return deduplicated.filter((c: any) => {
       const other = user?.id === c.advertiser_id ? c.creator : c.advertiser;
       return (
         other?.display_name?.toLowerCase().includes(s) ||
         c.campaigns?.title?.toLowerCase().includes(s)
       );
     });
-  }, [conversations, q, user?.id]);
+  }, [deduplicated, q, user?.id]);
 
   // Keyboard: Alt + ArrowUp/Down to cycle conversations
   useEffect(() => {
@@ -178,7 +196,14 @@ function MessagesLayout() {
               {filtered.map((c: any) => {
                 const other = user?.id === c.advertiser_id ? c.creator : c.advertiser;
                 const name = other?.display_name ?? "Conversation";
-                const unread = unreadMap?.[c.id] ?? 0;
+                const unread = conversations
+                  ? conversations
+                      .filter((x: any) => 
+                        (x.advertiser_id === c.advertiser_id && x.creator_id === c.creator_id) ||
+                        (x.advertiser_id === c.creator_id && x.creator_id === c.advertiser_id)
+                      )
+                      .reduce((sum: number, x: any) => sum + (unreadMap?.[x.id] ?? 0), 0)
+                  : 0;
                 const online = other?.id && onlineIds.has(other.id);
                 return (
                   <li key={c.id}>
@@ -204,9 +229,16 @@ function MessagesLayout() {
                         <div className="flex items-center justify-between gap-2">
                           <p className={cn("truncate", unread ? "font-semibold" : "font-medium")}>{name}</p>
                           <span className="text-[10px] text-muted-foreground shrink-0">
-                            {c.last_message_at
-                              ? formatDistanceToNow(new Date(c.last_message_at), { addSuffix: false })
-                              : "Just now"}
+                            {(() => {
+                              if (!c.last_message_at) return "Just now";
+                              try {
+                                const d = new Date(c.last_message_at);
+                                if (isNaN(d.getTime())) return "Just now";
+                                return formatDistanceToNow(d, { addSuffix: false });
+                              } catch {
+                                return "Just now";
+                              }
+                            })()}
                           </span>
                         </div>
                         <div className="flex items-center justify-between gap-2">

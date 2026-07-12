@@ -557,8 +557,7 @@ async function startConvoFromApp(a: any, campaignId: string): Promise<string | n
   const { data: existing } = await supabase
     .from("conversations")
     .select("id")
-    .or(`advertiser_id.eq.${uid},creator_id.eq.${uid}`)
-    .or(`advertiser_id.eq.${a.creator_id},creator_id.eq.${a.creator_id}`)
+    .or(`and(advertiser_id.eq.${uid},creator_id.eq.${a.creator_id}),and(advertiser_id.eq.${a.creator_id},creator_id.eq.${uid})`)
     .eq("campaign_id", campaignId)
     .maybeSingle();
   if (existing?.id) return existing.id;
@@ -572,8 +571,7 @@ async function startConvoFromApp(a: any, campaignId: string): Promise<string | n
       const { data: retry } = await supabase
         .from("conversations")
         .select("id")
-        .or(`advertiser_id.eq.${uid},creator_id.eq.${uid}`)
-        .or(`advertiser_id.eq.${a.creator_id},creator_id.eq.${a.creator_id}`)
+        .or(`and(advertiser_id.eq.${uid},creator_id.eq.${a.creator_id}),and(advertiser_id.eq.${a.creator_id},creator_id.eq.${uid})`)
         .eq("campaign_id", campaignId)
         .maybeSingle();
       return retry?.id ?? null;

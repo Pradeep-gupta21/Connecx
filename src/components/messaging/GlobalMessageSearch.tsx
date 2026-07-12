@@ -39,8 +39,8 @@ export function GlobalMessageSearch({ open, onOpenChange }: { open: boolean; onO
         .from("conversations")
         .select(`
           id, advertiser_id, creator_id,
-          advertiser:profiles!conversations_advertiser_profile_fkey(id, display_name, avatar_url),
-          creator:profiles!conversations_creator_profile_fkey(id, display_name, avatar_url),
+          advertiser:profiles!advertiser_id(id, display_name, avatar_url),
+          creator:profiles!creator_id(id, display_name, avatar_url),
           campaigns(title)
         `)
         .or(`advertiser_id.eq.${user!.id},creator_id.eq.${user!.id}`);

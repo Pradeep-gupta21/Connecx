@@ -166,7 +166,7 @@ export function CreatorDashboardView() {
     queryFn: async () => {
       const { data } = await supabase
         .from("conversations")
-        .select("id, last_message_at, advertiser:profiles!conversations_advertiser_profile_fkey(id, display_name, avatar_url), messages(id, body, created_at, sender_id, read_at)")
+        .select("id, last_message_at, advertiser:profiles!advertiser_id(id, display_name, avatar_url), messages(id, body, created_at, sender_id, read_at)")
         .eq("creator_id", user!.id)
         .order("last_message_at", { ascending: false })
         .limit(5);

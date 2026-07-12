@@ -110,8 +110,7 @@ function CreatorProfilePage() {
     const { data: existing } = await supabase
       .from("conversations")
       .select("id")
-      .or(`advertiser_id.eq.${user.id},creator_id.eq.${user.id}`)
-      .or(`advertiser_id.eq.${id},creator_id.eq.${id}`)
+      .or(`and(advertiser_id.eq.${user.id},creator_id.eq.${id}),and(advertiser_id.eq.${id},creator_id.eq.${user.id})`)
       .is("campaign_id", null)
       .maybeSingle();
     let convoId = existing?.id;
@@ -127,8 +126,7 @@ function CreatorProfilePage() {
           const { data: retry } = await supabase
             .from("conversations")
             .select("id")
-            .or(`advertiser_id.eq.${user.id},creator_id.eq.${user.id}`)
-            .or(`advertiser_id.eq.${id},creator_id.eq.${id}`)
+            .or(`and(advertiser_id.eq.${user.id},creator_id.eq.${id}),and(advertiser_id.eq.${id},creator_id.eq.${user.id})`)
             .is("campaign_id", null)
             .maybeSingle();
           convoId = retry?.id;
@@ -182,7 +180,7 @@ function CreatorProfilePage() {
     ? (socialFollowerTotal > 0 ? socialFollowerTotal : (typeof c.follower_count === "number" && c.follower_count > 0 ? c.follower_count : null))
     : (typeof c.follower_count === "number" && c.follower_count > 0 ? c.follower_count : null);
   
-  const followersDisplay = followerCountValue ? formatFollowerCount(followerCountValue) : "—";
+  const followersDisplay = followerCountValue ? (formatFollowerCount(followerCountValue) ?? "—") : "—";
   const isOwner = user?.id === id;
   const followersSubtitle = isOwner && connectedSocials.length === 0 && !followerCountValue
     ? "Connect your social accounts to display follower count."

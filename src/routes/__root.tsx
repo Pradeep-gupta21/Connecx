@@ -46,12 +46,16 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
+      <div className="max-w-xl text-center flex flex-col items-center">
         <h1 className="font-display text-xl font-semibold tracking-tight">This page didn't load</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Something went wrong on our end. Try refreshing or head back home.
         </p>
+        <div className="mt-4 p-4 rounded-lg bg-destructive/10 text-destructive text-left text-xs font-mono overflow-auto max-h-60 max-w-full w-full">
+          <p className="font-bold">{error.name || "Error"}: {error.message || "Unknown error"}</p>
+          {error.stack && <pre className="mt-2 whitespace-pre-wrap break-all opacity-80">{error.stack}</pre>}
+        </div>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
