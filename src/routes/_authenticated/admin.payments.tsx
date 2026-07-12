@@ -3,7 +3,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
 import {
   ArrowUpRight,
@@ -15,7 +16,13 @@ import {
   ShieldCheck,
   TrendingUp,
   Wallet,
+  Loader2,
+  Check,
+  X,
 } from "lucide-react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { releasePayment } from "@/lib/payments/payments.functions";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -80,6 +87,41 @@ function AdminPayments() {
     },
   });
 
+  const pendingReleases = useQuery({
+    queryKey: ["admin-pending-releases"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("contracts")
+        .select(`
+          id,
+          title,
+          amount,
+          currency,
+          reviewed_at,
+          payment_id,
+          campaign:campaign_id(id, title),
+          advertiser:advertiser_id(display_name, avatar_url),
+          creator:creator_id(display_name, avatar_url),
+          payments:payment_id(created_at, status_v2)
+        ` as any)
+        .eq("status", "approved")
+        .is("deleted_at", null);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const releaseFn = useServerFn(releasePayment);
+  const releaseMut = useMutation({
+    mutationFn: (paymentId: string) => releaseFn({ data: { paymentId } }),
+    onSuccess: () => {
+      toast.success("Payment released successfully");
+      qc.invalidateQueries({ queryKey: ["admin-pending-releases"] });
+      qc.invalidateQueries({ queryKey: ["admin-payments"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   useEffect(() => {
     const ch = supabase
       .channel("admin-payments-monitor")
@@ -91,6 +133,9 @@ function AdminPayments() {
       )
       .on("postgres_changes", { event: "*", schema: "public", table: "withdrawals" }, () =>
         qc.invalidateQueries({ queryKey: ["admin-withdrawals-mon"] }),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "contracts" }, () =>
+        qc.invalidateQueries({ queryKey: ["admin-pending-releases"] }),
       )
       .subscribe();
     return () => {
@@ -233,63 +278,134 @@ function AdminPayments() {
           />
         </TabsContent>
 
-        <TabsContent value="active" className="mt-6">
-          {(() => {
-            const held = filteredPayments.filter(
-              (p) => p.status_v2 === "held" || p.status_v2 === "revision_requested",
-            );
-            if (held.length === 0)
-              return (
-                <EmptyState
-                  icon={ShieldCheck}
-                  title="No active campaigns"
-                  description="Every active payment approved or refunded — nothing waiting for review."
-                />
-              );
-            return (
+        <TabsContent value="active" className="mt-6 space-y-6">
+          {/* Section A: Pending Creator Payout Releases */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+              Pending Creator Payments · {pendingReleases.data?.length ?? 0}
+            </h3>
+            {pendingReleases.isLoading ? (
+              <div className="p-6 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></div>
+            ) : !pendingReleases.data || pendingReleases.data.length === 0 ? (
+              <div className="surface-card p-6 text-center text-xs text-muted-foreground border border-dashed rounded-lg bg-muted/10">
+                No approved creator deliverables awaiting payout release.
+              </div>
+            ) : (
               <div className="space-y-3">
-                {held.map((p) => (
-                  <div
-                    key={p.id}
-                    className="surface-card p-4 flex items-center justify-between gap-4"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="grid h-10 w-10 place-items-center rounded-full bg-accent/10 text-accent flex-shrink-0">
-                        <ShieldCheck className="h-4 w-4" />
+                {pendingReleases.data.map((item: any) => (
+                  <div key={item.id} className="surface-card p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border border-success/15 bg-success/5 rounded-xl">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-foreground text-sm">{item.campaign?.title || item.title}</span>
+                        <Badge variant="secondary" className="bg-success/10 text-success border-success/20 text-[10px]">
+                          Approved
+                        </Badge>
                       </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Money value={p.amount} currency={p.currency ?? "INR"} className="font-semibold" />
-                          <PaymentStatusBadge status={p.status_v2} />
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Since {format(new Date(p.created_at), "MMM d, yyyy")}
-                          {p.campaign_id && (
-                            <>
-                              {" · "}
-                              <Link
-                                to="/campaigns/$id"
-                                params={{ id: p.campaign_id }}
-                                className="hover:text-foreground story-link"
-                              >
-                                Campaign
-                              </Link>
-                            </>
-                          )}
-                        </p>
+                      <div className="text-xs text-muted-foreground space-y-0.5">
+                        <p>Advertiser: <span className="font-medium text-foreground">{item.advertiser?.display_name || "—"}</span></p>
+                        <p>Creator: <span className="font-medium text-foreground">{item.creator?.display_name || "—"}</span></p>
+                        {item.payments?.created_at && (
+                          <p>Payment Secured: <span className="font-medium text-foreground">{format(new Date(item.payments.created_at), "MMM d, yyyy")}</span></p>
+                        )}
+                        {item.reviewed_at && (
+                          <p>Work Approved: <span className="font-medium text-foreground">{format(new Date(item.reviewed_at), "MMM d, yyyy")}</span></p>
+                        )}
                       </div>
                     </div>
-                    <button
-                      onClick={() => setOpenPayment(p)}
-                      className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-                    >
-                      Details <ArrowUpRight className="h-3 w-3" />
-                    </button>
+
+                    <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Earnings Amount</p>
+                        <p className="font-bold text-foreground font-mono text-base">₹{Number(item.amount).toLocaleString("en-IN")}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        disabled={releaseMut.isPending}
+                        onClick={() => {
+                          if (item.payment_id) {
+                            releaseMut.mutate(item.payment_id);
+                          } else {
+                            toast.error("No payment linked to this contract");
+                          }
+                        }}
+                        className="bg-success hover:bg-success/90 text-success-foreground gap-1.5 h-9"
+                      >
+                        {releaseMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                        Release Payout
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
-            );
-          })()}
+            )}
+          </section>
+
+          {/* Section B: In Progress Secured Payments */}
+          <section className="space-y-3 pt-4 border-t border-border/60">
+            <h3 className="text-sm font-semibold text-muted-foreground">
+              In Progress Secured Payments
+            </h3>
+            {(() => {
+              // Filter out payments that are already approved & pending release to avoid duplication in UI
+              const pendingPayIds = new Set(
+                (pendingReleases.data ?? []).map((item: any) => item.payment_id).filter(Boolean)
+              );
+              const held = filteredPayments.filter(
+                (p) => (p.status_v2 === "held" || p.status_v2 === "revision_requested") && !pendingPayIds.has(p.id)
+              );
+              if (held.length === 0)
+                return (
+                  <EmptyState
+                    icon={ShieldCheck}
+                    title="No in progress campaigns"
+                    description="Every secured payment is completed, refunded, or in the payout approval queue."
+                  />
+                );
+              return (
+                <div className="space-y-3">
+                  {held.map((p) => (
+                    <div
+                      key={p.id}
+                      className="surface-card p-4 flex items-center justify-between gap-4"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="grid h-10 w-10 place-items-center rounded-full bg-accent/10 text-accent flex-shrink-0">
+                          <ShieldCheck className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Money value={p.amount} currency={p.currency ?? "INR"} className="font-semibold" />
+                            <PaymentStatusBadge status={p.status_v2} />
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Since {format(new Date(p.created_at), "MMM d, yyyy")}
+                            {p.campaign_id && (
+                              <>
+                                {" · "}
+                                <Link
+                                  to="/campaigns/$id"
+                                  params={{ id: p.campaign_id }}
+                                  className="hover:text-foreground story-link"
+                                >
+                                  Campaign
+                                </Link>
+                              </>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setOpenPayment(p)}
+                        className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                      >
+                        Details <ArrowUpRight className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </section>
         </TabsContent>
 
         <TabsContent value="refunds" className="mt-6">
@@ -379,7 +495,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAdminReviewRefund } from "@/hooks/usePayments";
-import { Check, X } from "lucide-react";
 
 function RefundQueue({ refunds, isLoading }: { refunds: any[]; isLoading: boolean }) {
   const [rejectRefund, setRejectRefund] = useReactState<any | null>(null);

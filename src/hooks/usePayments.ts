@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
   fundCampaign,
+  fundContract,
   previewCampaignFees,
   verifyPayment,
   acceptCreator,
@@ -60,6 +61,42 @@ export function useFundCampaign(campaignName?: string) {
   });
 }
 
+export function useFundContract(campaignName?: string) {
+  const fund = useServerFn(fundContract);
+  const verify = useServerFn(verifyPayment);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (contractId: string) => {
+      const order = await fund({ data: { contractId } });
+      return new Promise<{ paymentId: string }>((resolve, reject) => {
+        openRazorpayCheckout({
+          order,
+          name: "Connecx",
+          description: campaignName ?? "Fund contract",
+          onSuccess: async (r) => {
+            try {
+              const res = await verify({ data: r });
+              resolve({ paymentId: res.paymentId });
+            } catch (e) { reject(e); }
+          },
+          onDismiss: () => reject(new Error("Payment cancelled")),
+        });
+      });
+    },
+    onSuccess: () => {
+      toast.success("Payment secured — creator can now start work");
+      qc.invalidateQueries({ queryKey: ["campaign"] });
+      qc.invalidateQueries({ queryKey: ["contract"] });
+      qc.invalidateQueries({ queryKey: ["contracts"] });
+      qc.invalidateQueries({ queryKey: ["campaign-contracts"] });
+      qc.invalidateQueries({ queryKey: ["payment-history"] });
+    },
+    onError: (e: Error) => {
+      if (e.message !== "Payment cancelled") toast.error(e.message);
+    },
+  });
+}
+
 export function useAcceptCreator() {
   const fn = useServerFn(acceptCreator);
   const qc = useQueryClient();
@@ -71,6 +108,7 @@ export function useAcceptCreator() {
       qc.invalidateQueries({ queryKey: ["campaign"] });
       qc.invalidateQueries({ queryKey: ["campaign-apps"] });
       qc.invalidateQueries({ queryKey: ["contracts"] });
+      qc.invalidateQueries({ queryKey: ["campaign-contracts"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -85,6 +123,7 @@ export function useSubmitDeliverables() {
     onSuccess: () => {
       toast.success("Deliverables submitted for review");
       qc.invalidateQueries({ queryKey: ["contracts"] });
+      qc.invalidateQueries({ queryKey: ["campaign-contracts"] });
       qc.invalidateQueries({ queryKey: ["contract"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -98,9 +137,11 @@ export function useReviewDeliverables() {
     mutationFn: (data: { contractId: string; decision: "approve" | "revision"; notes?: string }) =>
       fn({ data }),
     onSuccess: (_r, v) => {
-      toast.success(v.decision === "approve" ? "Approved — funds released" : "Revision requested");
+      toast.success(v.decision === "approve" ? "Approved — awaiting admin release" : "Revision requested");
+      qc.invalidateQueries({ queryKey: ["campaign"] });
       qc.invalidateQueries({ queryKey: ["contract"] });
       qc.invalidateQueries({ queryKey: ["contracts"] });
+      qc.invalidateQueries({ queryKey: ["campaign-contracts"] });
       qc.invalidateQueries({ queryKey: ["payment-history"] });
     },
     onError: (e: Error) => toast.error(e.message),

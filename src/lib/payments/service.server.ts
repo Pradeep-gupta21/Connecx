@@ -217,7 +217,7 @@ export const PaymentService = {
     if (c.deleted_at) throw new Error("Campaign has been deleted");
     if (c.advertiser_id !== input.payerId) throw new Error("Only the campaign owner can fund it");
     if (c.funded) throw new Error("Campaign is already funded");
-    if (c.status && !["draft", "open"].includes(c.status as string)) {
+    if (c.status && !["draft", "open", "published", "receiving_pitches"].includes(c.status as string)) {
       throw new Error(`Cannot fund a ${c.status} campaign`);
     }
 
@@ -253,7 +253,7 @@ export const PaymentService = {
         receipt_number: receipt,
         invoice_number: invoice,
         notes: { title: c.title, kind: "campaign_funding" },
-      })
+      } as any)
       .select("id")
       .single();
     if (pErr || !pay) throw new Error(`Failed to create payment: ${pErr?.message}`);
@@ -296,7 +296,110 @@ export const PaymentService = {
       mode: razorpay.mode(),
       breakdown,
     };
+  },
 
+  async createContractPaymentOrder(input: {
+    contractId: string;
+    payerId: string;
+  }): Promise<CreateOrderResult & { breakdown: FeeBreakdown }> {
+    const { data: contract, error: cErr } = await admin
+      .from("contracts")
+      .select("id, advertiser_id, creator_id, campaign_id, title, amount, currency, application_id")
+      .eq("id", input.contractId)
+      .single();
+    if (cErr || !contract) throw new Error("Contract not found");
+    if (contract.advertiser_id !== input.payerId) throw new Error("Only the contract advertiser can fund it");
+
+    const { data: c, error } = await admin
+      .from("campaigns")
+      .select("id, platform_fee_pct, gst_pct, title")
+      .eq("id", contract.campaign_id)
+      .single();
+    if (error || !c) throw new Error("Campaign not found");
+
+    const budget = Number(contract.amount);
+    if (!budget || budget <= 0) throw new Error("Contract amount must be greater than zero");
+
+    const breakdown = computeBreakdown(
+      budget,
+      Number(c.platform_fee_pct ?? 10),
+      Number(c.gst_pct ?? 18),
+    );
+
+    const receipt = await nextReceipt();
+    const invoice = await nextInvoice();
+
+    // Create payment record mapped to the contract
+    const { data: pay, error: pErr } = await admin
+      .from("payments")
+      .insert({
+        amount: breakdown.total_payable,
+        gross_amount: breakdown.subtotal,
+        platform_fee: breakdown.platform_fee,
+        gst: breakdown.gst,
+        creator_earnings: breakdown.creator_earnings,
+        currency: "INR",
+        status: "pending",
+        status_v2: "pending",
+        type: "campaign_payment",
+        provider: "razorpay",
+        payer_id: contract.advertiser_id,
+        payee_id: contract.creator_id,
+        advertiser_id: contract.advertiser_id,
+        creator_id: contract.creator_id,
+        campaign_id: contract.campaign_id,
+        contract_id: contract.id,
+        pitch_id: contract.application_id,
+        receipt_number: receipt,
+        invoice_number: invoice,
+        notes: { title: c.title, kind: "contract_payment" },
+      } as any)
+      .select("id")
+      .single();
+    if (pErr || !pay) throw new Error(`Failed to create payment: ${pErr?.message}`);
+
+    const order = await razorpay.createOrder({
+      amountMinor: toMinor(breakdown.total_payable),
+      currency: "INR",
+      receipt,
+      notes: {
+        payment_id: pay.id,
+        campaign_id: c.id,
+        contract_id: contract.id,
+        payer_id: input.payerId,
+        kind: "contract_payment",
+      },
+    });
+
+    await admin.from("payments").update({ razorpay_order_id: order.id }).eq("id", pay.id);
+
+    await log({
+      paymentId: pay.id,
+      actorId: input.payerId,
+      action: "order.created",
+      to: "pending",
+      metadata: { razorpay_order_id: order.id, breakdown },
+    });
+    await audit({
+      actorId: input.payerId,
+      action: "payment_secured_initiated",
+      entityType: "campaign",
+      entityId: c.id,
+      metadata: { payment_id: pay.id, amount: breakdown.total_payable },
+    });
+
+    // Also associate payment with the contract
+    await admin.from("contracts").update({ payment_id: pay.id }).eq("id", contract.id);
+
+    return {
+      orderId: order.id,
+      paymentId: pay.id,
+      amount: toMinor(breakdown.total_payable),
+      currency: "INR",
+      keyId: razorpay.publicKeyId(),
+      mode: razorpay.mode(),
+      breakdown,
+    };
   },
 
   // Generic order (kept for compatibility)
@@ -426,7 +529,7 @@ export const PaymentService = {
       return { paymentId: pay.id, status: "held" as PaymentStatus };
     }
 
-    // Mark campaign as funded
+    // Mark campaign as payment secured
     if (pay.campaign_id) {
       await admin.from("campaigns")
         .update({
@@ -434,17 +537,49 @@ export const PaymentService = {
           funded_amount: Number(pay.amount),
           funded_at: new Date().toISOString(),
           funded_payment_id: pay.id,
-          status: "open",
+          status: "payment_secured",
         })
         .eq("id", pay.campaign_id);
     }
 
-    // Double-entry ledger: cash in → escrow liability + fee + gst revenue.
-    // Idempotent per payment id — safe if webhook + client both fire.
     const currency = (pay.currency as string) ?? "INR";
     const creatorAmt = Number(pay.creator_earnings ?? pay.amount ?? 0);
     const feeAmt = Number(pay.platform_fee ?? 0);
     const gstAmt = Number(pay.gst ?? 0);
+
+    // Set contract status to active (in progress)
+    if (pay.contract_id) {
+      await admin.from("contracts")
+        .update({
+          status: "active",
+          payment_id: pay.id,
+        })
+        .eq("id", pay.contract_id);
+    }
+
+    // Hold creator earnings in pending_balance
+    if (creatorAmt > 0 && pay.payee_id) {
+      await applyWalletTxn({
+        userId: pay.payee_id,
+        type: "hold",
+        amount: creatorAmt,
+        referenceType: "payment",
+        referenceId: pay.id,
+        description: `Funds secured for campaign payment`,
+      });
+    }
+
+    // Log to payment_events
+    await admin.from("payment_events").insert({
+      campaign_id: pay.campaign_id,
+      pitch_id: pay.pitch_id,
+      user_id: pay.payer_id,
+      event_type: "payment_completed",
+      metadata: { payment_id: pay.id, amount: pay.amount },
+    } as any);
+
+    // Double-entry ledger: cash in → escrow liability + fee + gst revenue.
+    // Idempotent per payment id — safe if webhook + client both fire.
     if (creatorAmt > 0) {
       await postLedger({
         event: "campaign.funded.escrow",
@@ -528,40 +663,37 @@ export const PaymentService = {
   }) {
     const { data: c, error } = await admin
       .from("campaigns")
-      .select("id, advertiser_id, title, funded, funded_payment_id, funded_amount")
+      .select("id, advertiser_id, title")
       .eq("id", args.campaignId)
       .single();
     if (error || !c) throw new Error("Campaign not found");
     if (c.advertiser_id !== args.actorId) throw new Error("Only the campaign owner can accept creators");
-    if (!c.funded) throw new Error("Fund the campaign before accepting creators");
 
-    // Mark application accepted; reject others (optional but common for single-slot campaigns)
-    await admin.from("applications").update({ status: "accepted" })
+    // Get the accepted pitch price
+    const { data: pitch, error: pErr } = await admin
+      .from("campaign_pitches")
+      .select("id, quoted_price, final_price")
+      .eq("id", args.applicationId)
+      .single();
+    if (pErr || !pitch) throw new Error("Pitch not found");
+
+    const contractAmount = Number(pitch.final_price ?? pitch.quoted_price ?? 0);
+
+    // 1. Mark this pitch as accepted
+    await admin.from("campaign_pitches").update({ status: "accepted" })
       .eq("id", args.applicationId);
 
-    // Retarget the funded payment to the accepted creator
-    if (c.funded_payment_id) {
-      await admin.from("payments").update({ payee_id: args.creatorId }).eq("id", c.funded_payment_id);
-      // Hold credit in creator wallet (pending release)
-      const { data: pay } = await admin
-        .from("payments")
-        .select("creator_earnings, amount")
-        .eq("id", c.funded_payment_id)
-        .single();
-      const holdAmount = Number(pay?.creator_earnings ?? pay?.amount ?? 0);
-      if (holdAmount > 0) {
-        await applyWalletTxn({
-          userId: args.creatorId,
-          type: "hold",
-          amount: holdAmount,
-          referenceType: "payment",
-          referenceId: c.funded_payment_id,
-          description: `Funds held for "${c.title}"`,
-        });
-      }
-    }
+    // 2. Reject all other active pitches for this campaign
+    await admin.from("campaign_pitches")
+      .update({ status: "rejected" })
+      .eq("campaign_id", args.campaignId)
+      .neq("id", args.applicationId)
+      .in("status", ["submitted", "under_review", "negotiating"]);
 
-    // Create contract
+    // 3. Update campaign status to 'creator_selected'
+    await admin.from("campaigns").update({ status: "creator_selected" }).eq("id", args.campaignId);
+
+    // 4. Create contract in draft state
     const { data: existing } = await admin
       .from("contracts")
       .select("id")
@@ -579,18 +711,26 @@ export const PaymentService = {
           creator_id: args.creatorId,
           application_id: args.applicationId,
           title: c.title,
-          amount: Number(c.funded_amount ?? 0),
+          amount: contractAmount,
           currency: "INR",
-          status: "active",
-          payment_id: c.funded_payment_id,
+          status: "draft",
         })
         .select("id")
         .single();
-      if (cErr || !inserted) throw new Error(`Contract failed: ${cErr?.message}`);
+      if (cErr || !inserted) throw new Error(`Contract creation failed: ${cErr?.message}`);
       contractId = inserted.id;
     } else {
-      await admin.from("contracts").update({ status: "active" }).eq("id", contractId);
+      await admin.from("contracts").update({ status: "draft", amount: contractAmount }).eq("id", contractId);
     }
+
+    // 5. Log payment event
+    await admin.from("payment_events").insert({
+      campaign_id: c.id,
+      pitch_id: args.applicationId,
+      user_id: args.actorId,
+      event_type: "creator_approved",
+      metadata: { creator_id: args.creatorId, amount: contractAmount },
+    } as any);
 
     await audit({
       actorId: args.actorId,
@@ -599,6 +739,7 @@ export const PaymentService = {
       entityId: contractId!,
       metadata: { campaign_id: c.id, creator_id: args.creatorId },
     });
+
     await notify({
       userId: args.creatorId,
       type: "creator_accepted",
@@ -706,27 +847,45 @@ export const PaymentService = {
   async approveDeliverables(args: { contractId: string; actorId: string }) {
     const { data: contract, error } = await admin
       .from("contracts")
-      .select("id, advertiser_id, creator_id, campaign_id, title, payment_id")
+      .select("id, advertiser_id, creator_id, campaign_id, title, payment_id, application_id")
       .eq("id", args.contractId)
       .single();
     if (error || !contract) throw new Error("Contract not found");
     if (contract.advertiser_id !== args.actorId) throw new Error("Only the advertiser can approve");
-    if (!contract.payment_id) throw new Error("Contract has no linked escrow payment — cannot release funds");
+    if (!contract.payment_id) throw new Error("Contract has no linked payment — cannot approve work");
 
     await admin.from("contracts").update({
       status: "approved",
       reviewed_at: new Date().toISOString(),
     }).eq("id", args.contractId);
 
-    await this.releasePayment(contract.payment_id, args.actorId);
+    if (contract.campaign_id) {
+      await admin.from("campaigns").update({
+        status: "under_review",
+      }).eq("id", contract.campaign_id);
+    }
 
-    await admin.from("contracts").update({ status: "completed" }).eq("id", args.contractId);
+    await admin.from("payment_events").insert({
+      campaign_id: contract.campaign_id,
+      pitch_id: contract.application_id,
+      user_id: args.actorId,
+      event_type: "work_approved",
+      metadata: { contract_id: contract.id },
+    } as any);
 
     await audit({
       actorId: args.actorId,
       action: "deliverables.approved",
       entityType: "contract",
       entityId: args.contractId,
+    });
+
+    await notify({
+      userId: contract.creator_id,
+      type: "system",
+      title: "Deliverables Approved",
+      body: `Your work for "${contract.title}" has been approved! The admin will release the secured funds shortly.`,
+      payload: { contract_id: contract.id, campaign_id: contract.campaign_id },
     });
   },
 
@@ -735,7 +894,7 @@ export const PaymentService = {
   async releasePayment(paymentId: string, actorId: string) {
     const { data: pay, error } = await admin
       .from("payments")
-      .select("id, amount, creator_earnings, payee_id, payer_id, campaign_id, status_v2")
+      .select("id, amount, creator_earnings, payee_id, payer_id, campaign_id, contract_id, pitch_id, status_v2")
       .eq("id", paymentId)
       .single();
     if (error || !pay) throw new Error("Payment not found");
@@ -745,7 +904,7 @@ export const PaymentService = {
     }
 
     await admin.from("payments")
-      .update({ status: "succeeded", status_v2: "released" })
+      .update({ status: "succeeded", status_v2: "released", released_at: new Date().toISOString() })
       .eq("id", paymentId);
 
     const releaseAmt = Number(pay.creator_earnings ?? pay.amount ?? 0);
@@ -769,6 +928,25 @@ export const PaymentService = {
       idempotencyKey: `pay:${pay.id}:release`,
       actorId,
     });
+
+    // Update contract status to completed
+    if (pay.contract_id) {
+      await admin.from("contracts").update({ status: "completed" }).eq("id", pay.contract_id);
+    }
+
+    // Update campaign status to completed
+    if (pay.campaign_id) {
+      await admin.from("campaigns").update({ status: "completed" }).eq("id", pay.campaign_id);
+    }
+
+    // Log to payment_events
+    await admin.from("payment_events").insert({
+      campaign_id: pay.campaign_id,
+      pitch_id: pay.pitch_id,
+      user_id: actorId,
+      event_type: "funds_released",
+      metadata: { payment_id: paymentId, amount: releaseAmt },
+    } as any);
 
     await log({ paymentId, actorId, action: "payment.released", from: "held", to: "released" });
     await audit({ actorId, action: "payment.released", entityType: "payment", entityId: paymentId });

@@ -78,14 +78,12 @@ export function buildTimeline(
 ): Step[] {
   const status = payment.status_v2 ?? "";
   const paid = PAID_STATUSES.has(status);
-  const protectedNow = PROTECTED_STATUSES.has(status);
   const released = RELEASED_STATUSES.has(status);
   const withdrawn = status === "withdrawn";
 
   const cStatus = contract?.status ?? "";
-  const accepted =
-    !!contract &&
-    ["active", "submitted", "revision_requested", "approved", "completed"].includes(cStatus);
+  const accepted = !!contract;
+  const paymentSecured = paid || ["active", "submitted", "revision_requested", "approved", "completed"].includes(cStatus);
   const submitted =
     !!contract?.submitted_at ||
     ["submitted", "revision_requested", "approved", "completed"].includes(cStatus);
@@ -94,36 +92,27 @@ export function buildTimeline(
 
   const steps: Step[] = [
     {
-      key: "payment",
-      label: "Payment received",
-      helper: "Advertiser funded the campaign",
-      icon: Wallet,
-      done: paid,
-      active: paid && !protectedNow,
-      at: payment.processed_at ?? payment.created_at ?? null,
-    },
-    {
-      key: "protected",
-      label: "Campaign active",
-      helper: "Awaiting deliverables from creator",
-      icon: ShieldCheck,
-      done: protectedNow,
-      active: protectedNow && !accepted,
-      at: payment.processed_at ?? null,
-    },
-    {
       key: "accepted",
       label: "Creator assigned",
-      helper: "Contract signed with the creator",
+      helper: "Advertiser accepted the creator pitch",
       icon: Handshake,
       done: accepted,
-      active: accepted && !submitted,
+      active: accepted && !paymentSecured,
       at: contract?.created_at ?? null,
+    },
+    {
+      key: "payment",
+      label: "Payment secured",
+      helper: "Advertiser secured campaign budget",
+      icon: Wallet,
+      done: paymentSecured,
+      active: paymentSecured && !submitted,
+      at: payment.processed_at ?? payment.created_at ?? null,
     },
     {
       key: "submitted",
       label: "Deliverables submitted",
-      helper: "Creator handed off the work",
+      helper: "Creator uploaded campaign work",
       icon: Upload,
       done: submitted,
       active: submitted && !approved,
@@ -132,7 +121,7 @@ export function buildTimeline(
     {
       key: "approved",
       label: "Approved by advertiser",
-      helper: "Deliverables signed off",
+      helper: "Advertiser approved deliverables",
       icon: BadgeCheck,
       done: approved,
       active: approved && !released,
@@ -140,8 +129,8 @@ export function buildTimeline(
     },
     {
       key: "released",
-      label: "Earnings approved",
-      helper: "Available for payout",
+      label: "Funds released",
+      helper: "Admin released secured payment to wallet",
       icon: Coins,
       done: released,
       active: released && !withdrawn,
@@ -150,7 +139,7 @@ export function buildTimeline(
     {
       key: "withdrawn",
       label: "Payout completed",
-      helper: withdrawal?.status === "processing" ? "Payout in progress" : "Transfer completed",
+      helper: withdrawal?.status === "processing" ? "Payout transfer in progress" : "Transfer completed to bank/UPI",
       icon: Banknote,
       done: withdrawn || withdrawal?.status === "completed",
       active: withdrawal?.status === "processing" || withdrawal?.status === "approved",

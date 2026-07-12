@@ -15,6 +15,16 @@ export const fundCampaign = createServerFn({ method: "POST" })
     return PaymentService.createCampaignOrder({ campaignId: data.campaignId, payerId: context.userId });
   });
 
+// -------- Fund contract (advertiser) --------
+const fundContractSchema = z.object({ contractId: z.string().uuid() });
+export const fundContract = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => fundContractSchema.parse(raw))
+  .handler(async ({ data, context }) => {
+    const { PaymentService } = await import("./service.server");
+    return PaymentService.createContractPaymentOrder({ contractId: data.contractId, payerId: context.userId });
+  });
+
 // -------- Preview fee breakdown --------
 const previewSchema = z.object({
   budget: z.number().positive(),

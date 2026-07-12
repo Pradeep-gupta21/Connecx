@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -21,9 +22,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { supabase } from "@/integrations/supabase/client";
 import { CREATOR_TIERS } from "@/components/campaigns/CampaignForm";
-import { FundCampaignDialog } from "@/components/payments/FundCampaignDialog";
 import { DeliverablesPanel } from "@/components/payments/DeliverablesPanel";
-import { useAcceptCreator } from "@/hooks/usePayments";
+import { useAcceptCreator, useFundContract, useFeePreview } from "@/hooks/usePayments";
+import { PitchNegotiationDialog } from "@/components/campaigns/PitchNegotiationDialog";
 
 export const Route = createFileRoute("/_authenticated/campaigns/$id")({
   head: () => ({ meta: [{ title: "Campaign · Connecx" }] }),
@@ -203,13 +204,7 @@ function CampaignDetail() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            {isOwner && !c.funded && c.status !== "archived" && (
-              <FundCampaignDialog
-                campaignId={id}
-                campaignTitle={c.title}
-                budget={Number(c.budget_max ?? c.budget_min ?? 0)}
-              />
-            )}
+
 
             {isOwner && <OwnerActions status={c.status} onStatus={(s) => statusMut.mutate(s)} onDelete={() => deleteMut.mutate()} id={id} />}
           </div>
@@ -306,23 +301,31 @@ function CampaignDetail() {
                   with <span className="font-medium text-foreground">{ct.profiles?.display_name ?? "Creator"}</span>
                 </p>
               )}
-              <DeliverablesPanel
-                contract={{
-                  id: ct.id,
-                  status: ct.status,
-                  advertiser_id: ct.advertiser_id,
-                  creator_id: ct.creator_id,
-                  deliverable_urls: (ct.deliverable_urls ?? []) as { name: string; url: string }[],
-                  submission_notes: ct.submission_notes,
-                  submitted_at: ct.submitted_at,
-                  reviewed_at: ct.reviewed_at,
-                  revision_notes: ct.revision_notes,
-                  revision_count: ct.revision_count ?? 0,
-                  amount: Number(ct.amount ?? 0),
-                  currency: ct.currency ?? "INR",
-                }}
-                currentUserId={user.id}
-              />
+              {ct.status === "draft" ? (
+                <ContractPaymentSection
+                  contract={ct}
+                  campaignName={c?.title ?? "Campaign"}
+                  isOwner={isOwner}
+                />
+              ) : (
+                <DeliverablesPanel
+                  contract={{
+                    id: ct.id,
+                    status: ct.status,
+                    advertiser_id: ct.advertiser_id,
+                    creator_id: ct.creator_id,
+                    deliverable_urls: (ct.deliverable_urls ?? []) as { name: string; url: string }[],
+                    submission_notes: ct.submission_notes,
+                    submitted_at: ct.submitted_at,
+                    reviewed_at: ct.reviewed_at,
+                    revision_notes: ct.revision_notes,
+                    revision_count: ct.revision_count ?? 0,
+                    amount: Number(ct.amount ?? 0),
+                    currency: ct.currency ?? "INR",
+                  }}
+                  currentUserId={user.id}
+                />
+              )}
             </div>
           ))}
         </section>
@@ -357,31 +360,19 @@ function CampaignDetail() {
                           </Link>
                           <p className="text-xs text-muted-foreground">{format(new Date(a.created_at), "MMM d, h:mm a")}</p>
                         </div>
-                        <ApplicationStatusSelect
-                          applicationId={a.id}
-                          status={a.status}
-                          campaignId={id}
-                          creatorId={a.creator_id}
-                          canAccept={!!c.funded}
+                        <PitchNegotiationDialog
+                          pitchId={a.id}
+                          campaignTitle={c?.title ?? "Campaign"}
+                          isOwner={isOwner}
+                          triggerBtn={
+                            <Button size="sm" variant="outline" className="gap-1.5 h-8">
+                              <MessageSquare className="h-3.5 w-3.5" />
+                              Review & Negotiate
+                            </Button>
+                          }
                         />
-
                       </div>
                       {a.pitch && <p className="mt-3 text-sm text-muted-foreground whitespace-pre-line">{a.pitch}</p>}
-                      {a.status !== "withdrawn" && (
-                        <div className="mt-3">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="gap-2"
-                            onClick={async () => {
-                              const tid = await startConvoFromApp(a, c.id);
-                              if (tid) navigate({ to: "/messages/$threadId", params: { threadId: tid } });
-                            }}
-                          >
-                            <MessageSquare className="h-3.5 w-3.5" /> Message
-                          </Button>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </li>
@@ -472,80 +463,133 @@ function ApplyDialog({ campaignId }: { campaignId: string }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [pitch, setPitch] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const [coverMessage, setCoverMessage] = useState("");
+  const [deliverables, setDeliverables] = useState("");
+  const [timeline, setTimeline] = useState("");
+  const [quotedPrice, setQuotedPrice] = useState("");
+  const [portfolioUrl, setPortfolioUrl] = useState("");
+
   const submit = async () => {
     if (!user) return;
+    const priceNum = Number(quotedPrice);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      toast.error("Please enter a valid quoted price (greater than 0)");
+      return;
+    }
     setBusy(true);
-    const { error } = await supabase.from("applications").insert({ campaign_id: campaignId, creator_id: user.id, pitch });
+    const { error } = await supabase.from("campaign_pitches" as any).insert({
+      campaign_id: campaignId,
+      creator_id: user.id,
+      cover_message: coverMessage,
+      deliverables: deliverables || null,
+      timeline: timeline || null,
+      quoted_price: priceNum,
+      portfolio_url: portfolioUrl || null,
+      status: "submitted",
+    });
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Pitch sent");
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Your pitch has been submitted successfully!");
     setOpen(false);
+    // Reset form fields
+    setCoverMessage("");
+    setDeliverables("");
+    setTimeline("");
+    setQuotedPrice("");
+    setPortfolioUrl("");
+    
     qc.invalidateQueries({ queryKey: ["campaign-apps", campaignId] });
   };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild><Button>Apply to this campaign</Button></DialogTrigger>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Your pitch</DialogTitle></DialogHeader>
-        <Textarea rows={6} placeholder="Why are you a fit? Share ideas, past work, anything that helps you stand out." value={pitch} onChange={(e) => setPitch(e.target.value)} />
-        <DialogFooter>
+      <DialogTrigger asChild>
+        <Button className="font-semibold px-6">Apply to this campaign</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-display font-semibold">Submit Your Pitch</DialogTitle>
+          <DialogDescription>
+            Pitch your ideas, define your deliverables, quote your price, and specify your deadline.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 my-2">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cover Message</label>
+            <Textarea
+              rows={4}
+              placeholder="Tell the advertiser why you are the perfect fit for this campaign, share your ideas, or outline your experience."
+              value={coverMessage}
+              onChange={(e) => setCoverMessage(e.target.value)}
+              className="text-sm"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Proposed Deliverables</label>
+            <Textarea
+              rows={3}
+              placeholder="e.g. 1x Instagram Reel (60s), 2x Stories with link stickers, and full usage rights for 30 days."
+              value={deliverables}
+              onChange={(e) => setDeliverables(e.target.value)}
+              className="text-sm"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Quoted Price (₹)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-semibold">₹</span>
+                <Input
+                  type="number"
+                  placeholder="5000"
+                  value={quotedPrice}
+                  onChange={(e) => setQuotedPrice(e.target.value)}
+                  className="pl-7 font-mono text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Timeline / Deadline</label>
+              <Input
+                type="text"
+                placeholder="e.g. 10 days, or Aug 15"
+                value={timeline}
+                onChange={(e) => setTimeline(e.target.value)}
+                className="text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Portfolio URL (Optional)</label>
+            <Input
+              type="url"
+              placeholder="https://behance.net/username or link to Google Drive/social profile"
+              value={portfolioUrl}
+              onChange={(e) => setPortfolioUrl(e.target.value)}
+              className="text-sm"
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="pt-2 border-t">
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={submit} disabled={busy || pitch.length < 5}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send pitch"}
+          <Button onClick={submit} disabled={busy || coverMessage.length < 5 || !quotedPrice}>
+            {busy ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
+            Submit Pitch
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function ApplicationStatusSelect({
-  applicationId, status, campaignId, creatorId, canAccept,
-}: {
-  applicationId: string;
-  status: string;
-  campaignId: string;
-  creatorId: string;
-  canAccept: boolean;
-}) {
-  const qc = useQueryClient();
-  const accept = useAcceptCreator();
-  const reject = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("applications").update({ status: "rejected" }).eq("id", applicationId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["campaign-apps", campaignId] });
-      toast.success("Application rejected");
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  if (status === "accepted") {
-    return <Badge variant="secondary" className="bg-success/10 text-success border-success/20">Accepted</Badge>;
-  }
-  if (status === "rejected") {
-    return <Badge variant="secondary">Rejected</Badge>;
-  }
-  if (status === "withdrawn") {
-    return <Badge variant="secondary">Withdrawn</Badge>;
-  }
-  return (
-    <div className="flex items-center gap-2">
-      <Button
-        size="sm"
-        className="h-8 gap-1.5"
-        disabled={!canAccept || accept.isPending}
-        title={canAccept ? "Accept creator and activate campaign" : "Purchase this campaign to accept creators"}
-        onClick={() => accept.mutate({ campaignId, applicationId, creatorId })}
-      >
-        {accept.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Accept"}
-      </Button>
-      <Button size="sm" variant="ghost" className="h-8" onClick={() => reject.mutate()}>Reject</Button>
-    </div>
   );
 }
 
@@ -581,3 +625,79 @@ async function startConvoFromApp(a: any, campaignId: string): Promise<string | n
   }
   return created.id;
 }
+
+function ContractPaymentSection({
+  contract,
+  campaignName,
+  isOwner,
+}: {
+  contract: any;
+  campaignName: string;
+  isOwner: boolean;
+}) {
+  const fund = useFundContract(campaignName);
+  const preview = useFeePreview(Number(contract.amount));
+
+  if (!isOwner) {
+    return (
+      <div className="surface-card p-6 border border-amber-500/20 bg-amber-500/5 space-y-3 rounded-xl">
+        <h3 className="font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-2 text-base">
+          <Wallet className="h-5 w-5 animate-pulse" /> Awaiting Secure Payment
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          The advertiser has accepted your pitch. Please do not start working on the deliverables until the advertiser secures the payment of <span className="font-semibold text-foreground">₹{contract.amount.toLocaleString("en-IN")}</span>.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="surface-card p-6 border border-accent/20 bg-accent/5 space-y-4 rounded-xl">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-semibold text-foreground flex items-center gap-2 text-base">
+            <Wallet className="h-5 w-5 text-accent" /> Secure Creator Payment
+          </h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            You accepted <span className="font-semibold text-foreground">{contract.profiles?.display_name ?? "Creator"}</span>. Pay now to secure the funds and activate the work.
+          </p>
+        </div>
+        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 capitalize">
+          Awaiting Secure Payment
+        </span>
+      </div>
+
+      {preview.data && (
+        <div className="border border-border/60 rounded-lg p-4 bg-background/50 space-y-2 text-sm text-muted-foreground">
+          <div className="flex justify-between">
+            <span>Creator Earnings</span>
+            <span className="font-mono text-foreground font-medium">₹{preview.data.creator_earnings.toLocaleString("en-IN")}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Platform Fee ({preview.data.platform_fee_pct}%)</span>
+            <span className="font-mono text-foreground font-medium">₹{preview.data.platform_fee.toLocaleString("en-IN")}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>GST ({preview.data.gst_pct}%)</span>
+            <span className="font-mono text-foreground font-medium">₹{preview.data.gst.toLocaleString("en-IN")}</span>
+          </div>
+          <div className="border-t border-border/80 pt-2 flex justify-between font-semibold text-foreground text-base">
+            <span>Total Payable</span>
+            <span className="font-mono">₹{preview.data.total_payable.toLocaleString("en-IN")}</span>
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-end gap-3 pt-2">
+        <Button
+          disabled={fund.isPending}
+          onClick={() => fund.mutate(contract.id)}
+          className="gap-2 px-6"
+        >
+          {fund.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Pay Now"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
