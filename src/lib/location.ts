@@ -1,8 +1,12 @@
 type ReverseGeocodeAddress = {
+  house_number?: string;
+  road?: string;
+  neighbourhood?: string;
+  suburb?: string;
+  city_district?: string;
   city?: string;
   town?: string;
   village?: string;
-  suburb?: string;
   county?: string;
   state?: string;
   country?: string;
@@ -61,17 +65,23 @@ async function reverseGeocode(latitude: number, longitude: number): Promise<stri
 
   const data = (await response.json()) as ReverseGeocodeResponse;
   const address = data.address ?? {};
+  const city = address.city ?? address.town ?? address.village ?? address.city_district;
   const parts = [
-    address.city ?? address.town ?? address.village ?? address.suburb,
-    address.state ?? address.county,
-    address.country,
+    address.neighbourhood ?? address.suburb,
+    city
   ].filter(Boolean) as string[];
 
   if (parts.length > 0) {
     return parts.join(", ");
   }
 
-  return data.display_name?.trim() || "Unknown location";
+  // Fallback: take first 2 parts of display_name (typically locality/city) to omit country/state
+  if (data.display_name) {
+    const displayParts = data.display_name.split(",").map((p) => p.trim());
+    return displayParts.slice(0, Math.min(2, displayParts.length)).join(", ");
+  }
+
+  return "Unknown location";
 }
 
 function mapGeolocationError(error: GeolocationPositionError): Error {

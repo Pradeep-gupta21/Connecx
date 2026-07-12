@@ -50,8 +50,8 @@ function Thread() {
         .from("conversations")
         .select(`
           id, advertiser_id, creator_id, campaign_id,
-          advertiser:profiles!conversations_advertiser_profile_fkey(id, display_name, avatar_url),
-          creator:profiles!conversations_creator_profile_fkey(id, display_name, avatar_url),
+          advertiser:profiles!advertiser_id(id, display_name, avatar_url),
+          creator:profiles!creator_id(id, display_name, avatar_url),
           campaigns(title)
         `)
         .eq("id", threadId)
@@ -379,14 +379,18 @@ function Thread() {
         ) : (
           messages.map((m, i) => {
             const prev = messages[i - 1];
-            const showDate = !prev || !isSameDay(new Date(prev.created_at), new Date(m.created_at));
+            const d1 = prev ? new Date(prev.created_at) : null;
+            const d2 = new Date(m.created_at);
+            const isD1Valid = d1 && !isNaN(d1.getTime());
+            const isD2Valid = !isNaN(d2.getTime());
+            const showDate = !isD1Valid || !isD2Valid || !isSameDay(d1!, d2);
             return (
               <div key={m.id}>
                 {showDate && (
                   <div className="flex items-center gap-3 my-4">
                     <div className="flex-1 h-px bg-border" />
                     <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-                      {format(new Date(m.created_at), "MMMM d, yyyy")}
+                      {isD2Valid ? format(d2, "MMMM d, yyyy") : "Unknown date"}
                     </span>
                     <div className="flex-1 h-px bg-border" />
                   </div>

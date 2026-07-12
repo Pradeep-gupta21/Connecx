@@ -1575,6 +1575,7 @@ export type Database = {
           follower_count: number | null
           handle: string
           id: string
+          is_primary: boolean
           metadata: Json
           platform: Database["public"]["Enums"]["social_platform"]
           updated_at: string
@@ -1589,6 +1590,7 @@ export type Database = {
           follower_count?: number | null
           handle: string
           id?: string
+          is_primary?: boolean
           metadata?: Json
           platform: Database["public"]["Enums"]["social_platform"]
           updated_at?: string
@@ -1603,6 +1605,7 @@ export type Database = {
           follower_count?: number | null
           handle?: string
           id?: string
+          is_primary?: boolean
           metadata?: Json
           platform?: Database["public"]["Enums"]["social_platform"]
           updated_at?: string
