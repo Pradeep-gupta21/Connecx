@@ -43,6 +43,31 @@ export function decodeJwtPayload(jwt: string): any {
   }
 }
 
+export function getApiKeyDiagnostic(key: string | undefined): string {
+  if (!key) return "undefined";
+  const trimmed = key.trim();
+  if (trimmed.startsWith("sb_publishable_")) {
+    return `Publishable key (starts with sb_publishable_, length: ${trimmed.length})`;
+  }
+  if (trimmed.startsWith("sb_secret_")) {
+    return `Secret key (starts with sb_secret_, length: ${trimmed.length})`;
+  }
+  
+  try {
+    const parts = trimmed.split('.');
+    if (parts.length === 3) {
+      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = Buffer.from(base64, 'base64').toString('utf8');
+      const decoded = JSON.parse(jsonPayload);
+      return `JWT (Issuer: ${decoded.iss}, Ref: ${decoded.ref}, Role: ${decoded.role})`;
+    }
+  } catch (e) {
+    // ignore
+  }
+  
+  return `Opaque/Other (length: ${trimmed.length}, starts with: ${trimmed.substring(0, 10)})`;
+}
+
 function createSupabaseAdminClient() {
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -57,8 +82,12 @@ function createSupabaseAdminClient() {
     throw new Error(message);
   }
 
-  const payload = decodeJwtPayload(SUPABASE_SERVICE_ROLE_KEY);
-  console.log(`[Supabase Admin Init] URL: ${SUPABASE_URL}, Key Prefix: ${SUPABASE_SERVICE_ROLE_KEY.substring(0, 15)}..., Decoded Payload:`, payload);
+  const trimmedKey = SUPABASE_SERVICE_ROLE_KEY.trim();
+  if (trimmedKey.startsWith("sb_publishable_")) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is set to a client-side publishable key starting with sb_publishable_ instead of a service role key! Please configure it in Lovable Cloud settings.");
+  }
+
+  console.log(`[Supabase Admin Init] URL: ${SUPABASE_URL}, Key Diagnostic: ${getApiKeyDiagnostic(trimmedKey)}`);
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     global: {
