@@ -31,6 +31,18 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
+export function decodeJwtPayload(jwt: string): any {
+  try {
+    const parts = jwt.split('.');
+    if (parts.length !== 3) return null;
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = Buffer.from(base64, 'base64').toString('utf8');
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+}
+
 function createSupabaseAdminClient() {
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -44,6 +56,9 @@ function createSupabaseAdminClient() {
     console.error(`[Supabase] ${message}`);
     throw new Error(message);
   }
+
+  const payload = decodeJwtPayload(SUPABASE_SERVICE_ROLE_KEY);
+  console.log(`[Supabase Admin Init] URL: ${SUPABASE_URL}, Key Prefix: ${SUPABASE_SERVICE_ROLE_KEY.substring(0, 15)}..., Decoded Payload:`, payload);
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     global: {
