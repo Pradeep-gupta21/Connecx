@@ -67,18 +67,29 @@ export function NotificationBell() {
           // Also trigger a system/home screen notification if permitted
           if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
             try {
-              const sysNotif = new window.Notification(n.title, {
-                body: n.body || undefined,
-                icon: "/favicon.ico",
-              });
-              sysNotif.onclick = () => {
-                window.focus();
-                if (n.payload?.conversation_id) {
-                  navigate({ to: "/messages/$threadId", params: { threadId: n.payload.conversation_id } });
-                } else {
-                  navigate({ to: "/notifications" });
-                }
-              };
+              if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                navigator.serviceWorker.ready.then((reg) => {
+                  reg.showNotification(n.title, {
+                    body: n.body || undefined,
+                    icon: "/favicon.ico",
+                    tag: n.id,
+                    data: n.payload,
+                  });
+                });
+              } else {
+                const sysNotif = new window.Notification(n.title, {
+                  body: n.body || undefined,
+                  icon: "/favicon.ico",
+                });
+                sysNotif.onclick = () => {
+                  window.focus();
+                  if (n.payload?.conversation_id) {
+                    navigate({ to: "/messages/$threadId", params: { threadId: n.payload.conversation_id } });
+                  } else {
+                    navigate({ to: "/notifications" });
+                  }
+                };
+              }
             } catch (err) {
               console.error("Failed to trigger native notification:", err);
             }
@@ -93,6 +104,51 @@ export function NotificationBell() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user, qc, navigate]);
+
+  // Request notifications permission with a toast call-to-action
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      "Notification" in window &&
+      Notification.permission === "default" &&
+      user
+    ) {
+      const timer = setTimeout(() => {
+        toast("Enable home screen alerts?", {
+          description: "Get real-time OS alerts when you receive campaigns, messages, or applications.",
+          action: {
+            label: "Enable",
+            onClick: async () => {
+              try {
+                const res = await window.Notification.requestPermission();
+                if (res === "granted") {
+                  toast.success("Desktop alerts active!");
+                  if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                    const reg = await navigator.serviceWorker.ready;
+                    reg.showNotification("Notifications Enabled", {
+                      body: "You will now receive notifications on your device home screen.",
+                      icon: "/favicon.ico",
+                    });
+                  } else {
+                    new window.Notification("Notifications Enabled", {
+                      body: "You will now receive notifications on your device home screen.",
+                      icon: "/favicon.ico",
+                    });
+                  }
+                } else if (res === "denied") {
+                  toast.error("Notification permission denied.");
+                }
+              } catch (err) {
+                console.error("Failed to request permission:", err);
+              }
+            },
+          },
+          duration: 10000,
+        });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [user]);
 
 
   const unread = notifications.filter((n) => !n.read_at).length;
