@@ -76,6 +76,10 @@ function MessagesLayout() {
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") await channel.track({ at: new Date().toISOString() });
       });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
   
   // Realtime subscription for global updates to conversations and unread messages
