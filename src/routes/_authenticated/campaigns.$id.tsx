@@ -92,7 +92,7 @@ function CampaignDetail() {
     queryFn: async () => {
       let q = supabase
         .from("contracts")
-        .select("id, status, advertiser_id, creator_id, deliverable_urls, submission_notes, submitted_at, reviewed_at, revision_notes, revision_count, amount, currency, profiles:creator_id(display_name, avatar_url)")
+        .select("id, status, advertiser_id, creator_id, deliverable_urls, submission_notes, submitted_at, reviewed_at, revision_notes, revision_count, amount, currency, payment_id, profiles:creator_id(display_name, avatar_url)")
         .eq("campaign_id", id)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
@@ -337,6 +337,7 @@ function CampaignDetail() {
                     revision_count: ct.revision_count ?? 0,
                     amount: Number(ct.amount ?? 0),
                     currency: ct.currency ?? "INR",
+                    payment_id: ct.payment_id,
                   }}
                   currentUserId={user.id}
                 />

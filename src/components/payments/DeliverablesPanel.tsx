@@ -13,6 +13,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import { useSubmitDeliverables, useReviewDeliverables } from "@/hooks/usePayments";
+import { useReleasePayment } from "@/hooks/useWallet";
+import { useWorkspace } from "@/hooks/useWorkspace";
 
 type Contract = {
   id: string;
@@ -27,6 +29,7 @@ type Contract = {
   revision_count: number;
   amount: number;
   currency: string;
+  payment_id: string | null;
 };
 
 const STATUS_BADGE: Record<string, string> = {
@@ -44,11 +47,16 @@ export function DeliverablesPanel({
   contract: Contract;
   currentUserId: string;
 }) {
+  const { roles } = useWorkspace();
+  const isAdmin = roles.includes("admin");
+  const releaseMut = useReleasePayment();
+
   const isCreator = contract.creator_id === currentUserId;
   const isAdvertiser = contract.advertiser_id === currentUserId;
 
   const canSubmit = isCreator && ["active", "revision_requested"].includes(contract.status);
   const canReview = isAdvertiser && contract.status === "submitted";
+  const canRelease = isAdmin && contract.status === "approved" && !!contract.payment_id;
 
   return (
     <div className="surface-card p-6 space-y-5">
@@ -104,6 +112,17 @@ export function DeliverablesPanel({
       <div className="flex flex-wrap items-center gap-2">
         {canSubmit && <SubmitDialog contractId={contract.id} />}
         {canReview && <ReviewButtons contractId={contract.id} />}
+        {canRelease && (
+          <Button
+            size="sm"
+            className="gap-2 bg-success hover:bg-success/90 text-success-foreground font-medium"
+            disabled={releaseMut.isPending}
+            onClick={() => releaseMut.mutate(contract.payment_id!)}
+          >
+            {releaseMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+            Release fund to creator
+          </Button>
+        )}
       </div>
     </div>
   );
