@@ -40,6 +40,56 @@ BEGIN
   ) THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.conversations;
   END IF;
+
+  -- Add contracts to supabase_realtime publication if not already present
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+      AND schemaname = 'public' 
+      AND tablename = 'contracts'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.contracts;
+  END IF;
+
+  -- Add payments to supabase_realtime publication if not already present
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+      AND schemaname = 'public' 
+      AND tablename = 'payments'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.payments;
+  END IF;
+
+  -- Add wallets to supabase_realtime publication if not already present
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+      AND schemaname = 'public' 
+      AND tablename = 'wallets'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.wallets;
+  END IF;
+
+  -- Add campaigns to supabase_realtime publication if not already present
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+      AND schemaname = 'public' 
+      AND tablename = 'campaigns'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.campaigns;
+  END IF;
+
+  -- Add wallet_transactions to supabase_realtime publication if not already present
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+      AND schemaname = 'public' 
+      AND tablename = 'wallet_transactions'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.wallet_transactions;
+  END IF;
 END;
 $$;
 
