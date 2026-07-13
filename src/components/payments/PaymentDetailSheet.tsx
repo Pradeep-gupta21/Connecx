@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Copy, Receipt, ShieldCheck, Landmark, ExternalLink, FileDown, RotateCcw, Check, X, Loader2, CreditCard } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -57,17 +57,81 @@ export function PaymentDetailSheet({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  useEffect(() => {
+    if (!open || !payment) return;
+    
+    // Subscribe to contracts updates for this payment's campaign or contract
+    const channel = supabase
+      .channel(`sheet-realtime-${payment.id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "contracts" },
+        (payload: any) => {
+          // If contract is linked to our payment, refetch
+          const isTargetContract = 
+            payload.new?.id === payment.contract_id || 
+            payload.new?.payment_id === payment.id || 
+            (payload.new?.campaign_id === payment.campaign_id && payload.new?.creator_id === payment.payee_id);
+            
+          if (isTargetContract) {
+            console.log("[PaymentDetailSheet.realtime] [DEBUG] Target contract updated in DB:", payload.new);
+            void contractQ.refetch();
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "payments", filter: `id=eq.${payment.id}` },
+        (payload: any) => {
+          console.log("[PaymentDetailSheet.realtime] [DEBUG] Target payment updated in DB:", payload.new);
+          void adminPayoutQ.refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [open, payment?.id, payment?.contract_id, payment?.campaign_id, payment?.payee_id]);
+
   const contractQ = useQuery({
-    queryKey: ["payment-contract", payment?.contract_id, payment?.campaign_id],
+    queryKey: ["payment-contract", payment?.contract_id, payment?.campaign_id, payment?.id],
     enabled: open && !!payment && (!!payment.contract_id || !!payment.campaign_id),
     queryFn: async () => {
-      let query = supabase
-        .from("contracts")
-        .select("id, status, submitted_at, reviewed_at, created_at, campaign_id, creator_id, advertiser_id");
-      query = payment!.contract_id
-        ? query.eq("id", payment!.contract_id)
-        : query.eq("campaign_id", payment!.campaign_id!);
-      const { data } = await query.maybeSingle();
+      let data = null;
+
+      // 1. Try fetching by explicit contract_id on payment
+      if (payment!.contract_id) {
+        const { data: byId } = await supabase
+          .from("contracts")
+          .select("id, status, submitted_at, reviewed_at, created_at, campaign_id, creator_id, advertiser_id")
+          .eq("id", payment!.contract_id)
+          .maybeSingle();
+        data = byId;
+      }
+
+      // 2. Fallback: Try fetching by payment_id matching the payment row ID
+      if (!data) {
+        const { data: byPaymentId } = await supabase
+          .from("contracts")
+          .select("id, status, submitted_at, reviewed_at, created_at, campaign_id, creator_id, advertiser_id")
+          .eq("payment_id", payment!.id)
+          .maybeSingle();
+        data = byPaymentId;
+      }
+
+      // 3. Fallback: Query by campaign_id AND creator_id (payee_id on payment)
+      if (!data && payment!.campaign_id) {
+        const { data: byCampaignCreator } = await supabase
+          .from("contracts")
+          .select("id, status, submitted_at, reviewed_at, created_at, campaign_id, creator_id, advertiser_id")
+          .eq("campaign_id", payment!.campaign_id)
+          .eq("creator_id", payment!.payee_id)
+          .maybeSingle();
+        data = byCampaignCreator;
+      }
+
+      console.log(`[PaymentDetailSheet.contractQ] [DEBUG] Value returned by the admin query for contract:`, data);
       return data;
     },
   });
@@ -250,6 +314,14 @@ Thank you for using Connecx!
                     : !isPending
                     ? "Payout has already been completed"
                     : null;
+
+                  console.log(`[PaymentDetailSheet.disabledReason] [DEBUG] Final values for enable/disable check:`, {
+                    isReceived,
+                    isApproved,
+                    isPending,
+                    disabledReason,
+                    isEnabled: !disabledReason
+                  });
 
                   return (
                     <div className="space-y-2">

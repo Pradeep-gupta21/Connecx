@@ -868,10 +868,26 @@ export const PaymentService = {
     if (contract.advertiser_id !== args.actorId) throw new Error("Only the advertiser can approve");
     if (!contract.payment_id) throw new Error("Contract has no linked payment — cannot approve work");
 
+    // Debug log: Advertiser approval value before update
+    const { data: initialContract } = await admin
+      .from("contracts")
+      .select("status")
+      .eq("id", args.contractId)
+      .single();
+    console.log(`[PaymentService.approveDeliverables] [DEBUG] Advertiser approval value BEFORE update: contract.status = "${initialContract?.status}"`);
+
     await admin.from("contracts").update({
       status: "approved",
       reviewed_at: new Date().toISOString(),
     }).eq("id", args.contractId);
+
+    // Debug log: Database value after update
+    const { data: updatedContract } = await admin
+      .from("contracts")
+      .select("status")
+      .eq("id", args.contractId)
+      .single();
+    console.log(`[PaymentService.approveDeliverables] [DEBUG] Database value AFTER update: contract.status = "${updatedContract?.status}"`);
 
     if (contract.campaign_id) {
       await admin.from("campaigns").update({
