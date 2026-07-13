@@ -258,7 +258,7 @@ export function AdvertiserDashboardView() {
         </div>
       </section>
 
-      <section className="grid lg:grid-cols-2 gap-6 mt-6">
+      <section className="mt-6 max-w-3xl w-full">
         <div className="surface-card p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display text-base font-semibold flex items-center gap-2">
@@ -281,12 +281,12 @@ export function AdvertiserDashboardView() {
                 const Icon = isMsg ? MessageSquare : isPin ? Pin : Bell;
                 return (
                   <li key={n.id} className="flex gap-3 text-sm">
-                    <div className="p-2 rounded-lg bg-secondary h-fit">
+                    <div className="p-2 rounded-lg bg-secondary h-fit shrink-0">
                       <Icon className="h-4 w-4 text-foreground/80" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-foreground leading-tight">{n.title}</p>
-                      {n.body && <p className="text-xs text-muted-foreground truncate mt-0.5">{n.body}</p>}
+                      {n.body && <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{n.body}</p>}
                       <p className="text-[10px] text-muted-foreground mt-0.5">{formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}</p>
                     </div>
                   </li>

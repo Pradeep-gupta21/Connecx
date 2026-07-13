@@ -121,7 +121,7 @@ export function WalletHeroSkeleton() {
     <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-secondary/20 p-8 animate-pulse">
       <div className="h-3 w-24 rounded bg-muted/60" />
       <div className="mt-4 h-12 w-48 rounded bg-muted/60" />
-      <div className="mt-6 grid grid-cols-3 gap-3">
+      <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="h-20 rounded-2xl bg-muted/40" />
         ))}

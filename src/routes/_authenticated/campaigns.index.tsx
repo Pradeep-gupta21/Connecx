@@ -66,10 +66,10 @@ function Campaigns() {
           q = q.eq("advertiser_id", user!.id);
         } else {
           const { data: pitches } = await supabase
-            .from("campaign_pitches")
+            .from("campaign_pitches" as any)
             .select("campaign_id")
-            .eq("creator_id", user!.id);
-          const campaignIds = Array.from(new Set((pitches ?? []).map((p) => p.campaign_id)));
+            .eq("creator_id", user!.id) as any;
+          const campaignIds = Array.from(new Set(((pitches as any[]) ?? []).map((p) => p.campaign_id)));
           if (campaignIds.length === 0) return [];
           q = q.in("id", campaignIds);
         }

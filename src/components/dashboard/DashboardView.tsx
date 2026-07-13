@@ -170,22 +170,24 @@ export function DashboardView() {
           ) : recentQuery.data && recentQuery.data.length > 0 ? (
             <ul className="space-y-1 -mx-2">
               {recentQuery.data.map((a: any) => (
-                <li key={a.id} className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-secondary/60">
-                  <Avatar className="h-8 w-8">
+                <li key={a.id} className="flex items-start gap-3 px-2 py-2 rounded-lg hover:bg-secondary/60">
+                  <Avatar className="h-8 w-8 shrink-0 mt-0.5">
                     <AvatarImage src={a.profiles?.avatar_url ?? undefined} />
                     <AvatarFallback className="text-[10px] bg-secondary">
                       {(a.profiles?.display_name ?? "?").slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm truncate">
-                      {isAdvertiser
-                        ? <><span className="font-medium">{a.profiles?.display_name ?? "Someone"}</span> applied to <span className="text-muted-foreground">{a.campaigns?.title}</span></>
-                        : <>Applied to <span className="font-medium">{a.campaigns?.title}</span></>}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">{format(new Date(a.created_at), "MMM d, h:mm a")}</p>
+                    <div className="flex items-start justify-between gap-2 flex-wrap sm:flex-nowrap">
+                      <p className="text-sm text-foreground/90 leading-normal break-words">
+                        {isAdvertiser
+                          ? <><span className="font-semibold text-foreground">{a.profiles?.display_name ?? "Someone"}</span> applied to <span className="text-muted-foreground font-medium">{a.campaigns?.title}</span></>
+                          : <>Applied to <span className="font-semibold text-foreground">{a.campaigns?.title}</span></>}
+                      </p>
+                      <Badge variant="secondary" className="capitalize text-[10px] shrink-0 mt-0.5">{a.status}</Badge>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">{format(new Date(a.created_at), "MMM d, h:mm a")}</p>
                   </div>
-                  <Badge variant="secondary" className="capitalize text-[10px]">{a.status}</Badge>
                 </li>
               ))}
             </ul>
