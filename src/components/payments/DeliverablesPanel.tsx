@@ -1,6 +1,8 @@
 // Deliverables panel: creator uploads, advertiser reviews. Realtime-aware
 // via parent invalidation.
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Loader2, Upload, Check, RotateCcw, FileText, ExternalLink, X } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -15,6 +17,7 @@ import {
 import { useSubmitDeliverables, useReviewDeliverables } from "@/hooks/usePayments";
 import { useReleasePayment } from "@/hooks/useWallet";
 import { useWorkspace } from "@/hooks/useWorkspace";
+import { adminReleaseFund } from "@/lib/payments/payments.functions";
 
 type Contract = {
   id: string;
@@ -49,7 +52,52 @@ export function DeliverablesPanel({
 }) {
   const { roles } = useWorkspace();
   const isAdmin = roles.includes("admin");
-  const releaseMut = useReleasePayment();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const qc = useQueryClient();
+
+  const paymentQ = useQuery({
+    queryKey: ["contract-payment", contract.payment_id],
+    enabled: !!contract.payment_id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payments")
+        .select("status, status_v2, payout_status, released_at, released_by")
+        .eq("id", contract.payment_id!)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  useEffect(() => {
+    if (!contract.payment_id) return;
+    const channel = supabase
+      .channel(`payment-panel-${contract.payment_id}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "payments", filter: `id=eq.${contract.payment_id}` }, () => {
+        void paymentQ.refetch();
+        qc.invalidateQueries({ queryKey: ["campaign-contracts"] });
+        qc.invalidateQueries({ queryKey: ["creator-payments"] });
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [contract.payment_id, qc]);
+
+  const adminReleaseFn = useServerFn(adminReleaseFund);
+  const adminReleaseMut = useMutation({
+    mutationFn: (paymentId: string) => adminReleaseFn({ data: { paymentId } }),
+    onSuccess: () => {
+      toast.success("Payment released successfully");
+      void paymentQ.refetch();
+      qc.invalidateQueries({ queryKey: ["campaign-contracts"] });
+      qc.invalidateQueries({ queryKey: ["admin-pending-releases"] });
+      qc.invalidateQueries({ queryKey: ["admin-payments"] });
+      qc.invalidateQueries({ queryKey: ["creator-payments"] });
+      qc.invalidateQueries({ queryKey: ["wallet"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const isCreator = contract.creator_id === currentUserId;
   const isAdvertiser = contract.advertiser_id === currentUserId;
@@ -113,17 +161,72 @@ export function DeliverablesPanel({
         {canSubmit && <SubmitDialog contractId={contract.id} />}
         {canReview && <ReviewButtons contractId={contract.id} />}
         {canRelease && (
-          <Button
-            size="sm"
-            className="gap-2 bg-success hover:bg-success/90 text-success-foreground font-medium"
-            disabled={releaseMut.isPending}
-            onClick={() => releaseMut.mutate(contract.payment_id!)}
-          >
-            {releaseMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-            Release fund to creator
-          </Button>
+          paymentQ.data?.status_v2 === "released" ? (
+            <span className="text-xs font-semibold text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-lg">
+              Fund Released
+            </span>
+          ) : (
+            <Button
+              size="sm"
+              className="gap-2 bg-success hover:bg-success/90 text-success-foreground font-medium"
+              disabled={adminReleaseMut.isPending}
+              onClick={() => setConfirmOpen(true)}
+            >
+              {adminReleaseMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+              Release Fund
+            </Button>
+          )
         )}
       </div>
+
+      {/* Realtime status indicators for Approved/Released states */}
+      {(contract.status === "approved" || contract.status === "completed" || paymentQ.data?.status_v2 === "released") && (
+        <div className="rounded-xl border border-success/20 bg-success/5 p-4 space-y-2 mt-4 text-sm max-w-xs">
+          <div className="flex items-center gap-2 font-medium text-success">
+            <span>Deliverables Approved ✅</span>
+          </div>
+          {(contract.status === "completed" || paymentQ.data?.status_v2 === "released" || paymentQ.data?.payout_status === "completed") ? (
+            <div className="flex items-center gap-2 font-medium text-success">
+              <span>Payment Released ✅</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-muted-foreground/60">
+              <span>Payment Pending Release</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Release Creator Payment</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to release this payment to the creator? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmOpen(false)}>Cancel</Button>
+            <Button
+              disabled={adminReleaseMut.isPending}
+              onClick={async () => {
+                if (contract.payment_id) {
+                  try {
+                    await adminReleaseMut.mutateAsync(contract.payment_id);
+                    setConfirmOpen(false);
+                  } catch {
+                    // toast is shown by onError hook
+                  }
+                }
+              }}
+              className="bg-success text-success-foreground hover:bg-success/90"
+            >
+              {adminReleaseMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+              Confirm Release
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

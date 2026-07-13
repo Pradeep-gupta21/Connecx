@@ -29,7 +29,7 @@ const PAYMENT_META: Record<string, Meta> = {
   paid: { label: "Paid", tone: "info" },
   held: { label: "Campaign active", tone: "info" },
   revision_requested: { label: "Revision requested", tone: "warning" },
-  released: { label: "Earnings approved", tone: "success" },
+  released: { label: "Released", tone: "success" },
   withdrawal_requested: { label: "Payout scheduled", tone: "warning" },
   withdrawn: { label: "Payout completed", tone: "success" },
   refund_pending: { label: "Refund pending", tone: "warning" },

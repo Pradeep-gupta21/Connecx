@@ -975,6 +975,9 @@ export type Database = {
           receipt_number: string | null
           status: Database["public"]["Enums"]["payment_status"]
           status_v2: Database["public"]["Enums"]["payment_status"] | null
+          payout_status: string | null
+          released_at: string | null
+          released_by: string | null
           tax: number | null
           type: Database["public"]["Enums"]["payment_type"]
           updated_at: string
@@ -1007,6 +1010,9 @@ export type Database = {
           receipt_number?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
           status_v2?: Database["public"]["Enums"]["payment_status"] | null
+          payout_status?: string | null
+          released_at?: string | null
+          released_by?: string | null
           tax?: number | null
           type?: Database["public"]["Enums"]["payment_type"]
           updated_at?: string
@@ -1039,6 +1045,9 @@ export type Database = {
           receipt_number?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
           status_v2?: Database["public"]["Enums"]["payment_status"] | null
+          payout_status?: string | null
+          released_at?: string | null
+          released_by?: string | null
           tax?: number | null
           type?: Database["public"]["Enums"]["payment_type"]
           updated_at?: string

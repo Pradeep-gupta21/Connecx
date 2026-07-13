@@ -22,7 +22,16 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { releasePayment } from "@/lib/payments/payments.functions";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { releasePayment, adminReleaseFund } from "@/lib/payments/payments.functions";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -46,6 +55,7 @@ function AdminPayments() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [openPayment, setOpenPayment] = useState<any | null>(null);
+  const [releasePaymentId, setReleasePaymentId] = useState<string | null>(null);
 
   const payments = useQuery({
     queryKey: ["admin-payments", range],
@@ -53,7 +63,7 @@ function AdminPayments() {
       const { data, error } = await supabase
         .from("payments")
         .select(
-          "id, amount, currency, status_v2, type, provider, razorpay_payment_id, created_at, processed_at, contract_id, campaign_id, payer_id, payee_id, platform_fee, gst, creator_earnings, receipt_number, invoice_number",
+          "id, amount, currency, status_v2, payout_status, released_at, released_by, type, provider, razorpay_payment_id, created_at, processed_at, contract_id, campaign_id, payer_id, payee_id, platform_fee, gst, creator_earnings, receipt_number, invoice_number",
         )
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
@@ -111,7 +121,7 @@ function AdminPayments() {
     },
   });
 
-  const releaseFn = useServerFn(releasePayment);
+  const releaseFn = useServerFn(adminReleaseFund);
   const releaseMut = useMutation({
     mutationFn: (paymentId: string) => releaseFn({ data: { paymentId } }),
     onSuccess: () => {
@@ -258,7 +268,7 @@ function AdminPayments() {
             statusOptions={[
               { value: "paid", label: "Paid" },
               { value: "held", label: "Campaign active" },
-              { value: "released", label: "Earnings approved" },
+              { value: "released", label: "Released" },
               { value: "withdrawn", label: "Payout completed" },
               { value: "refunded", label: "Refunded" },
               { value: "failed", label: "Failed" },
@@ -318,21 +328,31 @@ function AdminPayments() {
                         <p className="text-xs text-muted-foreground">Earnings Amount</p>
                         <p className="font-bold text-foreground font-mono text-base">₹{Number(item.amount).toLocaleString("en-IN")}</p>
                       </div>
-                      <Button
-                        size="sm"
-                        disabled={releaseMut.isPending}
-                        onClick={() => {
-                          if (item.payment_id) {
-                            releaseMut.mutate(item.payment_id);
-                          } else {
-                            toast.error("No payment linked to this contract");
-                          }
-                        }}
-                        className="bg-success hover:bg-success/90 text-success-foreground gap-1.5 h-9"
-                      >
-                        {releaseMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                        Release Payout
-                      </Button>
+                      {item.payments?.status_v2 === "released" ? (
+                        <span className="text-xs font-semibold text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-lg">
+                          Fund Released
+                        </span>
+                      ) : (
+                        <Button
+                          size="sm"
+                          disabled={releaseMut.isPending}
+                          onClick={() => {
+                            if (item.payment_id) {
+                              setReleasePaymentId(item.payment_id);
+                            } else {
+                              toast.error("No payment linked to this contract");
+                            }
+                          }}
+                          className="bg-success hover:bg-success/90 text-success-foreground gap-1.5 h-9"
+                        >
+                          {releaseMut.isPending && releasePaymentId === item.payment_id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Check className="h-3.5 w-3.5" />
+                          )}
+                          Release Fund
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -394,12 +414,26 @@ function AdminPayments() {
                           </p>
                         </div>
                       </div>
-                      <button
-                        onClick={() => setOpenPayment(p)}
-                        className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-                      >
-                        Details <ArrowUpRight className="h-3 w-3" />
-                      </button>
+                      <div className="flex items-center gap-4 shrink-0">
+                        <div className="text-right flex flex-col items-end">
+                          <Button
+                            size="sm"
+                            disabled
+                            className="bg-muted text-muted-foreground gap-1.5 h-8 text-[11px] cursor-not-allowed"
+                          >
+                            Release Fund
+                          </Button>
+                          <span className="text-[10px] text-destructive font-medium mt-0.5">
+                            Awaiting advertiser approval
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => setOpenPayment(p)}
+                          className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                        >
+                          Details <ArrowUpRight className="h-3 w-3" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -472,6 +506,33 @@ function AdminPayments() {
         </TabsContent>
       </Tabs>
 
+      <Dialog open={!!releasePaymentId} onOpenChange={(v) => !v && setReleasePaymentId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Release Creator Payment</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to release this payment to the creator? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setReleasePaymentId(null)}>Cancel</Button>
+            <Button
+              disabled={releaseMut.isPending}
+              onClick={async () => {
+                if (releasePaymentId) {
+                  await releaseMut.mutateAsync(releasePaymentId);
+                  setReleasePaymentId(null);
+                }
+              }}
+              className="bg-success text-success-foreground hover:bg-success/90"
+            >
+              {releaseMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+              Confirm Release
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <PaymentDetailSheet
         open={!!openPayment}
         onOpenChange={(v) => !v && setOpenPayment(null)}
@@ -483,21 +544,11 @@ function AdminPayments() {
 }
 
 // ----- Refund review queue -----
-import { useState as useReactState } from "react";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { useAdminReviewRefund } from "@/hooks/usePayments";
 
 function RefundQueue({ refunds, isLoading }: { refunds: any[]; isLoading: boolean }) {
-  const [rejectRefund, setRejectRefund] = useReactState<any | null>(null);
+  const [rejectRefund, setRejectRefund] = useState<any | null>(null);
   const review = useAdminReviewRefund();
 
   if (isLoading) {
@@ -617,7 +668,7 @@ function RefundRejectDialog({
   onReject: (reason: string) => void;
   isPending: boolean;
 }) {
-  const [reason, setReason] = useReactState("");
+  const [reason, setReason] = useState("");
   return (
     <Dialog open={!!refund} onOpenChange={(v) => { onOpenChange(v); if (!v) setReason(""); }}>
       <DialogContent className="max-w-md">

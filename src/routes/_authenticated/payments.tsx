@@ -164,7 +164,7 @@ function CreatorPayments() {
             onStatusChange={setStatus}
             statusOptions={[
               { value: "held", label: "Campaign active" },
-              { value: "released", label: "Earnings approved" },
+              { value: "released", label: "Released" },
               { value: "withdrawn", label: "Payout completed" },
               { value: "pending", label: "Pending" },
               { value: "failed", label: "Failed" },

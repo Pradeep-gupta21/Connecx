@@ -18,6 +18,7 @@ export type TimelinePayment = {
   status_v2?: string | null;
   processed_at?: string | null;
   created_at?: string | null;
+  released_at?: string | null;
 };
 
 export type TimelineContract = {
@@ -134,7 +135,7 @@ export function buildTimeline(
       icon: Coins,
       done: released,
       active: released && !withdrawn,
-      at: contract?.completed_at ?? null,
+      at: payment.released_at ?? contract?.completed_at ?? null,
     },
     {
       key: "withdrawn",

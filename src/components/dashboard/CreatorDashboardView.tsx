@@ -93,6 +93,7 @@ export function CreatorDashboardView() {
           const s = payload.new.status;
           const amount = `₹${Number(payload.new.amount).toLocaleString()}`;
           if (s === "succeeded") toast.success(`${amount} paid out`, { description: "Funds have been released to your account." });
+          else if (s === "released") toast.success(`Escrow released: ${amount} is now in your wallet!`);
           else if (s === "processing") toast(`${amount} processing`, { description: "Your payout is on the way." });
           else if (s === "failed") toast.error(`${amount} payout failed`, { description: "Please review your payout details." });
         } else if (payload.eventType === "INSERT") {
@@ -137,7 +138,7 @@ export function CreatorDashboardView() {
     queryFn: async () => {
       const { data } = await supabase
         .from("payments")
-        .select("id, amount, status, type, created_at, processed_at")
+        .select("id, amount, status, status_v2, payout_status, released_at, type, created_at, processed_at")
         .eq("payee_id", user!.id)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
@@ -191,10 +192,10 @@ export function CreatorDashboardView() {
 
   // -------- Stats derived --------
   const totalEarnings = (paymentsQuery.data ?? [])
-    .filter((p) => p.status === "succeeded")
+    .filter((p) => p.status === "succeeded" || p.status === "released")
     .reduce((s, p) => s + Number(p.amount), 0);
   const pendingPayments = (paymentsQuery.data ?? [])
-    .filter((p) => p.status === "pending" || p.status === "processing")
+    .filter((p) => p.status === "pending" || p.status === "processing" || p.status === "held")
     .reduce((s, p) => s + Number(p.amount), 0);
   const invites = (appsQuery.data ?? []).filter((a) => a.status === "accepted").length;
   const unreadCount = (messagesQuery.data ?? []).reduce((n, c: any) => {
@@ -203,7 +204,7 @@ export function CreatorDashboardView() {
 
   // -------- Analytics buckets (last 30d) --------
   const earningsByDay = bucketSum(paymentsQuery.data ?? [], (p) =>
-    p.status === "succeeded" ? Number(p.amount) : 0
+    p.status === "succeeded" || p.status === "released" ? Number(p.amount) : 0
   );
   const applicationsByDay = bucketCount((appsQuery.data ?? []).map((a) => a.created_at));
 

@@ -1,6 +1,7 @@
 // Payment detail slide-over. Shows the full fee breakdown and timeline
 // derived from the payment row + optional linked contract/withdrawal.
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { Copy, Receipt, ShieldCheck, Landmark, ExternalLink, FileDown, RotateCcw, Check, X, Loader2, CreditCard } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -12,6 +13,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { adminReleaseFund } from "@/lib/payments/payments.functions";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Money } from "./Money";
@@ -32,6 +42,20 @@ export function PaymentDetailSheet({
 }) {
   const qc = useQueryClient();
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const releaseFn = useServerFn(adminReleaseFund);
+  const releaseMut = useMutation({
+    mutationFn: (paymentId: string) => releaseFn({ data: { paymentId } }),
+    onSuccess: () => {
+      toast.success("Payment released successfully");
+      void contractQ.refetch();
+      void adminPayoutQ.refetch();
+      void qc.invalidateQueries({ queryKey: ["admin-payments"] });
+      void qc.invalidateQueries({ queryKey: ["admin-pending-releases"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const contractQ = useQuery({
     queryKey: ["payment-contract", payment?.contract_id, payment?.campaign_id],
@@ -174,6 +198,80 @@ Thank you for using Connecx!
                 emphasize
               />
             </div>
+
+            {/* Admin Release Fund Escrow Actions (Admin Only) */}
+            {isAdmin && payment.type === "campaign_payment" && (
+              <div className="rounded-2xl border border-border/60 bg-secondary/10 p-4 space-y-3">
+                <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                  <ShieldCheck className="h-3.5 w-3.5" /> Escrow Release
+                </p>
+                {(() => {
+                  const isApproved = contractQ.data?.status === "approved";
+                  const isReceived = payment.status_v2 === "held";
+                  const isPending = payment.payout_status === "pending" || !payment.payout_status;
+                  const isReleased = payment.status_v2 === "released" || payment.payout_status === "completed";
+
+                  if (isReleased) {
+                    return (
+                      <div className="space-y-2 text-xs">
+                        <div className="text-xs text-success font-semibold flex items-center gap-1.5 py-1">
+                          <Check className="h-4 w-4" /> Fund Released
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 border-t border-border/40 pt-2 text-[11px]">
+                          <div>
+                            <span className="text-muted-foreground block uppercase text-[9px]">Released At</span>
+                            <span className="font-medium text-foreground">
+                              {payment.released_at ? format(new Date(payment.released_at), "MMM d, yyyy h:mm a") : "N/A"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground block uppercase text-[9px]">Released By</span>
+                            <span className="font-mono text-foreground truncate block">
+                              {payment.released_by ? payment.released_by.slice(0, 13) + "..." : "Admin"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-[11px] mt-1">
+                          <div>
+                            <span className="text-muted-foreground block uppercase text-[9px]">Payout Status</span>
+                            <span className="font-bold text-success uppercase">
+                              {payment.payout_status ?? "completed"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const disabledReason = !isReceived
+                    ? "Payment has not been received yet"
+                    : !isApproved
+                    ? "Advertiser has not approved deliverables yet"
+                    : !isPending
+                    ? "Payout has already been completed"
+                    : null;
+
+                  return (
+                    <div className="space-y-2">
+                      <Button
+                        size="sm"
+                        disabled={!!disabledReason || releaseMut.isPending}
+                        onClick={() => {
+                          setConfirmOpen(true);
+                        }}
+                        className="bg-success hover:bg-success/90 text-success-foreground w-full justify-center h-9 gap-1.5"
+                      >
+                        {releaseMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                        Release Fund
+                      </Button>
+                      {disabledReason && (
+                        <p className="text-[10px] text-destructive font-medium mt-1">{disabledReason}</p>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
 
             {/* Payout Actions Section (Admin Only) */}
             {isAdmin && (payment.status_v2 === "released" || payment.status_v2 === "withdrawal_requested" || payment.status_v2 === "withdrawn") && (
@@ -430,6 +528,36 @@ Thank you for using Connecx!
             </div>
           </div>
         )}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Release Creator Payment</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to release this payment to the creator? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmOpen(false)}>Cancel</Button>
+            <Button
+              disabled={releaseMut.isPending}
+              onClick={async () => {
+                if (payment) {
+                  try {
+                    await releaseMut.mutateAsync(payment.id);
+                    setConfirmOpen(false);
+                  } catch {
+                    // toast is shown by onError hook
+                  }
+                }
+              }}
+              className="bg-success text-success-foreground hover:bg-success/90"
+            >
+              {releaseMut.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+              Confirm Release
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </SheetContent>
     </Sheet>
   );
