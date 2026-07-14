@@ -31,7 +31,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { releasePayment, adminReleaseFund } from "@/lib/payments/payments.functions";
+import { releasePayment, adminReleaseFund, adminGetPendingReleases } from "@/lib/payments/payments.functions";
 import { PageHeader } from "@/components/common/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -97,26 +97,11 @@ function AdminPayments() {
     },
   });
 
+  const getPendingReleasesFn = useServerFn(adminGetPendingReleases);
   const pendingReleases = useQuery({
     queryKey: ["admin-pending-releases"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("contracts")
-        .select(`
-          id,
-          title,
-          amount,
-          currency,
-          reviewed_at,
-          payment_id,
-          campaign:campaign_id(id, title),
-          advertiser:advertiser_id(display_name, avatar_url),
-          creator:creator_id(display_name, avatar_url),
-          payments:payment_id(created_at, status_v2)
-        ` as any)
-        .eq("status", "approved")
-        .is("deleted_at", null);
-      if (error) throw error;
+      const data = await getPendingReleasesFn();
       return data ?? [];
     },
   });

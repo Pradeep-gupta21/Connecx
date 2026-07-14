@@ -462,30 +462,265 @@ export const adminReleaseFund = createServerFn({ method: "POST" })
     }
 
     try {
-      // 2. Call transactional postgres RPC to validate and release the fund atomically
-      const { data: result, error } = await context.supabase.rpc("admin_release_fund" as any, {
-        _payment_id: data.paymentId,
-        _admin_id: context.userId,
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+      // 2. Get payment row and lock or inspect it
+      const { data: payRowData, error: payErr } = await supabaseAdmin
+        .from("payments")
+        .select("*")
+        .eq("id", data.paymentId)
+        .maybeSingle();
+
+      if (payErr || !payRowData) {
+        throw new Error("Payment transaction not found");
+      }
+
+      const payRow = payRowData as any;
+
+      // 3. Validate payout status and status
+      if (payRow.payout_status === "completed") {
+        throw new Error("Duplicate release: Payout status is already completed");
+      }
+      if (payRow.status === "released" || payRow.status_v2 === "released") {
+        throw new Error("Duplicate release: Payment has already been released");
+      }
+      if (payRow.status === "cancelled" || payRow.status_v2 === "cancelled") {
+        throw new Error("Escrow violation: Cannot release cancelled payment");
+      }
+      if (payRow.status === "refunded" || payRow.status_v2 === "refunded") {
+        throw new Error("Escrow violation: Cannot release refunded payment");
+      }
+      if (payRow.status_v2 !== "held" && payRow.status !== "held" && payRow.status !== "succeeded") {
+        throw new Error("Escrow violation: Payment has not been received (status must be held)");
+      }
+
+      if (!payRow.campaign_id) {
+        throw new Error("Payment has no linked campaign ID");
+      }
+      if (!payRow.contract_id) {
+        throw new Error("Payment has no linked contract ID");
+      }
+
+      // 4. Get campaign
+      const { data: campaignRow, error: campErr } = await supabaseAdmin
+        .from("campaigns")
+        .select("*")
+        .eq("id", payRow.campaign_id)
+        .maybeSingle();
+
+      if (campErr || !campaignRow) {
+        throw new Error("Linked campaign not found");
+      }
+
+      // 5. Get contract and validate advertiser approved deliverables
+      const { data: contractRow, error: contractErr } = await supabaseAdmin
+        .from("contracts")
+        .select("*")
+        .eq("id", payRow.contract_id)
+        .maybeSingle();
+
+      if (contractErr || !contractRow) {
+        throw new Error("Linked contract not found");
+      }
+
+      if (contractRow.status !== "approved") {
+        throw new Error("Escrow violation: Cannot release fund before advertiser approves deliverables");
+      }
+
+      // 6. Credit creator's wallet (using apply_wallet_txn RPC)
+      const releaseAmt = payRow.creator_earnings || payRow.amount || 0;
+      const { data: txnId, error: walletErr } = await supabaseAdmin.rpc("apply_wallet_txn" as any, {
+        _user_id: payRow.payee_id,
+        _type: "release",
+        _amount: releaseAmt,
+        _reference_type: "payment",
+        _reference_id: data.paymentId,
+        _description: "Funds released to available balance by admin",
       });
 
-      if (error) {
-        console.error(`[adminReleaseFund] [AUDIT] RPC failure while releasing payment ${data.paymentId}:`, error.message);
-        throw new Error(error.message);
+      if (walletErr) {
+        console.error("[adminReleaseFund] Wallet credit failure:", walletErr.message);
+        throw new Error(`Wallet transaction failed: ${walletErr.message}`);
       }
 
-      const res = result as { success: boolean; error?: string; payment_id?: string; amount?: number };
-      if (!res.success) {
-        console.error(`[adminReleaseFund] [AUDIT] Validation rejected release for payment ${data.paymentId}:`, res.error);
-        throw new Error(res.error);
+      // 7. Update payment status to released
+      const { error: updatePayErr } = await supabaseAdmin
+        .from("payments")
+        .update({
+          status: "released",
+          payout_status: "completed",
+          released_at: new Date().toISOString(),
+          released_by: context.userId,
+          status_v2: "released"
+        } as any)
+        .eq("id", data.paymentId);
+
+      if (updatePayErr) {
+        throw new Error(`Failed to update payment status: ${updatePayErr.message}`);
       }
 
-      // 3. Email notifications check
+      // 8. Complete contract and campaign
+      await supabaseAdmin.from("contracts").update({ status: "completed" } as any).eq("id", payRow.contract_id);
+      await supabaseAdmin.from("campaigns").update({ status: "closed" } as any).eq("id", payRow.campaign_id);
+
+      // 9. Notification to creator
+      await supabaseAdmin.from("notifications").insert({
+        user_id: payRow.payee_id,
+        title: "Payment Released",
+        body: `Your payment for ${campaignRow.title} has been released successfully.`,
+        type: "payment_released",
+        payload: {
+          payment_id: data.paymentId,
+          campaign_id: payRow.campaign_id,
+          contract_id: payRow.contract_id,
+          amount: releaseAmt,
+        },
+      } as any);
+
+      // 10. Audit Logging - Payment events
+      await (supabaseAdmin as any).from("payment_events").insert({
+        campaign_id: payRow.campaign_id,
+        pitch_id: payRow.pitch_id || null,
+        user_id: context.userId,
+        event_type: "payment_released",
+        metadata: {
+          payment_id: data.paymentId,
+          amount: releaseAmt,
+          released_by: context.userId,
+        },
+      });
+
+      // General activity audit trail
+      await supabaseAdmin.from("activity_logs").insert({
+        user_id: context.userId,
+        action: "payment_released",
+        entity_type: "payment",
+        entity_id: data.paymentId,
+        metadata: {
+          amount: releaseAmt,
+          campaign_id: payRow.campaign_id,
+          contract_id: payRow.contract_id,
+        },
+      } as any);
+
+      // 11. If a payout_transactions table exists, insert a payout history record
+      try {
+        await (supabaseAdmin as any).from("payout_transactions").insert({
+          payment_id: data.paymentId,
+          amount: releaseAmt,
+          currency: payRow.currency,
+          status: "completed",
+          processed_by: context.userId,
+        });
+      } catch (e) {
+        // Table might not exist, skip silently
+      }
+
+      // 12. Email notifications check
       console.log(`[adminReleaseFund] checking email notification dispatch... [INFO] No email client configured (Resend/SMTP), skipping email dispatch. Database notification saved successfully.`);
 
-      console.log(`[adminReleaseFund] [AUDIT] Success: Released payment ${data.paymentId} (Amount: ₹${res.amount}) by Admin ${context.userId}`);
-      return { success: true, paymentId: res.payment_id, amount: res.amount };
+      console.log(`[adminReleaseFund] [AUDIT] Success: Released payment ${data.paymentId} (Amount: ₹${releaseAmt}) by Admin ${context.userId}`);
+      return { success: true, paymentId: data.paymentId, amount: releaseAmt };
     } catch (err) {
       console.error(`[adminReleaseFund] [AUDIT] Exception thrown during release for payment ${data.paymentId}:`, err instanceof Error ? err.message : err);
       throw err;
     }
+  });
+
+// -------- Admin: Get Contract for Payment (bypasses RLS) --------
+const getContractSchema = z.object({
+  paymentId: z.string().uuid(),
+  contractId: z.string().uuid().optional().nullable(),
+  campaignId: z.string().uuid().optional().nullable(),
+  payeeId: z.string().uuid().optional().nullable(),
+});
+export const adminGetContractForPayment = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => getContractSchema.parse(raw))
+  .handler(async ({ data, context }) => {
+    // Enforce Admin only
+    const { data: isAdmin } = await context.supabase.rpc("has_role" as any, {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (!isAdmin) {
+      throw new Error("Unauthorized: Admin role required");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    let result = null;
+
+    // 1. Try explicit contractId
+    if (data.contractId) {
+      const { data: byId } = await supabaseAdmin
+        .from("contracts")
+        .select("id, status, submitted_at, reviewed_at, created_at, campaign_id, creator_id, advertiser_id")
+        .eq("id", data.contractId)
+        .maybeSingle();
+      result = byId;
+    }
+
+    // 2. Fallback: try by payment_id match
+    if (!result) {
+      const { data: byPaymentId } = await supabaseAdmin
+        .from("contracts")
+        .select("id, status, submitted_at, reviewed_at, created_at, campaign_id, creator_id, advertiser_id")
+        .eq("payment_id", data.paymentId)
+        .maybeSingle();
+      result = byPaymentId;
+    }
+
+    // 3. Fallback: query by campaignId AND creator_id (payeeId)
+    if (!result && data.campaignId && data.payeeId) {
+      const { data: byCampaignCreator } = await supabaseAdmin
+        .from("contracts")
+        .select("id, status, submitted_at, reviewed_at, created_at, campaign_id, creator_id, advertiser_id")
+        .eq("campaign_id", data.campaignId)
+        .eq("creator_id", data.payeeId)
+        .maybeSingle();
+      result = byCampaignCreator;
+    }
+
+    return result;
+  });
+
+// -------- Admin: Get Pending Releases (bypasses RLS) --------
+export const adminGetPendingReleases = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    // Enforce Admin only
+    const { data: isAdmin } = await context.supabase.rpc("has_role" as any, {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (!isAdmin) {
+      throw new Error("Unauthorized: Admin role required");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data, error } = await supabaseAdmin
+      .from("contracts")
+      .select(`
+        id,
+        title,
+        amount,
+        currency,
+        reviewed_at,
+        payment_id,
+        campaign:campaign_id(id, title),
+        advertiser:advertiser_id(display_name, avatar_url),
+        creator:creator_id(display_name, avatar_url),
+        payments:payment_id(created_at, status_v2)
+      ` as any)
+      .eq("status", "approved")
+      .is("deleted_at", null);
+
+    if (error) {
+      console.error("[adminGetPendingReleases] Error fetching pending releases:", error.message);
+      throw error;
+    }
+
+    return data ?? [];
   });

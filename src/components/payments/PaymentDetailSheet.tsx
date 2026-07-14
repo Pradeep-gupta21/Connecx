@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { adminReleaseFund } from "@/lib/payments/payments.functions";
+import { adminReleaseFund, adminGetContractForPayment } from "@/lib/payments/payments.functions";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Money } from "./Money";
@@ -94,42 +94,19 @@ export function PaymentDetailSheet({
     };
   }, [open, payment?.id, payment?.contract_id, payment?.campaign_id, payment?.payee_id]);
 
+  const getContractFn = useServerFn(adminGetContractForPayment);
   const contractQ = useQuery({
     queryKey: ["payment-contract", payment?.contract_id, payment?.campaign_id, payment?.id],
     enabled: open && !!payment && (!!payment.contract_id || !!payment.campaign_id),
     queryFn: async () => {
-      let data = null;
-
-      // 1. Try fetching by explicit contract_id on payment
-      if (payment!.contract_id) {
-        const { data: byId } = await supabase
-          .from("contracts")
-          .select("id, status, submitted_at, reviewed_at, created_at, campaign_id, creator_id, advertiser_id")
-          .eq("id", payment!.contract_id)
-          .maybeSingle();
-        data = byId;
-      }
-
-      // 2. Fallback: Try fetching by payment_id matching the payment row ID
-      if (!data) {
-        const { data: byPaymentId } = await supabase
-          .from("contracts")
-          .select("id, status, submitted_at, reviewed_at, created_at, campaign_id, creator_id, advertiser_id")
-          .eq("payment_id", payment!.id)
-          .maybeSingle();
-        data = byPaymentId;
-      }
-
-      // 3. Fallback: Query by campaign_id AND creator_id (payee_id on payment)
-      if (!data && payment!.campaign_id) {
-        const { data: byCampaignCreator } = await supabase
-          .from("contracts")
-          .select("id, status, submitted_at, reviewed_at, created_at, campaign_id, creator_id, advertiser_id")
-          .eq("campaign_id", payment!.campaign_id)
-          .eq("creator_id", payment!.payee_id)
-          .maybeSingle();
-        data = byCampaignCreator;
-      }
+      const data = await getContractFn({
+        data: {
+          paymentId: payment!.id,
+          contractId: payment!.contract_id,
+          campaignId: payment!.campaign_id,
+          payeeId: payment!.payee_id,
+        }
+      });
 
       console.log(`[PaymentDetailSheet.contractQ] [DEBUG] Value returned by the admin query for contract:`, data);
       return data;
