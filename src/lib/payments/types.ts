@@ -27,7 +27,7 @@ export type WalletTxnType =
   | "withdrawal_failed";
 
 export type WithdrawalStatus =
-  | "requested"
+  | "review_pending"
   | "approved"
   | "rejected"
   | "processing"

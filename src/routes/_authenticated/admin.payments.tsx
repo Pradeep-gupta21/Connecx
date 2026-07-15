@@ -156,7 +156,7 @@ function AdminPayments() {
       .filter((r) => withinRange(r.created_at, range) && r.status === "completed")
       .reduce((s, r) => s + Number(r.amount || 0), 0);
     const pendingWd = (withdrawals.data ?? [])
-      .filter((w) => w.status === "requested")
+      .filter((w) => w.status === "review_pending")
       .reduce((s, w) => s + Number(w.amount || 0), 0);
     const failed = filteredPayments.filter((p) => p.status_v2 === "failed").length;
     return { gmv, fees, held, refunded, pendingWd, failed, count: filteredPayments.length };
@@ -433,7 +433,7 @@ function AdminPayments() {
 
         <TabsContent value="withdrawals" className="mt-6">
           {(() => {
-            const pending = (withdrawals.data ?? []).filter((w: any) => w.status === "requested");
+            const pending = (withdrawals.data ?? []).filter((w: any) => w.status === "review_pending");
             return (
               <div className="space-y-4">
                 <div className="surface-card p-4 flex items-center justify-between">

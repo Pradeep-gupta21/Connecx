@@ -166,22 +166,22 @@ Thank you for using Connecx!
     toast.success("Receipt downloaded successfully");
   };
 
-  const handleAction = async (actionType: "approve" | "reject" | "send" | "mark_complete" | "retry") => {
+  const handleAction = async (actionType: "approve" | "reject" | "release" | "mark_complete" | "retry") => {
     if (!withdrawal) return;
     setLoadingAction(actionType);
     try {
       if (actionType === "approve") {
         const fn = (await import("@/lib/payments/payments.functions")).adminReviewWithdrawal;
-        await fn({ data: { withdrawalId: withdrawal.id, action: "approve", triggerPayout: false } });
+        await fn({ data: { withdrawalId: withdrawal.id, action: "approve" } });
         toast.success("Withdrawal approved");
       } else if (actionType === "reject") {
         const fn = (await import("@/lib/payments/payments.functions")).adminReviewWithdrawal;
         await fn({ data: { withdrawalId: withdrawal.id, action: "reject" } });
         toast.success("Withdrawal rejected");
-      } else if (actionType === "send" || actionType === "retry") {
-        const fn = (await import("@/lib/payments/payments.functions")).adminReviewWithdrawal;
-        await fn({ data: { withdrawalId: withdrawal.id, action: "approve", triggerPayout: true } });
-        toast.success("Payout request sent successfully");
+      } else if (actionType === "release" || actionType === "retry") {
+        const fn = (await import("@/lib/payments/payments.functions")).adminReleaseWithdrawalPayout;
+        await fn({ data: { withdrawalId: withdrawal.id } });
+        toast.success("Payout initiated successfully");
       } else if (actionType === "mark_complete") {
         const fn = (await import("@/lib/payments/payments.functions")).adminMarkWithdrawalCompleted;
         await fn({ data: { withdrawalId: withdrawal.id } });
@@ -424,13 +424,13 @@ Thank you for using Connecx!
                             <span className={cn(
                               "text-[10px] font-bold px-2 py-0.5 rounded border capitalize inline-block mt-0.5",
                               withdrawal.status === "completed" && "bg-green-500/10 text-green-500 border-green-500/20",
-                              withdrawal.status === "requested" && "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+                              withdrawal.status === "review_pending" && "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
                               withdrawal.status === "approved" && "bg-blue-500/10 text-blue-500 border-blue-500/20",
                               withdrawal.status === "processing" && "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
                               withdrawal.status === "failed" && "bg-red-500/10 text-red-500 border-red-500/20",
                               withdrawal.status === "rejected" && "bg-red-500/10 text-red-500 border-red-500/20"
                             )}>
-                              {withdrawal.status}
+                              {withdrawal.status === "review_pending" ? "Pending Review" : withdrawal.status}
                             </span>
                           </div>
                           <div>
@@ -449,7 +449,7 @@ Thank you for using Connecx!
 
                         {/* Action buttons based on status */}
                         <div className="flex flex-wrap gap-2 pt-2">
-                          {withdrawal.status === "requested" && (
+                          {withdrawal.status === "review_pending" && (
                             <>
                               <Button
                                 size="sm"
@@ -479,11 +479,11 @@ Thank you for using Connecx!
                               <Button
                                 size="sm"
                                 className="bg-indigo-600 text-white hover:bg-indigo-700 h-8 text-[11px]"
-                                onClick={() => handleAction("send")}
+                                onClick={() => handleAction("release")}
                                 disabled={!!loadingAction}
                               >
-                                {loadingAction === "send" ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Landmark className="h-3.5 w-3.5 mr-1" />}
-                                Send Payout (Rzp)
+                                {loadingAction === "release" ? <Loader2 className="h-3.5 w-3 animate-spin mr-1" /> : <Landmark className="h-3.5 w-3.5 mr-1" />}
+                                Release Funds
                               </Button>
                               <Button
                                 size="sm"
@@ -556,6 +556,12 @@ Thank you for using Connecx!
               />
             </div>
 
+            {withdrawal?.timeline && withdrawal.timeline.length > 0 && (
+              <div className="border-t border-border/60 pt-4">
+                <WithdrawalTimeline timeline={withdrawal.timeline} />
+              </div>
+            )}
+
             <div>
               <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 References
@@ -609,6 +615,72 @@ Thank you for using Connecx!
       </Dialog>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function WithdrawalTimeline({ timeline }: { timeline: any[] }) {
+  if (!timeline || timeline.length === 0) return null;
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "review_pending": return "Requested";
+      case "approved": return "Approved";
+      case "processing": return "Processing Payout";
+      case "completed": return "Completed";
+      case "failed": return "Failed";
+      case "rejected": return "Rejected";
+      default: return status;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "review_pending": return "text-amber-500 bg-amber-500/10 border-amber-500/20";
+      case "approved": return "text-indigo-500 bg-indigo-500/10 border-indigo-500/20";
+      case "processing": return "text-blue-500 bg-blue-500/10 border-blue-500/20 animate-pulse";
+      case "completed": return "text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
+      case "failed": return "text-rose-500 bg-rose-500/10 border-rose-500/20";
+      case "rejected": return "text-zinc-500 bg-zinc-500/10 border-zinc-500/20";
+      default: return "text-muted-foreground bg-muted border-border";
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        Withdrawal Timeline
+      </p>
+      <div className="relative border-l border-border/80 pl-4 ml-2 space-y-4">
+        {timeline.map((event, i) => (
+          <div key={event.id || i} className="relative">
+            <span className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-border border border-background" />
+            <div className="flex flex-col gap-1">
+              <div className="flex items-baseline gap-2">
+                <span className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded border ${getStatusColor(event.status)}`}>
+                  {getStatusLabel(event.status)}
+                </span>
+                <span className="text-[10px] font-mono text-muted-foreground ml-auto">
+                  {format(new Date(event.created_at), "MMM d, yyyy · h:mm a")}
+                </span>
+              </div>
+              <div className="text-xs text-foreground/90 pl-1 space-y-0.5 mt-1">
+                {event.profiles?.display_name && (
+                  <p><span className="text-muted-foreground">Actor:</span> {event.profiles.display_name}</p>
+                )}
+                {event.payout_provider && (
+                  <p><span className="text-muted-foreground">Provider:</span> {event.payout_provider}</p>
+                )}
+                {event.gateway_reference && (
+                  <p className="font-mono text-[11px] break-all">
+                    <span className="text-muted-foreground font-sans text-xs">Ref:</span> {event.gateway_reference}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

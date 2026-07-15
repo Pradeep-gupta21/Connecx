@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
@@ -49,7 +49,7 @@ interface WithdrawalRow {
   id: string;
   amount: number;
   currency: string;
-  status: "requested" | "approved" | "processing" | "completed" | "failed" | "rejected" | "cancelled";
+  status: "review_pending" | "approved" | "processing" | "completed" | "failed" | "rejected" | "cancelled" | "needs_review";
   method: string;
   destination: any;
   razorpay_payout_id: string | null;
@@ -58,6 +58,8 @@ interface WithdrawalRow {
   approved_at: string | null;
   processed_at: string | null;
   completed_at: string | null;
+  failed_at: string | null;
+  provider_response: any;
   admin_notes: string | null;
   user_id: string;
   payout_method_id: string | null;
@@ -74,6 +76,76 @@ function AdminWithdrawals() {
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRow | null>(null);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [creatorEmails, setCreatorEmails] = useState<Record<string, string>>({});
+  const [recovering, setRecovering] = useState(false);
+
+  const withdrawalsStatsQ = useQuery({
+    queryKey: ["admin-withdrawals-stats"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("withdrawals")
+        .select("id, amount, status, created_at, approved_at, completed_at");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const stats = useMemo(() => {
+    const list = withdrawalsStatsQ.data ?? [];
+    const pending = list.filter((w) => w.status === "review_pending").length;
+    const approved = list.filter((w) => w.status === "approved").length;
+    const processing = list.filter((w) => w.status === "processing").length;
+    
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const completedToday = list.filter(
+      (w) => w.status === "completed" && w.completed_at && new Date(w.completed_at) >= startOfToday
+    ).length;
+    
+    const failed = list.filter((w) => w.status === "failed").length;
+    
+    const totalPaid = list
+      .filter((w) => w.status === "completed")
+      .reduce((sum, w) => sum + Number(w.amount), 0);
+      
+    const completedList = list.filter((w) => w.status === "completed" && w.completed_at && w.created_at);
+    let avgProcessingTimeMinutes = 0;
+    if (completedList.length > 0) {
+      const totalDiff = completedList.reduce((sum, w) => {
+        const diffMs = new Date(w.completed_at!).getTime() - new Date(w.created_at).getTime();
+        return sum + diffMs;
+      }, 0);
+      avgProcessingTimeMinutes = Math.round((totalDiff / completedList.length) / (1000 * 60));
+    }
+    
+    return {
+      pending,
+      approved,
+      processing,
+      completedToday,
+      failed,
+      totalPaid,
+      avgProcessingTime: avgProcessingTimeMinutes,
+    };
+  }, [withdrawalsStatsQ.data]);
+
+  const handleRecover = async () => {
+    setRecovering(true);
+    try {
+      const fn = (await import("@/lib/payments/payments.functions")).adminRecoverWithdrawals;
+      const res = await fn();
+      if (res.success) {
+        toast.success(`Recovery complete. Stuck payouts processed: ${res.recoveredCount}`);
+        void withdrawalsQ.refetch();
+        void withdrawalsStatsQ.refetch();
+      } else {
+        toast.error(res.error || "Recovery failed");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Recovery failed");
+    } finally {
+      setRecovering(false);
+    }
+  };
 
   const withdrawalsQ = useQuery({
     queryKey: ["admin-withdrawals-list", statusTab],
@@ -82,7 +154,7 @@ function AdminWithdrawals() {
         .from("withdrawals")
         .select(`
           id, amount, currency, status, method, destination, razorpay_payout_id, failure_reason,
-          created_at, approved_at, processed_at, completed_at, admin_notes, user_id, payout_method_id,
+          created_at, approved_at, processed_at, completed_at, failed_at, provider_response, admin_notes, user_id, payout_method_id,
           payment_id, campaign_id,
           profiles(display_name, avatar_url),
           campaigns(title)
@@ -90,7 +162,11 @@ function AdminWithdrawals() {
         .order("created_at", { ascending: false });
 
       if (statusTab !== "all") {
-        query = query.eq("status", statusTab as any);
+        if (statusTab === "review_pending") {
+          query = query.in("status", ["review_pending", "needs_review"]);
+        } else {
+          query = query.eq("status", statusTab as any);
+        }
       }
 
       const { data, error } = await query;
@@ -125,16 +201,16 @@ function AdminWithdrawals() {
     try {
       if (actionType === "approve") {
         const fn = (await import("@/lib/payments/payments.functions")).adminReviewWithdrawal;
-        await fn({ data: { withdrawalId: withdrawal.id, action: "approve", triggerPayout: false } });
+        await fn({ data: { withdrawalId: withdrawal.id, action: "approve" } });
         toast.success("Withdrawal approved");
       } else if (actionType === "reject") {
         const fn = (await import("@/lib/payments/payments.functions")).adminReviewWithdrawal;
         await fn({ data: { withdrawalId: withdrawal.id, action: "reject" } });
         toast.success("Withdrawal rejected");
       } else if (actionType === "send" || actionType === "retry") {
-        const fn = (await import("@/lib/payments/payments.functions")).adminReviewWithdrawal;
-        await fn({ data: { withdrawalId: withdrawal.id, action: "approve", triggerPayout: true } });
-        toast.success("Payout request triggered successfully");
+        const fn = (await import("@/lib/payments/payments.functions")).adminReleaseWithdrawalPayout;
+        await fn({ data: { withdrawalId: withdrawal.id } });
+        toast.success("Payout initiated successfully");
       } else if (actionType === "mark_complete") {
         const fn = (await import("@/lib/payments/payments.functions")).adminMarkWithdrawalCompleted;
         await fn({ data: { withdrawalId: withdrawal.id } });
@@ -150,7 +226,7 @@ function AdminWithdrawals() {
           .from("withdrawals")
           .select(`
             id, amount, currency, status, method, destination, razorpay_payout_id, failure_reason,
-            created_at, approved_at, processed_at, completed_at, admin_notes, user_id, payout_method_id,
+            created_at, approved_at, processed_at, completed_at, failed_at, provider_response, admin_notes, user_id, payout_method_id,
             payment_id, campaign_id,
             profiles(display_name, avatar_url),
             campaigns(title)
@@ -208,17 +284,48 @@ Thank you for using Connecx!
       <PageHeader
         title="Withdrawal Requests"
         description="Review, approve, and process creator payouts securely via RazorpayX or Manual bank transfers."
+        actions={
+          <Button
+            onClick={handleRecover}
+            disabled={recovering}
+            variant="outline"
+            className="text-xs h-9 bg-warning/10 hover:bg-warning/20 border-warning/20 text-warning-foreground"
+          >
+            {recovering ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
+            ) : (
+              <RotateCcw className="h-3.5 w-3.5 mr-2" />
+            )}
+            Recover Stuck Payouts
+          </Button>
+        }
       />
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        <MiniStatCard label="Pending" value={stats.pending} color="text-amber-500" />
+        <MiniStatCard label="Approved" value={stats.approved} color="text-indigo-500" />
+        <MiniStatCard label="Processing" value={stats.processing} color="text-blue-500" />
+        <MiniStatCard label="Completed Today" value={stats.completedToday} color="text-emerald-500" />
+        <MiniStatCard label="Failed" value={stats.failed} color="text-rose-500" />
+        <MiniStatCard 
+          label="Total Paid" 
+          value={`₹${stats.totalPaid.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`} 
+          color="text-foreground" 
+        />
+        <MiniStatCard 
+          label="Avg Payout Time" 
+          value={stats.avgProcessingTime === 0 ? "—" : stats.avgProcessingTime > 60 ? `${Math.round(stats.avgProcessingTime / 60)} hrs` : `${stats.avgProcessingTime} mins`} 
+          description="Request to complete"
+          color="text-foreground" 
+        />
+      </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <Tabs value={statusTab} onValueChange={setStatusTab} className="w-full sm:w-auto">
           <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/60 p-1">
             <TabsTrigger value="all" className="text-xs px-3 py-1.5 h-8">All</TabsTrigger>
-            <TabsTrigger value="requested" className="text-xs px-3 py-1.5 h-8">
-              <Clock className="h-3 w-3 mr-1" /> Review Pending
-            </TabsTrigger>
-            <TabsTrigger value="approved" className="text-xs px-3 py-1.5 h-8">
-              <Check className="h-3 w-3 mr-1" /> Approved
+            <TabsTrigger value="review_pending" className="text-xs px-3 py-1.5 h-8">
+              <Clock className="h-3 w-3 mr-1" /> Needs Review
             </TabsTrigger>
             <TabsTrigger value="processing" className="text-xs px-3 py-1.5 h-8">
               <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Processing
@@ -228,6 +335,9 @@ Thank you for using Connecx!
             </TabsTrigger>
             <TabsTrigger value="failed" className="text-xs px-3 py-1.5 h-8">
               <ShieldAlert className="h-3 w-3 mr-1" /> Failed
+            </TabsTrigger>
+            <TabsTrigger value="approved" className="text-xs px-3 py-1.5 h-8">
+              <Check className="h-3 w-3 mr-1" /> Approved
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -316,14 +426,14 @@ Thank you for using Connecx!
                       <span className={cn(
                         "text-[10px] font-bold px-2 py-0.5 rounded border capitalize inline-block",
                         w.status === "completed" && "bg-green-500/10 text-green-500 border-green-500/20",
-                        w.status === "requested" && "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+                        (w.status === "review_pending" || w.status === "needs_review") && "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
                         w.status === "approved" && "bg-blue-500/10 text-blue-500 border-blue-500/20",
                         w.status === "processing" && "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
                         w.status === "failed" && "bg-red-500/10 text-red-500 border-red-500/20",
                         w.status === "rejected" && "bg-red-500/10 text-red-500 border-red-500/20",
                         w.status === "cancelled" && "bg-gray-500/10 text-gray-500 border-gray-500/20"
                       )}>
-                        {w.status === "requested" ? "Pending Review" : w.status}
+                        {w.status === "review_pending" ? "Pending Review" : w.status === "needs_review" ? "Needs Review" : w.status}
                       </span>
                     </td>
                     <td className="p-4">
@@ -395,14 +505,14 @@ Thank you for using Connecx!
                 <span className={cn(
                   "text-[10px] font-bold px-2 py-0.5 rounded border capitalize",
                   selectedWithdrawal.status === "completed" && "bg-green-500/10 text-green-500 border-green-500/20",
-                  selectedWithdrawal.status === "requested" && "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+                  (selectedWithdrawal.status === "review_pending" || selectedWithdrawal.status === "needs_review") && "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
                   selectedWithdrawal.status === "approved" && "bg-blue-500/10 text-blue-500 border-blue-500/20",
                   selectedWithdrawal.status === "processing" && "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
                   selectedWithdrawal.status === "failed" && "bg-red-500/10 text-red-500 border-red-500/20",
                   selectedWithdrawal.status === "rejected" && "bg-red-500/10 text-red-500 border-red-500/20",
                   selectedWithdrawal.status === "cancelled" && "bg-gray-500/10 text-gray-500 border-gray-500/20"
                 )}>
-                  {selectedWithdrawal.status === "requested" ? "Pending Review" : selectedWithdrawal.status}
+                  {selectedWithdrawal.status === "review_pending" ? "Pending Review" : selectedWithdrawal.status === "needs_review" ? "Needs Review" : selectedWithdrawal.status}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {format(new Date(selectedWithdrawal.created_at), "MMM d, yyyy · h:mm a")}
@@ -522,8 +632,15 @@ Thank you for using Connecx!
                 </div>
               )}
 
+              {selectedWithdrawal.provider_response && (
+                <div className="bg-muted/50 border border-border/40 rounded-xl p-3 text-muted-foreground text-xs font-mono max-h-[150px] overflow-y-auto">
+                  <span className="font-bold block uppercase text-[10px] mb-1 text-foreground">Provider Response Details</span>
+                  <pre className="text-[10px] whitespace-pre-wrap">{JSON.stringify(selectedWithdrawal.provider_response, null, 2)}</pre>
+                </div>
+              )}
+
               <div className="border-t border-border/40 pt-4 flex flex-wrap gap-2 justify-end">
-                {selectedWithdrawal.status === "requested" && (
+                {(selectedWithdrawal.status === "review_pending" || selectedWithdrawal.status === "needs_review") && (
                   <>
                     <Button
                       size="sm"
@@ -557,7 +674,7 @@ Thank you for using Connecx!
                       disabled={!!loadingAction}
                     >
                       {loadingAction === "send" ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Landmark className="h-4 w-4 mr-1.5" />}
-                      Send Payout (Rzp)
+                      Release Funds
                     </Button>
                     <Button
                       size="sm"
@@ -612,6 +729,26 @@ Thank you for using Connecx!
           </SheetContent>
         )}
       </Sheet>
+    </div>
+  );
+}
+
+function MiniStatCard({
+  label,
+  value,
+  description,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  description?: string;
+  color?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-background/50 backdrop-blur px-4 py-3.5 space-y-1">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={`text-xl font-bold tracking-tight ${color || "text-foreground"}`}>{value}</p>
+      {description && <p className="text-[9px] text-muted-foreground leading-none">{description}</p>}
     </div>
   );
 }

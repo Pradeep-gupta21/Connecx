@@ -65,6 +65,7 @@ import { Route as AuthenticatedAdminApiRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAdminAnnouncementsRouteImport } from './routes/_authenticated/admin.announcements'
 import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin.analytics'
 import { Route as ApiPublicRazorpayWebhookRouteImport } from './routes/api/public/razorpay/webhook'
+import { Route as ApiPublicJobsRecoverWithdrawalsRouteImport } from './routes/api/public/jobs/recover-withdrawals'
 import { Route as AuthenticatedCampaignsIdEditRouteImport } from './routes/_authenticated/campaigns.$id.edit'
 
 const TermsRoute = TermsRouteImport.update({
@@ -373,6 +374,12 @@ const ApiPublicRazorpayWebhookRoute =
     path: '/api/public/razorpay/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicJobsRecoverWithdrawalsRoute =
+  ApiPublicJobsRecoverWithdrawalsRouteImport.update({
+    id: '/api/public/jobs/recover-withdrawals',
+    path: '/api/public/jobs/recover-withdrawals',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedCampaignsIdEditRoute =
   AuthenticatedCampaignsIdEditRouteImport.update({
     id: '/edit',
@@ -436,6 +443,7 @@ export interface FileRoutesByFullPath {
   '/campaigns/': typeof AuthenticatedCampaignsIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
+  '/api/public/jobs/recover-withdrawals': typeof ApiPublicJobsRecoverWithdrawalsRoute
   '/api/public/razorpay/webhook': typeof ApiPublicRazorpayWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -493,6 +501,7 @@ export interface FileRoutesByTo {
   '/campaigns': typeof AuthenticatedCampaignsIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
+  '/api/public/jobs/recover-withdrawals': typeof ApiPublicJobsRecoverWithdrawalsRoute
   '/api/public/razorpay/webhook': typeof ApiPublicRazorpayWebhookRoute
 }
 export interface FileRoutesById {
@@ -553,6 +562,7 @@ export interface FileRoutesById {
   '/_authenticated/campaigns/': typeof AuthenticatedCampaignsIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/campaigns/$id/edit': typeof AuthenticatedCampaignsIdEditRoute
+  '/api/public/jobs/recover-withdrawals': typeof ApiPublicJobsRecoverWithdrawalsRoute
   '/api/public/razorpay/webhook': typeof ApiPublicRazorpayWebhookRoute
 }
 export interface FileRouteTypes {
@@ -613,6 +623,7 @@ export interface FileRouteTypes {
     | '/campaigns/'
     | '/dashboard/'
     | '/campaigns/$id/edit'
+    | '/api/public/jobs/recover-withdrawals'
     | '/api/public/razorpay/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -670,6 +681,7 @@ export interface FileRouteTypes {
     | '/campaigns'
     | '/dashboard'
     | '/campaigns/$id/edit'
+    | '/api/public/jobs/recover-withdrawals'
     | '/api/public/razorpay/webhook'
   id:
     | '__root__'
@@ -729,6 +741,7 @@ export interface FileRouteTypes {
     | '/_authenticated/campaigns/'
     | '/_authenticated/dashboard/'
     | '/_authenticated/campaigns/$id/edit'
+    | '/api/public/jobs/recover-withdrawals'
     | '/api/public/razorpay/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -745,6 +758,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   CreatorsIdRoute: typeof CreatorsIdRoute
   ApiPublicNotificationsRoute: typeof ApiPublicNotificationsRoute
+  ApiPublicJobsRecoverWithdrawalsRoute: typeof ApiPublicJobsRecoverWithdrawalsRoute
   ApiPublicRazorpayWebhookRoute: typeof ApiPublicRazorpayWebhookRoute
 }
 
@@ -1142,6 +1156,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRazorpayWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/jobs/recover-withdrawals': {
+      id: '/api/public/jobs/recover-withdrawals'
+      path: '/api/public/jobs/recover-withdrawals'
+      fullPath: '/api/public/jobs/recover-withdrawals'
+      preLoaderRoute: typeof ApiPublicJobsRecoverWithdrawalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/campaigns/$id/edit': {
       id: '/_authenticated/campaigns/$id/edit'
       path: '/edit'
@@ -1302,6 +1323,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   CreatorsIdRoute: CreatorsIdRoute,
   ApiPublicNotificationsRoute: ApiPublicNotificationsRoute,
+  ApiPublicJobsRecoverWithdrawalsRoute: ApiPublicJobsRecoverWithdrawalsRoute,
   ApiPublicRazorpayWebhookRoute: ApiPublicRazorpayWebhookRoute,
 }
 export const routeTree = rootRouteImport

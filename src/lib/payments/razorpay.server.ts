@@ -100,6 +100,7 @@ export interface RzpPayout {
   amount: number;
   currency: string;
   status: string;
+  utr?: string;
 }
 
 export const razorpay = {
@@ -164,7 +165,6 @@ export const razorpay = {
       }),
     });
   },
-
   async createPayout(args: {
     accountNumber: string;
     fundAccountId: string;
@@ -173,6 +173,7 @@ export const razorpay = {
     mode: "IMPS" | "NEFT" | "RTGS" | "UPI";
     purpose: string;
     referenceId: string;
+    idempotencyKey?: string;
   }): Promise<RzpPayout> {
     const creds = getCreds();
     if (creds.isMock) {
@@ -186,6 +187,7 @@ export const razorpay = {
 
     return rzpFetch<RzpPayout>("/payouts", {
       method: "POST",
+      headers: args.idempotencyKey ? { "X-Payout-Idempotency": args.idempotencyKey } : {},
       body: JSON.stringify({
         account_number: args.accountNumber,
         fund_account_id: args.fundAccountId,
@@ -197,6 +199,19 @@ export const razorpay = {
         reference_id: args.referenceId,
       }),
     });
+  },
+
+  async getPayout(payoutId: string): Promise<RzpPayout> {
+    const creds = getCreds();
+    if (creds.isMock) {
+      return {
+        id: payoutId,
+        amount: 100,
+        currency: "INR",
+        status: "processed",
+      };
+    }
+    return rzpFetch<RzpPayout>(`/payouts/${payoutId}`);
   },
 
   async createContact(args: {

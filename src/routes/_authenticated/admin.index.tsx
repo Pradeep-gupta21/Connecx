@@ -19,7 +19,7 @@ export const Route = createFileRoute("/_authenticated/admin/")({
 
 const ACTIVE_CAMPAIGN_STATUSES = ["open"] as const;
 const COMPLETED_CAMPAIGN_STATUSES = ["closed"] as const;
-const PENDING_WITHDRAWAL_STATUSES = ["requested", "processing"] as const;
+const PENDING_WITHDRAWAL_STATUSES = ["review_pending", "processing"] as const;
 
 async function fetchOverview() {
   const todayStart = new Date();

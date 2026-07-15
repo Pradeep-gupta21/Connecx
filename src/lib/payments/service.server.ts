@@ -91,6 +91,28 @@ async function audit(args: {
   });
 }
 
+async function logWithdrawalEvent(args: {
+  withdrawalId: string;
+  status: string;
+  adminId?: string | null;
+  payoutProvider?: string | null;
+  gatewayReference?: string | null;
+  providerResponse?: any;
+  ipAddress?: string | null;
+  metadata?: Record<string, unknown>;
+}) {
+  await admin.from("withdrawal_logs").insert({
+    withdrawal_id: args.withdrawalId,
+    status: args.status,
+    admin_id: args.adminId ?? null,
+    payout_provider: args.payoutProvider ?? null,
+    gateway_reference: args.gatewayReference ?? null,
+    provider_response: args.providerResponse ?? null,
+    ip_address: args.ipAddress ?? null,
+    metadata: args.metadata ?? {},
+  });
+}
+
 async function notify(args: {
   userId: string | null | undefined;
   type: string;
@@ -113,6 +135,173 @@ async function notify(args: {
   } catch (err) {
     console.error("Failed to send background push notification:", err);
   }
+}
+
+async function validateWithdrawalRequest(userId: string, amount: number) {
+  // 1. Available balance validation
+  const { data: wallet } = await admin
+    .from("wallets")
+    .select("available_balance")
+    .eq("user_id", userId)
+    .maybeSingle();
+    
+  if (!wallet) {
+    return { valid: false, error: "Wallet not found" };
+  }
+  
+  if (Number(wallet.available_balance) < amount) {
+    return { valid: false, error: `Insufficient balance: requested ₹${amount} but only ₹${Number(wallet.available_balance).toLocaleString("en-IN")} available.` };
+  }
+
+  // 2. Active withdrawals validation
+  // A creator cannot have more than one active withdrawal.
+  const { data: activeWd } = await admin
+    .from("withdrawals")
+    .select("id, status")
+    .eq("user_id", userId)
+    .in("status", ["processing", "review_pending", "approved", "needs_review"])
+    .limit(1)
+    .maybeSingle();
+
+  if (activeWd) {
+    return {
+      valid: false,
+      error: `You already have an active withdrawal in progress (Status: ${activeWd.status}). Creators cannot have more than one active withdrawal.`,
+    };
+  }
+
+  // ---- FRAUD CHECKS ----
+  // A. Configurable limit check: e.g. amount exceeds ₹50,000
+  const FRAUD_LIMIT_INR = 50000;
+  if (amount > FRAUD_LIMIT_INR) {
+    return {
+      valid: false,
+      error: `Withdrawal amount ₹${amount.toLocaleString("en-IN")} exceeds the automatic payout limit of ₹${FRAUD_LIMIT_INR.toLocaleString("en-IN")}. Sent to manual review for safety.`,
+    };
+  }
+
+  // B. Multiple withdrawals within a short period (last 24 hours)
+  const oneDayAgo = new Date();
+  oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+  const { data: recentWds } = await admin
+    .from("withdrawals")
+    .select("id")
+    .eq("user_id", userId)
+    .gt("created_at", oneDayAgo.toISOString())
+    .limit(1);
+
+  if (recentWds && recentWds.length > 0) {
+    return {
+      valid: false,
+      error: "Multiple withdrawal requests within a 24-hour window. Sent to manual review for fraud prevention.",
+    };
+  }
+
+  // C. Too many failed payout attempts (3 failures in last 7 days)
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const { data: failedWds } = await admin
+    .from("withdrawals")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("status", "failed")
+    .gt("created_at", sevenDaysAgo.toISOString())
+    .limit(3);
+
+  if (failedWds && failedWds.length >= 3) {
+    return {
+      valid: false,
+      error: "Too many failed payout attempts recently. Sent to manual review for security verification.",
+    };
+  }
+
+  // D. Suspicious account activity (creator profile not verified)
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("verification_status")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (profile && profile.verification_status !== "verified") {
+    return {
+      valid: false,
+      error: "Creator profile is not fully verified on the platform. Sent to manual review.",
+    };
+  }
+  // ----------------------
+
+  // 3. Campaign & Settlement validation
+  const { data: payments } = await admin
+    .from("payments")
+    .select(`
+      id,
+      amount,
+      creator_earnings,
+      status_v2,
+      campaign_id,
+      contract_id
+    `)
+    .eq("payee_id", userId)
+    .eq("status_v2", "released");
+
+  if (!payments || payments.length === 0) {
+    return { valid: false, error: "No settled campaign earnings found for this account." };
+  }
+
+  let totalSettledEarnings = 0;
+  
+  for (const pay of payments) {
+    // Check campaign status
+    if (pay.campaign_id) {
+      const { data: campaign } = await admin
+        .from("campaigns")
+        .select("status")
+        .eq("id", pay.campaign_id)
+        .maybeSingle();
+        
+      if (!campaign || campaign.status !== "closed") {
+        continue;
+      }
+    } else {
+      continue;
+    }
+
+    // Check contract status
+    if (pay.contract_id) {
+      const { data: contract } = await admin
+        .from("contracts")
+        .select("status")
+        .eq("id", pay.contract_id)
+        .maybeSingle();
+        
+      if (!contract || contract.status !== "completed") {
+        continue;
+      }
+    } else {
+      continue;
+    }
+
+    totalSettledEarnings += Number(pay.creator_earnings || pay.amount || 0);
+  }
+
+  // Subtract total withdrawn amount
+  const { data: completedWithdrawals } = await admin
+    .from("withdrawals")
+    .select("amount")
+    .eq("user_id", userId)
+    .eq("status", "completed");
+    
+  const totalWithdrawn = (completedWithdrawals ?? []).reduce((sum: number, w: { amount: any }) => sum + Number(w.amount), 0);
+  const remainingSettledBalance = totalSettledEarnings - totalWithdrawn;
+
+  if (remainingSettledBalance < amount) {
+    return {
+      valid: false,
+      error: `Withdrawal amount ₹${amount} exceeds settled campaign earnings of ₹${Math.max(0, Math.round(remainingSettledBalance)).toLocaleString("en-IN")}. Unsettled or active campaign earnings cannot be withdrawn.`,
+    };
+  }
+
+  return { valid: true };
 }
 
 async function applyWalletTxn(args: {
@@ -1401,6 +1590,9 @@ export const PaymentService = {
         }
       : { payout_method_id: pm.id, vpa: pm.upi_id };
 
+    const validation = await validateWithdrawalRequest(args.userId, args.amount);
+    const initialStatus = validation.valid ? "approved" : "needs_review";
+
     const { data: wd, error: iErr } = await admin
       .from("withdrawals")
       .insert({
@@ -1411,8 +1603,9 @@ export const PaymentService = {
         method,
         destination,
         payout_method_id: pm.id as string,
-        status: "requested",
-      } as never)
+        status: initialStatus,
+        failure_reason: validation.valid ? null : validation.error,
+      } as any)
       .select("id")
       .single();
     if (iErr || !wd) throw new Error(`Withdrawal failed: ${iErr?.message}`);
@@ -1438,22 +1631,108 @@ export const PaymentService = {
       actorId: args.userId,
     });
 
-    await audit({
-      actorId: args.userId,
-      action: "withdrawal.requested",
-      entityType: "withdrawal",
-      entityId: wd.id,
-      metadata: { amount: args.amount },
-    });
-    return { withdrawalId: wd.id };
+    if (validation.valid) {
+      await audit({
+        actorId: args.userId,
+        action: "withdrawal.requested",
+        entityType: "withdrawal",
+        entityId: wd.id,
+        metadata: {
+          creatorId: args.userId,
+          withdrawalId: wd.id,
+          amount: args.amount,
+          payoutProvider: "RazorpayX",
+          gatewayReference: null,
+          validationResult: "passed",
+          adminId: null,
+        },
+      });
+
+      await logWithdrawalEvent({
+        withdrawalId: wd.id,
+        status: "needs_review",
+        metadata: { amount: args.amount, payoutMethodId: args.payoutMethodId, validation: "automatic_passed" },
+      });
+      await logWithdrawalEvent({
+        withdrawalId: wd.id,
+        status: "approved",
+        metadata: { amount: args.amount, payoutMethodId: args.payoutMethodId },
+      });
+
+      await notify({
+        userId: args.userId,
+        type: "withdrawal_requested",
+        title: "Withdrawal Approved Automatically",
+        body: `Your withdrawal of ₹${args.amount.toLocaleString("en-IN")} was automatically validated and approved. Payout is being processed.`,
+        payload: { withdrawal_id: wd.id },
+      });
+
+      // Start the payout process immediately
+      try {
+        await this.adminReleaseWithdrawalPayout({
+          withdrawalId: wd.id,
+          adminId: "SYSTEM",
+          ipAddress: "SYSTEM",
+        });
+      } catch (err: any) {
+        console.error("[withdrawal] Auto-release failed:", err.message);
+      }
+
+      return { success: true, withdrawalId: wd.id };
+    } else {
+      await audit({
+        actorId: args.userId,
+        action: "withdrawal.validation_failed",
+        entityType: "withdrawal",
+        entityId: wd.id,
+        metadata: {
+          creatorId: args.userId,
+          withdrawalId: wd.id,
+          amount: args.amount,
+          payoutProvider: "RazorpayX",
+          gatewayReference: null,
+          validationResult: "failed",
+          error: validation.error,
+          adminId: null,
+        },
+      });
+
+      await logWithdrawalEvent({
+        withdrawalId: wd.id,
+        status: "needs_review",
+        metadata: { amount: args.amount, error: validation.error },
+      });
+
+      await notify({
+        userId: args.userId,
+        type: "withdrawal_requested",
+        title: "Withdrawal Awaiting Manual Review",
+        body: `Your withdrawal of ₹${args.amount.toLocaleString("en-IN")} requires manual review: ${validation.error}`,
+        payload: { withdrawal_id: wd.id },
+      });
+
+      throw new Error(validation.error);
+    }
   },
 
   async adminApproveWithdrawal(args: {
     withdrawalId: string;
     adminId: string;
     notes?: string;
-    triggerPayout?: boolean;
+    ipAddress?: string | null;
   }) {
+    // Verify the balance is locked. The locked transaction of type "withdrawal_request" must exist.
+    const { data: lockedTxn, error: lockErr } = await admin
+      .from("wallet_transactions")
+      .select("id")
+      .eq("reference_id", args.withdrawalId)
+      .eq("reference_type", "withdrawal")
+      .eq("type", "withdrawal_request")
+      .maybeSingle();
+
+    if (lockErr) throw new Error(`Failed to verify locked balance: ${lockErr.message}`);
+    if (!lockedTxn) throw new Error("Withdrawal balance is not locked");
+
     // CAS approve — only one admin wins.
     const { data: wd, error } = await admin
       .from("withdrawals")
@@ -1462,13 +1741,14 @@ export const PaymentService = {
         approved_by: args.adminId,
         approved_at: new Date().toISOString(),
         admin_notes: args.notes ?? null,
-      })
+      } as any)
       .eq("id", args.withdrawalId)
-      .eq("status", "requested")
-      .select("id, user_id, amount, currency, method, destination, payout_method_id")
+      .in("status", ["review_pending", "needs_review"])
+      .select("id, user_id, amount")
       .maybeSingle();
+
     if (error) throw new Error(error.message);
-    if (!wd) throw new Error("Withdrawal is no longer pending");
+    if (!wd) throw new Error("Withdrawal is not in review_pending or needs_review status");
 
     await audit({
       actorId: args.adminId,
@@ -1476,6 +1756,15 @@ export const PaymentService = {
       entityType: "withdrawal",
       entityId: wd.id,
     });
+
+    await logWithdrawalEvent({
+      withdrawalId: wd.id,
+      status: "approved",
+      adminId: args.adminId,
+      ipAddress: args.ipAddress,
+      metadata: { adminNotes: args.notes },
+    });
+
     await notify({
       userId: wd.user_id,
       type: "withdrawal_approved",
@@ -1483,127 +1772,15 @@ export const PaymentService = {
       body: `Your withdrawal of ₹${Number(wd.amount).toLocaleString("en-IN")} was approved.`,
       payload: { withdrawal_id: wd.id },
     });
-
-    // Optional payout via RazorpayX (self-bootstraps contacts & fund accounts if needed)
-    if (args.triggerPayout) {
-      try {
-        const accountNumber = process.env.RAZORPAYX_ACCOUNT_NUMBER;
-        if (!accountNumber) {
-          throw new Error("RAZORPAYX_ACCOUNT_NUMBER env variable is not configured");
-        }
-
-        // Fetch payout method
-        const { data: pm } = await admin
-          .from("payout_methods")
-          .select("*")
-          .eq("id", wd.payout_method_id)
-          .maybeSingle();
-
-        if (!pm) {
-          throw new Error("Payout method not found for this withdrawal");
-        }
-
-        // Fetch creator details
-        let email = "";
-        try {
-          const { data: creatorUser } = await admin.auth.admin.getUserById(wd.user_id);
-          email = creatorUser?.user?.email ?? "";
-        } catch (authErr) {
-          console.warn("[payout] Failed to fetch creator email", authErr);
-        }
-
-        const { data: creatorProfile } = await admin
-          .from("profiles")
-          .select("display_name")
-          .eq("id", wd.user_id)
-          .maybeSingle();
-        const name = creatorProfile?.display_name ?? "Creator";
-
-        // Create contact
-        let contactId = pm.razorpay_contact_id;
-        if (!contactId) {
-          const contact = await razorpay.createContact({
-            name,
-            email,
-            referenceId: wd.user_id,
-          });
-          contactId = contact.id;
-          await admin
-            .from("payout_methods")
-            .update({ razorpay_contact_id: contactId })
-            .eq("id", pm.id);
-        }
-
-        // Create fund account
-        let fundAccountId = pm.razorpay_fund_account_id;
-        if (!fundAccountId) {
-          const fa = await razorpay.createFundAccount({
-            contactId,
-            accountType: pm.method_type === "bank" ? "bank_account" : "vpa",
-            bankAccount: pm.method_type === "bank" ? {
-              name,
-              ifsc: pm.ifsc,
-              accountNumber: pm.account_number,
-            } : undefined,
-            vpa: pm.method_type === "upi" ? {
-              address: pm.upi_id,
-            } : undefined,
-          });
-          fundAccountId = fa.id;
-          await admin
-            .from("payout_methods")
-            .update({ razorpay_fund_account_id: fundAccountId })
-            .eq("id", pm.id);
-        }
-
-        // Create payout
-        const payout = await razorpay.createPayout({
-          accountNumber,
-          fundAccountId,
-          amountMinor: Math.round(Number(wd.amount) * 100),
-          currency: wd.currency ?? "INR",
-          mode: (wd.method === "upi" ? "UPI" : "IMPS") as "IMPS" | "UPI",
-          purpose: "payout",
-          referenceId: wd.id,
-        });
-
-        // Update withdrawal with processing status and transfer reference
-        await admin.from("withdrawals").update({
-          status: "processing",
-          payout_id: payout.id,
-          payout_ref: payout.id,
-          razorpay_payout_id: payout.id,
-        }).eq("id", wd.id);
-
-        // Also trigger completion immediately if it is mock/sandbox mode!
-        const isMockPayout = payout.id.startsWith("payout_mock_");
-        if (isMockPayout) {
-          await PaymentService.markWithdrawalCompleted({
-            withdrawalId: wd.id,
-            payoutRef: payout.id,
-          });
-        }
-
-      } catch (e) {
-        console.error("[payout] failed", e);
-        await admin.from("withdrawals").update({
-          status: "failed",
-          failure_reason: e instanceof Error ? e.message : String(e),
-        }).eq("id", wd.id);
-        throw e;
-      }
-    } else {
-      // Manual payout — mark processing; ops will mark completed
-      await admin.from("withdrawals").update({ status: "processing" }).eq("id", wd.id);
-    }
   },
 
   async adminRejectWithdrawal(args: {
     withdrawalId: string;
     adminId: string;
     reason?: string;
+    ipAddress?: string | null;
   }) {
-    // CAS: only reject if still 'requested'. Prevents two admins from acting.
+    // CAS: only reject if still 'review_pending'. Prevents two admins from acting.
     const { data: wd, error } = await admin
       .from("withdrawals")
       .update({
@@ -1611,13 +1788,13 @@ export const PaymentService = {
         approved_by: args.adminId,
         approved_at: new Date().toISOString(),
         admin_notes: args.reason ?? null,
-      })
+      } as any)
       .eq("id", args.withdrawalId)
-      .eq("status", "requested")
+      .in("status", ["review_pending", "needs_review"])
       .select("id, user_id, amount")
       .maybeSingle();
     if (error) throw new Error(error.message);
-    if (!wd) throw new Error("Withdrawal is no longer pending");
+    if (!wd) throw new Error("Withdrawal is no longer in review_pending or needs_review status");
 
     // Restore the reserved amount to available (which also reverses the transaction)
     const amt = Number(wd.amount);
@@ -1646,6 +1823,15 @@ export const PaymentService = {
       entityType: "withdrawal", entityId: wd.id,
       metadata: { reason: args.reason, amount: amt },
     });
+
+    await logWithdrawalEvent({
+      withdrawalId: wd.id,
+      status: "rejected",
+      adminId: args.adminId,
+      ipAddress: args.ipAddress,
+      metadata: { reason: args.reason },
+    });
+
     await notify({
       userId: wd.user_id,
       type: "withdrawal_completed",
@@ -1655,12 +1841,238 @@ export const PaymentService = {
     });
   },
 
+  async adminReleaseWithdrawalPayout(args: {
+    withdrawalId: string;
+    adminId: string;
+    ipAddress?: string | null;
+  }) {
+    // Get the previous status first to check if this is a retry
+    const { data: oldWd } = await admin
+      .from("withdrawals")
+      .select("status, payout_ref")
+      .eq("id", args.withdrawalId)
+      .maybeSingle();
+
+    const isRetry = oldWd ? (oldWd.status === "failed" || oldWd.status === "needs_review") : false;
+
+    // Lock the row by updating status to processing via CAS style update
+    const { data: wd, error } = await admin
+      .from("withdrawals")
+      .update({
+        status: "processing",
+        processed_at: new Date().toISOString(),
+      } as any)
+      .eq("id", args.withdrawalId)
+      .in("status", ["approved", "failed", "needs_review"])
+      .select("id, user_id, amount, currency, method, destination, payout_method_id")
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!wd) throw new Error("Withdrawal is not in approved, failed, or needs_review status, or has already been processed");
+
+    await audit({
+      actorId: args.adminId,
+      action: isRetry ? "withdrawal.retry" : "withdrawal.processing_started",
+      entityType: "withdrawal",
+      entityId: wd.id,
+      metadata: {
+        creatorId: wd.user_id,
+        withdrawalId: wd.id,
+        amount: wd.amount,
+        payoutProvider: "RazorpayX",
+        gatewayReference: oldWd?.payout_ref ?? null,
+        validationResult: isRetry ? "retry" : "passed",
+        adminId: args.adminId,
+        previousStatus: oldWd?.status ?? null,
+      },
+    });
+
+    await logWithdrawalEvent({
+      withdrawalId: wd.id,
+      status: "processing",
+      adminId: args.adminId,
+      payoutProvider: "RazorpayX",
+      ipAddress: args.ipAddress,
+    });
+
+    await notify({
+      userId: wd.user_id,
+      type: "withdrawal_completed",
+      title: "Withdrawal processing",
+      body: `Your withdrawal of ₹${Number(wd.amount).toLocaleString("en-IN")} is being processed.`,
+      payload: { withdrawal_id: wd.id },
+    });
+
+    try {
+      const accountNumber = process.env.RAZORPAYX_ACCOUNT_NUMBER;
+      if (!accountNumber) {
+        throw new Error("RAZORPAYX_ACCOUNT_NUMBER env variable is not configured");
+      }
+
+      // Fetch payout method
+      const { data: pm } = await admin
+        .from("payout_methods")
+        .select("*")
+        .eq("id", wd.payout_method_id)
+        .maybeSingle();
+
+      if (!pm) {
+        throw new Error("Payout method not found for this withdrawal");
+      }
+
+      if (pm.user_id !== wd.user_id) {
+        throw new Error("Fraud Alert: Payout method owner does not match the withdrawal request owner!");
+      }
+      if (pm.verification_status !== "verified") {
+        throw new Error("Selected payout account is not verified yet");
+      }
+
+      // Verify destination details match verified payout method details exactly to prevent tampering
+      if (pm.method_type === "upi") {
+        if (wd.destination?.vpa !== pm.upi_id) {
+          throw new Error("Security Alert: UPI VPA in withdrawal destination does not match the creator's verified UPI ID!");
+        }
+      } else if (pm.method_type === "bank") {
+        if (wd.destination?.ifsc !== pm.ifsc || wd.destination?.account_number_last4 !== pm.account_number_last4) {
+          throw new Error("Security Alert: Bank Account details in withdrawal destination do not match the creator's verified Bank details!");
+        }
+      }
+
+      // Fetch creator details
+      let email = "";
+      try {
+        const { data: creatorUser } = await admin.auth.admin.getUserById(wd.user_id);
+        email = creatorUser?.user?.email ?? "";
+      } catch (authErr) {
+        console.warn("[payout] Failed to fetch creator email", authErr);
+      }
+
+      const { data: creatorProfile } = await admin
+        .from("profiles")
+        .select("display_name")
+        .eq("id", wd.user_id)
+        .maybeSingle();
+      const name = creatorProfile?.display_name ?? "Creator";
+
+      // Create contact
+      let contactId = pm.razorpay_contact_id;
+      if (!contactId) {
+        const contact = await razorpay.createContact({
+          name,
+          email,
+          referenceId: wd.user_id,
+        });
+        contactId = contact.id;
+        await admin
+          .from("payout_methods")
+          .update({ razorpay_contact_id: contactId })
+          .eq("id", pm.id);
+      }
+
+      // Create fund account
+      let fundAccountId = pm.razorpay_fund_account_id;
+      if (!fundAccountId) {
+        const fa = await razorpay.createFundAccount({
+          contactId,
+          accountType: pm.method_type === "bank" ? "bank_account" : "vpa",
+          bankAccount: pm.method_type === "bank" ? {
+            name,
+            ifsc: pm.ifsc,
+            accountNumber: pm.account_number,
+          } : undefined,
+          vpa: pm.method_type === "upi" ? {
+            address: pm.upi_id,
+          } : undefined,
+        });
+        fundAccountId = fa.id;
+        await admin
+          .from("payout_methods")
+          .update({ razorpay_fund_account_id: fundAccountId })
+          .eq("id", pm.id);
+      }
+
+      // Create payout
+      const payout = await razorpay.createPayout({
+        accountNumber,
+        fundAccountId,
+        amountMinor: Math.round(Number(wd.amount) * 100),
+        currency: wd.currency ?? "INR",
+        mode: (wd.method === "upi" ? "UPI" : "IMPS") as "IMPS" | "UPI",
+        purpose: "payout",
+        referenceId: wd.id,
+        idempotencyKey: wd.id,
+      });
+
+      // Save success details (payout_id, gateway_reference/payout_ref, UTR, provider response)
+      await admin.from("withdrawals").update({
+        payout_id: payout.id,
+        payout_ref: payout.utr || payout.id,
+        razorpay_payout_id: payout.id,
+        provider_response: payout as any,
+      } as any).eq("id", wd.id);
+
+      // Transition approved -> processing -> completed fully
+      await PaymentService.markWithdrawalCompleted({
+        withdrawalId: wd.id,
+        payoutRef: payout.utr || payout.id,
+      });
+
+    } catch (e: any) {
+      console.error("[payout] failed", e);
+      // Payout provider rejected the request before processing. Save and update status to needs_review.
+      await admin.from("withdrawals").update({
+        status: "needs_review",
+        failure_reason: e instanceof Error ? e.message : String(e),
+        provider_response: e && typeof e === "object" ? e : { error: String(e) },
+      } as any).eq("id", wd.id);
+
+      await logWithdrawalEvent({
+        withdrawalId: wd.id,
+        status: "needs_review",
+        adminId: args.adminId,
+        payoutProvider: "RazorpayX",
+        providerResponse: e && typeof e === "object" ? e : { error: String(e) },
+        ipAddress: args.ipAddress,
+        metadata: { errorMessage: e instanceof Error ? e.message : String(e) },
+      });
+
+      // Keep funds locked (do NOT call withdrawal_failed or postLedger reverse)
+      await notify({
+        userId: wd.user_id,
+        type: "withdrawal_completed",
+        title: "Payout Awaiting Review",
+        body: `Your payout requires manual admin review: ${e instanceof Error ? e.message : String(e)}`,
+        payload: { withdrawal_id: wd.id },
+      });
+
+      throw e;
+    }
+  },
+
   /**
    * Razorpay reported the payout as failed. Restore the creator's available
    * balance, undo the reserved 'withdrawn' bump, and reverse the ledger.
    * Idempotent — only acts on withdrawals still in flight.
    */
   async markWithdrawalFailed(args: { withdrawalId: string; reason?: string }) {
+    // If it is in approved status, transition to processing first to respect the transition path: approved -> processing -> failed
+    const { data: currentWd } = await admin
+      .from("withdrawals")
+      .select("status")
+      .eq("id", args.withdrawalId)
+      .maybeSingle();
+
+    if (currentWd && currentWd.status === "approved") {
+      await admin
+        .from("withdrawals")
+        .update({
+          status: "processing",
+          processed_at: new Date().toISOString(),
+        } as any)
+        .eq("id", args.withdrawalId)
+        .eq("status", "approved");
+    }
+
     const { data: wd } = await admin
       .from("withdrawals")
       .update({
@@ -1669,7 +2081,7 @@ export const PaymentService = {
         processed_at: new Date().toISOString(),
       })
       .eq("id", args.withdrawalId)
-      .in("status", ["approved", "processing"])
+      .eq("status", "processing")
       .select("id, user_id, amount, currency")
       .maybeSingle();
     if (!wd) return;
@@ -1698,6 +2110,13 @@ export const PaymentService = {
       entityType: "withdrawal", entityId: wd.id,
       metadata: { reason: args.reason, amount: amt },
     });
+
+    await logWithdrawalEvent({
+      withdrawalId: wd.id,
+      status: "failed",
+      metadata: { reason: args.reason },
+    });
+
     await notify({
       userId: wd.user_id,
       type: "withdrawal_completed",
@@ -1707,18 +2126,36 @@ export const PaymentService = {
     });
   },
 
-  async markWithdrawalCompleted(args: { withdrawalId: string; payoutRef?: string }) {
+  async markWithdrawalCompleted(args: { withdrawalId: string; payoutRef?: string; ipAddress?: string | null }) {
+    // If it is in approved status, transition to processing first to respect the transition path: approved -> processing -> completed
+    const { data: currentWd } = await admin
+      .from("withdrawals")
+      .select("status")
+      .eq("id", args.withdrawalId)
+      .maybeSingle();
+
+    if (currentWd && currentWd.status === "approved") {
+      await admin
+        .from("withdrawals")
+        .update({
+          status: "processing",
+          processed_at: new Date().toISOString(),
+        } as any)
+        .eq("id", args.withdrawalId)
+        .eq("status", "approved");
+    }
+
     // Idempotent: only completes an in-flight withdrawal.
     const { data: wd, error } = await admin
       .from("withdrawals")
       .update({
         status: "completed",
         completed_at: new Date().toISOString(),
-        payout_ref: args.payoutRef ?? null,
+        payout_ref: args.payoutRef ?? "Manual Payout",
         processed_at: new Date().toISOString(),
       })
       .eq("id", args.withdrawalId)
-      .in("status", ["approved", "processing"])
+      .eq("status", "processing")
       .select("id, user_id, amount, currency")
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -1749,6 +2186,15 @@ export const PaymentService = {
       entityType: "withdrawal", entityId: wd.id,
       metadata: { amount: wd.amount, payoutRef: args.payoutRef },
     });
+
+    await logWithdrawalEvent({
+      withdrawalId: wd.id,
+      status: "completed",
+      payoutProvider: args.payoutRef === "Manual Payout" ? "Manual" : "RazorpayX",
+      gatewayReference: args.payoutRef ?? "Manual Payout",
+      ipAddress: args.ipAddress,
+    });
+
     await notify({
       userId: wd.user_id,
       type: "withdrawal_completed",
@@ -1756,6 +2202,80 @@ export const PaymentService = {
       body: `₹${Number(wd.amount).toLocaleString("en-IN")} sent to your account.`,
       payload: { withdrawal_id: wd.id },
     });
+  },
+
+  async recoverProcessingWithdrawals() {
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    
+    // Find all withdrawals in 'processing' status for more than 10 minutes
+    const { data: withdrawals, error } = await admin
+      .from("withdrawals")
+      .select("id, user_id, amount, currency, razorpay_payout_id, status")
+      .eq("status", "processing")
+      .lt("processed_at", tenMinutesAgo);
+
+    if (error) {
+      console.error("[payout-recovery] Failed to fetch processing withdrawals:", error.message);
+      return { success: false, error: error.message };
+    }
+
+    if (!withdrawals || withdrawals.length === 0) {
+      return { success: true, recoveredCount: 0 };
+    }
+
+    console.log(`[payout-recovery] Found ${withdrawals.length} stuck processing withdrawals.`);
+    let recoveredCount = 0;
+
+    for (const wd of withdrawals) {
+      try {
+        // If payout never started (no payout id) -> needs_review to allow admin retry
+        if (!wd.razorpay_payout_id) {
+          console.log(`[payout-recovery] Payout never started for withdrawal ${wd.id}. Setting back to 'needs_review'.`);
+          await admin
+            .from("withdrawals")
+            .update({
+              status: "needs_review",
+              admin_notes: "Payout recovery: never started. Reset to needs_review.",
+            } as any)
+            .eq("id", wd.id);
+          recoveredCount++;
+          continue;
+        }
+
+        // Call provider status check
+        const payout = await razorpay.getPayout(wd.razorpay_payout_id);
+
+        if (payout.status === "processed") {
+          console.log(`[payout-recovery] Provider reports success for withdrawal ${wd.id}. Marking completed.`);
+          await this.markWithdrawalCompleted({
+            withdrawalId: wd.id,
+            payoutRef: payout.utr || payout.id,
+          });
+          recoveredCount++;
+        } else if (["reversed", "rejected", "failed"].includes(payout.status)) {
+          console.log(`[payout-recovery] Provider reports failure (${payout.status}) for withdrawal ${wd.id}. Marking failed.`);
+          await this.markWithdrawalFailed({
+            withdrawalId: wd.id,
+            reason: `Payout failed on gateway with status: ${payout.status}`,
+          });
+          // Save provider response and failed_at
+          await admin
+            .from("withdrawals")
+            .update({
+              failed_at: new Date().toISOString(),
+              provider_response: payout as any,
+            } as any)
+            .eq("id", wd.id);
+          recoveredCount++;
+        } else {
+          console.log(`[payout-recovery] Payout ${wd.id} is still in flight (provider status: ${payout.status}). Skipping.`);
+        }
+      } catch (e) {
+        console.error(`[payout-recovery] Failed to recover withdrawal ${wd.id}:`, e);
+      }
+    }
+
+    return { success: true, recoveredCount };
   },
 
   // -------- Wallet snapshot --------

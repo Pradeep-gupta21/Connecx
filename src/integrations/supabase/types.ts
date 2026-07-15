@@ -2000,6 +2000,8 @@ export type Database = {
           payout_method_id: string | null
           payout_ref: string | null
           processed_at: string | null
+          failed_at: string | null
+          provider_response: Json | null
           razorpay_payout_id: string | null
           status: Database["public"]["Enums"]["withdrawal_status"]
           updated_at: string
@@ -2018,6 +2020,7 @@ export type Database = {
           currency?: string
           deleted_at?: string | null
           destination?: Json
+          failed_at?: string | null
           failure_reason?: string | null
           fee?: number
           id?: string
@@ -2026,6 +2029,7 @@ export type Database = {
           payout_method_id?: string | null
           payout_ref?: string | null
           processed_at?: string | null
+          provider_response?: Json | null
           razorpay_payout_id?: string | null
           status?: Database["public"]["Enums"]["withdrawal_status"]
           updated_at?: string
@@ -2044,6 +2048,7 @@ export type Database = {
           currency?: string
           deleted_at?: string | null
           destination?: Json
+          failed_at?: string | null
           failure_reason?: string | null
           fee?: number
           id?: string
@@ -2052,6 +2057,7 @@ export type Database = {
           payout_method_id?: string | null
           payout_ref?: string | null
           processed_at?: string | null
+          provider_response?: Json | null
           razorpay_payout_id?: string | null
           status?: Database["public"]["Enums"]["withdrawal_status"]
           updated_at?: string
@@ -2074,6 +2080,60 @@ export type Database = {
             referencedRelation: "wallets"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      withdrawal_logs: {
+        Row: {
+          id: string
+          withdrawal_id: string
+          status: string
+          admin_id: string | null
+          payout_provider: string | null
+          gateway_reference: string | null
+          provider_response: Json | null
+          ip_address: string | null
+          metadata: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          withdrawal_id: string
+          status: string
+          admin_id?: string | null
+          payout_provider?: string | null
+          gateway_reference?: string | null
+          provider_response?: Json | null
+          ip_address?: string | null
+          metadata?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          withdrawal_id?: string
+          status?: string
+          admin_id?: string | null
+          payout_provider?: string | null
+          gateway_reference?: string | null
+          provider_response?: Json | null
+          ip_address?: string | null
+          metadata?: Json | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawal_logs_withdrawal_id_fkey"
+            columns: ["withdrawal_id"]
+            isOneToOne: false
+            referencedRelation: "withdrawals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "withdrawal_logs_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
         ]
       }
     }
@@ -2314,13 +2374,14 @@ export type Database = {
         | "fee"
         | "adjustment"
       withdrawal_status:
-        | "requested"
+        | "review_pending"
         | "processing"
         | "completed"
         | "failed"
         | "cancelled"
         | "approved"
         | "rejected"
+        | "needs_review"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2544,13 +2605,14 @@ export const Constants = {
         "adjustment",
       ],
       withdrawal_status: [
-        "requested",
+        "review_pending",
         "processing",
         "completed",
         "failed",
         "cancelled",
         "approved",
         "rejected",
+        "needs_review",
       ],
     },
   },

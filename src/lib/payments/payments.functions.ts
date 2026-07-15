@@ -2,6 +2,7 @@
 // All state changes are gated by requireSupabaseAuth; admin-only mutations
 // double-check the caller's role before proceeding.
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -223,7 +224,6 @@ export const adminReviewPayoutMethod = createServerFn({ method: "POST" })
 const adminWithdrawalSchema = z.object({
   withdrawalId: z.string().uuid(),
   action: z.enum(["approve", "reject"]),
-  triggerPayout: z.boolean().optional(),
   notes: z.string().max(500).optional(),
 });
 export const adminReviewWithdrawal = createServerFn({ method: "POST" })
@@ -235,21 +235,50 @@ export const adminReviewWithdrawal = createServerFn({ method: "POST" })
       _role: "admin",
     });
     if (!isAdmin) throw new Error("Admin only");
+    
+    const request = getRequest();
+    const ipAddress = request?.headers?.get("x-forwarded-for") || request?.headers?.get("x-real-ip");
     const { PaymentService } = await import("./service.server");
     if (data.action === "approve") {
       await PaymentService.adminApproveWithdrawal({
         withdrawalId: data.withdrawalId,
         adminId: context.userId,
         notes: data.notes,
-        triggerPayout: data.triggerPayout ?? false,
+        ipAddress,
       });
     } else {
       await PaymentService.adminRejectWithdrawal({
         withdrawalId: data.withdrawalId,
         adminId: context.userId,
         reason: data.notes,
+        ipAddress,
       });
     }
+    return { ok: true };
+  });
+
+// -------- Admin: Release Payout --------
+const releaseWdSchema = z.object({
+  withdrawalId: z.string().uuid(),
+});
+export const adminReleaseWithdrawalPayout = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => releaseWdSchema.parse(raw))
+  .handler(async ({ data, context }) => {
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (!isAdmin) throw new Error("Admin only");
+
+    const request = getRequest();
+    const ipAddress = request?.headers?.get("x-forwarded-for") || request?.headers?.get("x-real-ip");
+    const { PaymentService } = await import("./service.server");
+    await PaymentService.adminReleaseWithdrawalPayout({
+      withdrawalId: data.withdrawalId,
+      adminId: context.userId,
+      ipAddress,
+    });
     return { ok: true };
   });
 
@@ -267,10 +296,14 @@ export const adminMarkWithdrawalCompleted = createServerFn({ method: "POST" })
       _role: "admin",
     });
     if (!isAdmin) throw new Error("Admin only");
+
+    const request = getRequest();
+    const ipAddress = request?.headers?.get("x-forwarded-for") || request?.headers?.get("x-real-ip");
     const { PaymentService } = await import("./service.server");
     await PaymentService.markWithdrawalCompleted({
       withdrawalId: data.withdrawalId,
       payoutRef: data.payoutRef,
+      ipAddress,
     });
     return { ok: true };
   });
@@ -409,6 +442,19 @@ export const getAdminPaymentPayoutDetails = createServerFn({ method: "POST" })
       .limit(1)
       .maybeSingle();
 
+    let timeline: any[] = [];
+    if (withdrawal) {
+      const { data: logs } = await context.supabase
+        .from("withdrawal_logs")
+        .select(`
+          id, status, admin_id, payout_provider, gateway_reference, provider_response, ip_address, created_at,
+          profiles:admin_id(display_name)
+        `)
+        .eq("withdrawal_id", withdrawal.id)
+        .order("created_at", { ascending: true });
+      timeline = logs ?? [];
+    }
+
     return {
       payment,
       creator: {
@@ -440,7 +486,10 @@ export const getAdminPaymentPayoutDetails = createServerFn({ method: "POST" })
         approvedAt: withdrawal.approved_at,
         processedAt: withdrawal.processed_at,
         completedAt: withdrawal.completed_at,
+        failedAt: (withdrawal as any).failed_at,
+        providerResponse: (withdrawal as any).provider_response,
         adminNotes: withdrawal.admin_notes,
+        timeline,
       } : null,
     };
   });
@@ -723,4 +772,18 @@ export const adminGetPendingReleases = createServerFn({ method: "GET" })
     }
 
     return data ?? [];
+  });
+
+export const adminRecoverWithdrawals = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: isAdmin } = await context.supabase.rpc("has_role" as any, {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (!isAdmin) {
+      throw new Error("Unauthorized: Admin role required");
+    }
+    const { PaymentService } = await import("./service.server");
+    return PaymentService.recoverProcessingWithdrawals();
   });
