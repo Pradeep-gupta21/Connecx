@@ -1,0 +1,27 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#C4B5FD"/>
+      <stop offset="100%" stop-color="#0A0E16"/>
+    </linearGradient>
+    <radialGradient id="haloDark" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#A78BFA" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#A78BFA" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="liftDark" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#A78BFA" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="#0A0E16"/>
+  <g transform="translate(256,256)" filter="url(#liftDark)">
+    <path d="M -110,-100 C -50,-100 -12,-45 0,0" fill="none" stroke="#0A0E16" stroke-width="54" stroke-linecap="round"/>
+    <path d="M -110,100 C -50,100 -12,45 0,0" fill="none" stroke="#0A0E16" stroke-width="54" stroke-linecap="round"/>
+    <path d="M -110,-100 C -50,-100 -12,-45 0,0" fill="none" stroke="url(#gDark)" stroke-width="46" stroke-linecap="round"/>
+    <path d="M 110,-100 C 50,-100 12,-45 0,0" fill="none" stroke="url(#gDark)" stroke-width="46" stroke-linecap="round"/>
+    <path d="M -110,100 C -50,100 -12,45 0,0" fill="none" stroke="url(#gDark)" stroke-width="46" stroke-linecap="round"/>
+    <path d="M 110,100 C 50,100 12,45 0,0" fill="none" stroke="url(#gDark)" stroke-width="46" stroke-linecap="round"/>
+    <circle cx="-110" cy="-100" r="42" fill="#C4B5FD"/>
+    <circle cx="110" cy="100" r="70" fill="url(#haloDark)"/>
+    <circle cx="110" cy="100" r="30" fill="#A78BFA" stroke="#0A0E16" stroke-width="6"/>
+  </g>
+</svg>
