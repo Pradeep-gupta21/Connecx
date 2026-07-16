@@ -25,15 +25,25 @@ export function WorkspaceSwitcher() {
   const navigate = useNavigate();
 
   const switchableRoles = ALLOWED_SWITCH_ROLES.filter((role) => roles.includes(role));
-  const currentRole = switchableRoles.find((role) => role === activeRole) ?? switchableRoles[0] ?? null;
+  const currentRole = activeRole ?? switchableRoles[0] ?? null;
 
-  // Hide the workspace switcher for standard creator/advertiser users.
-  // Role switching is not permitted after account creation.
-  if (!currentRole || currentRole === "creator" || currentRole === "advertiser") return null;
+  if (!currentRole) return null;
 
   const current = roleMeta[currentRole];
   const Icon = current.icon;
   const canSwitch = switchableRoles.length > 1;
+  const isStaticRole = currentRole === "creator" || currentRole === "advertiser" || !canSwitch;
+
+  if (isStaticRole) {
+    return (
+      <div className="inline-flex h-9 items-center gap-2 rounded-full border border-border/70 bg-surface px-3 text-sm font-medium capitalize text-muted-foreground">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-foreground text-background">
+          <Icon className="h-3 w-3" />
+        </span>
+        {current.label}
+      </div>
+    );
+  }
 
   return (
     <DropdownMenu>
@@ -46,7 +56,7 @@ export function WorkspaceSwitcher() {
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-foreground text-background">
             <Icon className="h-3 w-3" />
           </span>
-          <span className="text-sm font-medium">{current.label}</span>
+          <span className="text-sm font-medium capitalize">{current.label}</span>
           <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
