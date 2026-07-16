@@ -81,15 +81,43 @@ export const deleteUserAccount = createServerFn({ method: "POST" })
       }
     }
 
-    // Call the server-side transactional function which deletes all related rows
-    // and finally removes the auth user. The function runs as a single transaction
-    // and will raise on error so we can rollback here as well.
-    // Supabase types may not include recently added RPCs; cast to any to call safely
-    const { data: rpcData, error: rpcErr } = await (supabaseAdmin as any).rpc("delete_user_and_related", {
-      _user_id: data.userId,
-      _actor_id: actorId,
-    });
-    if (rpcErr) throw new Error(rpcErr.message || "Failed to delete user");
+    // Try calling the server-side transactional function which deletes all related rows
+    // and finally removes the auth user. If the RPC is not deployed, fall back to
+    // the previous admin.deleteUser behavior to avoid blocking admins.
+    try {
+      // Supabase types may not include recently added RPCs; cast to any to call safely
+      const { data: rpcData, error: rpcErr } = await (supabaseAdmin as any).rpc("delete_user_and_related", {
+        _user_id: data.userId,
+        _actor_id: actorId,
+      });
+      if (rpcErr) throw rpcErr;
 
-    return { ok: true };
+      return { ok: true };
+    } catch (err: any) {
+      const msg = String(err?.message ?? err);
+      // If RPC not found in DB, fall back to admin.deleteUser (best-effort).
+      if (msg.includes("Could not find the function") || msg.includes("function delete_user_and_related") || msg.includes("does not exist")) {
+        // Attempt fallback: delete auth user via supabaseAdmin (this was previous behavior)
+        const { error: delErr } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+        if (delErr) throw new Error(delErr.message || "Failed to delete user (fallback)");
+
+        // Write audit log (best-effort)
+        try {
+          await supabaseAdmin.from("activity_logs").insert({
+            user_id: actorId,
+            action: "user.deleted",
+            entity_type: "profile",
+            entity_id: data.userId,
+            metadata: { fallback: true },
+          });
+        } catch {
+          // non-fatal
+        }
+
+        return { ok: true };
+      }
+
+      // Re-throw other errors
+      throw err;
+    }
   });
