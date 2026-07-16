@@ -16,6 +16,7 @@ import { CREATOR_CATEGORIES, INDUSTRIES } from "@/lib/constants";
 import { resolveCurrentLocation } from "@/lib/location";
 import { cn } from "@/lib/utils";
 import { scrapeSocialData } from "@/lib/social/socialScraper.functions";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({ meta: [{ title: "Complete your profile · Connecx" }] }),
@@ -41,6 +42,14 @@ function Onboarding() {
   const [rateMin, setRateMin] = useState("");
   const [rateMax, setRateMax] = useState("");
   const [socialUrl, setSocialUrl] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const [scrapedSocial, setScrapedSocial] = useState<{
+    platform: string;
+    handle: string;
+    follower_count: number | null;
+    engagement_rate: number | null;
+    url: string;
+  } | null>(null);
 
   // Advertiser
   const [brand, setBrand] = useState("");
@@ -103,6 +112,33 @@ function Onboarding() {
     }
   };
 
+  const handleScanSocial = async () => {
+    if (!socialUrl.trim()) return;
+    setScanning(true);
+    try {
+      const res = await scrapeSocialData({ data: socialUrl.trim() });
+      setScrapedSocial({
+        platform: res.platform,
+        handle: res.handle,
+        follower_count: res.follower_count,
+        engagement_rate: res.engagement_rate ? Math.round(res.engagement_rate * 10000) / 100 : null,
+        url: res.url,
+      });
+      toast.success(`Scanned ${res.platform} profile successfully!`);
+    } catch (e: any) {
+      toast.error("Could not scan profile automatically. You can enter manually.");
+      setScrapedSocial({
+        platform: "instagram",
+        handle: "",
+        follower_count: null,
+        engagement_rate: null,
+        url: socialUrl.trim(),
+      });
+    } finally {
+      setScanning(false);
+    }
+  };
+
   const finish = async () => {
     if (!user) return;
     if (role === "creator") {
@@ -112,8 +148,8 @@ function Onboarding() {
       if (Number(rateMax) < Number(rateMin)) {
         return toast.error("Maximum rate must be greater than or equal to minimum rate.");
       }
-      if (!socialUrl.trim()) {
-        return toast.error("Please enter a valid social media URL.");
+      if (!scrapedSocial) {
+        return toast.error("Please link at least one social media account.");
       }
       if (categories.length === 0) {
         return toast.error("Pick at least one category");
@@ -124,15 +160,6 @@ function Onboarding() {
     }
     setSaving(true);
     try {
-      let scrapedSocial = null;
-      if (role === "creator") {
-        try {
-          scrapedSocial = await scrapeSocialData({ data: socialUrl.trim() });
-        } catch (err) {
-          throw new Error("Failed to scan social account. Please check the URL.");
-        }
-      }
-
       const { error: profileErr } = await supabase
         .from("profiles")
         .update({
@@ -151,7 +178,7 @@ function Onboarding() {
           platform: scrapedSocial.platform as any,
           handle: scrapedSocial.handle.trim(),
           follower_count: scrapedSocial.follower_count ? Number(scrapedSocial.follower_count) : null,
-          engagement_rate: scrapedSocial.engagement_rate ? Number(scrapedSocial.engagement_rate) : null,
+          engagement_rate: scrapedSocial.engagement_rate ? Number(scrapedSocial.engagement_rate) / 100 : null,
           url: scrapedSocial.url.trim() || null,
           is_primary: true,
         });
@@ -171,6 +198,8 @@ function Onboarding() {
           : current
       );
       await queryClient.invalidateQueries({ queryKey: ["profile", user.id] });
+      await queryClient.invalidateQueries({ queryKey: ["creator_profile", user.id] });
+      await queryClient.invalidateQueries({ queryKey: ["creator_socials", user.id] });
 
       if (role === "creator") {
         const { error } = await supabase.from("creator_profiles").upsert(
@@ -271,15 +300,92 @@ function Onboarding() {
                 <Textarea id="bio" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="A line or two about you or your brand." />
               </div>
               {role === "creator" && (
-                <div className="space-y-2">
-                  <Label htmlFor="socialUrl">Primary Social Account URL (Instagram, YouTube, etc.) <span className="text-destructive">*</span></Label>
-                  <Input id="socialUrl" value={socialUrl} onChange={(e) => setSocialUrl(e.target.value)} placeholder="https://www.instagram.com/your_username" />
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="socialUrl">Primary Social Account URL (Instagram, YouTube, etc.) <span className="text-destructive">*</span></Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="socialUrl"
+                        value={socialUrl}
+                        onChange={(e) => setSocialUrl(e.target.value)}
+                        placeholder="https://www.instagram.com/your_username"
+                        disabled={scanning}
+                        className="flex-1"
+                      />
+                      <Button type="button" onClick={handleScanSocial} disabled={scanning || !socialUrl.trim()} className="shrink-0">
+                        {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : "Scan"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {scrapedSocial && (
+                    <div className="border border-border/60 bg-card p-4 rounded-lg space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <div className="flex items-center justify-between border-b pb-2 border-border/40">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Confirm Details</span>
+                        <span className="text-xs capitalize font-medium px-2 py-0.5 rounded bg-secondary flex items-center gap-1.5">
+                          {scrapedSocial.platform}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 gap-4">
+                        <div className="space-y-1.5">
+                          <Label>Handle / Name</Label>
+                          <Input
+                            value={scrapedSocial.handle}
+                            onChange={(e) => setScrapedSocial({ ...scrapedSocial, handle: e.target.value })}
+                            className="bg-background"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label>Followers</Label>
+                            <Input
+                              type="number"
+                              value={scrapedSocial.follower_count ?? ""}
+                              onChange={(e) => setScrapedSocial({ ...scrapedSocial, follower_count: e.target.value ? Number(e.target.value) : null })}
+                              className="bg-background"
+                              placeholder="e.g. 50000"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label>Engagement Rate (%)</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={scrapedSocial.engagement_rate ?? ""}
+                              onChange={(e) => setScrapedSocial({ ...scrapedSocial, engagement_rate: e.target.value ? Number(e.target.value) : null })}
+                              className="bg-background"
+                              placeholder="e.g. 4.5"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>Verify Platform Type</Label>
+                          <Select
+                            value={scrapedSocial.platform}
+                            onValueChange={(val) => setScrapedSocial({ ...scrapedSocial, platform: val })}
+                          >
+                            <SelectTrigger className="bg-background">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="instagram">Instagram</SelectItem>
+                              <SelectItem value="youtube">YouTube</SelectItem>
+                              <SelectItem value="tiktok">TikTok</SelectItem>
+                              <SelectItem value="twitter">Twitter</SelectItem>
+                              <SelectItem value="facebook">Facebook</SelectItem>
+                              <SelectItem value="website">Website</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
             <div className="mt-10 flex justify-end">
-              <Button onClick={() => setStep(2)} disabled={!displayName.trim() || !username.trim() || !bio.trim() || (role === "creator" && !socialUrl.trim())}>Continue</Button>
+              <Button onClick={() => setStep(2)} disabled={!displayName.trim() || !username.trim() || !bio.trim() || (role === "creator" && !scrapedSocial)}>Continue</Button>
             </div>
           </div>
         ) : (
