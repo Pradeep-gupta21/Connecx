@@ -183,7 +183,7 @@ function AdminUsers() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to permanently delete {deleteTarget?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. The user will be removed from authentication, the database, storage and all related tables.
+              This action is permanent and cannot be undone. The user will be removed from authentication, the database, storage and all related tables.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -2283,6 +2283,10 @@ export type Database = {
         Args: { _campaign_id: string }
         Returns: undefined
       }
+      delete_user_and_related: {
+        Args: { _user_id: string; _actor_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "advertiser" | "creator" | "admin" | "moderator"

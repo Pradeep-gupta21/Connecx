@@ -81,22 +81,15 @@ export const deleteUserAccount = createServerFn({ method: "POST" })
       }
     }
 
-    // Delete the auth user — cascades to public tables via FK constraints
-    const { error: delErr } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
-    if (delErr) throw new Error(delErr.message || "Failed to delete user");
-
-    // Audit log
-    try {
-      await supabaseAdmin.from("activity_logs").insert({
-        user_id: actorId,
-        action: "user.deleted",
-        entity_type: "profile",
-        entity_id: data.userId,
-        metadata: { email: target.user.email },
-      });
-    } catch {
-      // non-fatal
-    }
+    // Call the server-side transactional function which deletes all related rows
+    // and finally removes the auth user. The function runs as a single transaction
+    // and will raise on error so we can rollback here as well.
+    // Supabase types may not include recently added RPCs; cast to any to call safely
+    const { data: rpcData, error: rpcErr } = await (supabaseAdmin as any).rpc("delete_user_and_related", {
+      _user_id: data.userId,
+      _actor_id: actorId,
+    });
+    if (rpcErr) throw new Error(rpcErr.message || "Failed to delete user");
 
     return { ok: true };
   });
