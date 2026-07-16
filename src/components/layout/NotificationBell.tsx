@@ -152,6 +152,20 @@ export function NotificationBell() {
     }
   }, [user]);
 
+  // Automatically sync/subscribe if browser permission is already granted
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      "Notification" in window &&
+      Notification.permission === "granted" &&
+      user
+    ) {
+      subscribeToPush(user.id).catch((err) =>
+        console.error("Auto push subscription sync failed:", err)
+      );
+    }
+  }, [user]);
+
 
   const unread = notifications.filter((n) => !n.read_at).length;
 
