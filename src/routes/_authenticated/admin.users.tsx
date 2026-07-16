@@ -68,10 +68,10 @@ function AdminUsers() {
 
   const del = useMutation({
     mutationFn: async (id: string) => {
-      await deleteFn({ data: { userId: id } });
+      return await deleteFn({ data: { userId: id } });
     },
-    onSuccess: () => {
-      toast.success("User deleted successfully.");
+    onSuccess: (res: any) => {
+      toast.success(res?.message ?? "User deleted successfully.");
       qc.invalidateQueries({ queryKey: ["admin"] });
       setDeleteTarget(null);
     },
