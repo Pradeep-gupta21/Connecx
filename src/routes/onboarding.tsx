@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CREATOR_CATEGORIES, INDUSTRIES } from "@/lib/constants";
 import { resolveCurrentLocation } from "@/lib/location";
 import { cn } from "@/lib/utils";
+import { scrapeSocialData } from "@/lib/social/socialScraper.functions";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({ meta: [{ title: "Complete your profile · Connecx" }] }),
@@ -39,6 +40,7 @@ function Onboarding() {
   const [categories, setCategories] = useState<string[]>([]);
   const [rateMin, setRateMin] = useState("");
   const [rateMax, setRateMax] = useState("");
+  const [socialUrl, setSocialUrl] = useState("");
 
   // Advertiser
   const [brand, setBrand] = useState("");
@@ -103,37 +105,66 @@ function Onboarding() {
 
   const finish = async () => {
     if (!user) return;
-    if (!displayName.trim()) return toast.error("Add a display name");
-    if (username && !/^[a-zA-Z0-9_]{3,30}$/.test(username.trim())) {
-      return toast.error("Username must be 3-30 letters, numbers, or underscores");
-    }
-    if (role === "creator" && categories.length === 0) {
-      return toast.error("Pick at least one category");
+    if (role === "creator") {
+      if (!rateMin || !rateMax || Number(rateMin) <= 0 || Number(rateMax) <= 0) {
+        return toast.error("Please enter valid minimum and maximum rates.");
+      }
+      if (Number(rateMax) < Number(rateMin)) {
+        return toast.error("Maximum rate must be greater than or equal to minimum rate.");
+      }
+      if (!socialUrl.trim()) {
+        return toast.error("Please enter a valid social media URL.");
+      }
+      if (categories.length === 0) {
+        return toast.error("Pick at least one category");
+      }
     }
     if (role === "advertiser" && !brand.trim()) {
       return toast.error("Add your brand name");
     }
     setSaving(true);
     try {
+      let scrapedSocial = null;
+      if (role === "creator") {
+        try {
+          scrapedSocial = await scrapeSocialData({ data: socialUrl.trim() });
+        } catch (err) {
+          throw new Error("Failed to scan social account. Please check the URL.");
+        }
+      }
+
       const { error: profileErr } = await supabase
         .from("profiles")
         .update({
-          display_name: displayName,
-          username: username.trim() || null,
-          bio: bio || null,
+          display_name: displayName.trim(),
+          username: username.trim(),
+          bio: bio.trim(),
           location: location || null,
           onboarded: true,
         })
         .eq("id", user.id);
       if (profileErr) throw profileErr;
 
+      if (role === "creator" && scrapedSocial) {
+        const { error: socialErr } = await supabase.from("social_accounts").insert({
+          user_id: user.id,
+          platform: scrapedSocial.platform as any,
+          handle: scrapedSocial.handle.trim(),
+          follower_count: scrapedSocial.follower_count ? Number(scrapedSocial.follower_count) : null,
+          engagement_rate: scrapedSocial.engagement_rate ? Number(scrapedSocial.engagement_rate) : null,
+          url: scrapedSocial.url.trim() || null,
+          is_primary: true,
+        });
+        if (socialErr) throw socialErr;
+      }
+
       queryClient.setQueryData<Profile | null>(["profile", user.id], (current) =>
         current
           ? {
               ...current,
-              display_name: displayName,
-              username: username.trim() || null,
-              bio: bio || null,
+              display_name: displayName.trim(),
+              username: username.trim(),
+              bio: bio.trim(),
               location: location || null,
               onboarded: true,
             }
@@ -202,11 +233,11 @@ function Onboarding() {
 
             <div className="mt-10 space-y-5 max-w-lg">
               <div className="space-y-2">
-                <Label htmlFor="name">Display name</Label>
+                <Label htmlFor="name">Display name <span className="text-destructive">*</span></Label>
                 <Input id="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username">Username <span className="text-destructive">*</span></Label>
                 <div className="flex">
                   <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-secondary text-sm text-muted-foreground">
                     @
@@ -236,13 +267,19 @@ function Onboarding() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="bio">Short bio</Label>
+                <Label htmlFor="bio">Short bio <span className="text-destructive">*</span></Label>
                 <Textarea id="bio" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="A line or two about you or your brand." />
               </div>
+              {role === "creator" && (
+                <div className="space-y-2">
+                  <Label htmlFor="socialUrl">Primary Social Account URL (Instagram, YouTube, etc.) <span className="text-destructive">*</span></Label>
+                  <Input id="socialUrl" value={socialUrl} onChange={(e) => setSocialUrl(e.target.value)} placeholder="https://www.instagram.com/your_username" />
+                </div>
+              )}
             </div>
 
             <div className="mt-10 flex justify-end">
-              <Button onClick={() => setStep(2)} disabled={!displayName.trim()}>Continue</Button>
+              <Button onClick={() => setStep(2)} disabled={!displayName.trim() || !username.trim() || !bio.trim() || (role === "creator" && !socialUrl.trim())}>Continue</Button>
             </div>
           </div>
         ) : (
@@ -294,11 +331,11 @@ function Onboarding() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <Label htmlFor="rmin">Rate min (₹)</Label>
+                      <Label htmlFor="rmin">Rate min (₹) <span className="text-destructive">*</span></Label>
                       <Input id="rmin" type="number" min="0" value={rateMin} onChange={(e) => setRateMin(e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="rmax">Rate max (₹)</Label>
+                      <Label htmlFor="rmax">Rate max (₹) <span className="text-destructive">*</span></Label>
                       <Input id="rmax" type="number" min="0" value={rateMax} onChange={(e) => setRateMax(e.target.value)} />
                     </div>
                   </div>

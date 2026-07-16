@@ -67,17 +67,26 @@ function SettingsPage() {
 
   const saveProfile = async () => {
     if (!user) return;
-    if (username && !/^[a-zA-Z0-9_]{3,30}$/.test(username.trim())) {
+    if (!displayName.trim()) {
+      return toast.error("Display name is a mandatory field.");
+    }
+    if (!username.trim()) {
+      return toast.error("Username is a mandatory field.");
+    }
+    if (!/^[a-zA-Z0-9_]{3,30}$/.test(username.trim())) {
       return toast.error("Username must be 3-30 letters, numbers, or underscores");
+    }
+    if (!bio.trim()) {
+      return toast.error("Bio is a mandatory field.");
     }
     setSavingProfile(true);
     const { error } = await supabase
       .from("profiles")
       .update({
-        display_name: displayName,
-        username: username.trim() || null,
+        display_name: displayName.trim(),
+        username: username.trim(),
         location,
-        bio,
+        bio: bio.trim(),
         country,
         phone,
       })
@@ -165,11 +174,11 @@ function SettingsPage() {
 
           <div className="surface-card p-4 space-y-5 sm:p-6">
             <div className="space-y-2">
-              <Label htmlFor="dn">Display name</Label>
+              <Label htmlFor="dn">Display name <span className="text-destructive">*</span></Label>
               <Input id="dn" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="un">Username</Label>
+              <Label htmlFor="un">Username <span className="text-destructive">*</span></Label>
               <div className="flex">
                 <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input bg-secondary text-sm text-muted-foreground">
                   @
@@ -199,7 +208,7 @@ function SettingsPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="bio">Bio</Label>
+              <Label htmlFor="bio">Bio <span className="text-destructive">*</span></Label>
               <Textarea id="bio" rows={4} value={bio} onChange={(e) => setBio(e.target.value)} />
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -373,6 +382,9 @@ function SocialAccountsManager() {
 
   const handleDelete = async (id: string) => {
     if (!user) return;
+    if (socials && socials.length <= 1) {
+      return toast.error("You must keep at least one linked social account.");
+    }
     const { error } = await supabase.from("social_accounts").delete().eq("id", id);
     if (error) {
       toast.error(error.message);
@@ -575,12 +587,18 @@ function CreatorSettings() {
 
   const save = async () => {
     if (!user) return;
+    if (!rateMin || !rateMax || Number(rateMin) <= 0 || Number(rateMax) <= 0) {
+      return toast.error("Please enter valid minimum and maximum rates.");
+    }
+    if (Number(rateMax) < Number(rateMin)) {
+      return toast.error("Maximum rate must be greater than or equal to minimum rate.");
+    }
     setBusy(true);
     const { error } = await supabase.from("creator_profiles").upsert({
       user_id: user.id,
       headline,
-      rate_min: rateMin ? Number(rateMin) : null,
-      rate_max: rateMax ? Number(rateMax) : null,
+      rate_min: Number(rateMin),
+      rate_max: Number(rateMax),
       categories: categories.split(",").map((s) => s.trim()).filter(Boolean),
     }, { onConflict: "user_id" });
     setBusy(false);
@@ -597,11 +615,11 @@ function CreatorSettings() {
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>Rate min ($)</Label>
+          <Label>Rate min (₹) <span className="text-destructive">*</span></Label>
           <Input type="number" min="0" value={rateMin} onChange={(e) => setRateMin(e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label>Rate max ($)</Label>
+          <Label>Rate max (₹) <span className="text-destructive">*</span></Label>
           <Input type="number" min="0" value={rateMax} onChange={(e) => setRateMax(e.target.value)} />
         </div>
       </div>
