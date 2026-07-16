@@ -28,7 +28,7 @@ export const Route = createFileRoute("/_authenticated/settings")({
 
 function SettingsPage() {
   const { user, signOut } = useAuth();
-  const { profile, roles } = useWorkspace();
+  const { profile, activeRole, roles } = useWorkspace();
   const qc = useQueryClient();
 
   const [displayName, setDisplayName] = useState("");
@@ -101,14 +101,15 @@ function SettingsPage() {
     <div className="w-full max-w-3xl mx-auto space-y-6 px-2 sm:px-0 sm:space-y-8">
       <PageHeader title="Settings" description="Manage your profile, workspaces, and account." />
 
+      {activeRole && (activeRole === "creator" || activeRole === "advertiser") && (
+        <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-secondary/60 px-3 py-2 text-sm font-medium text-muted-foreground">
+          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+          {activeRole === "creator" ? "Creator workspace" : "Advertiser workspace"}
+        </div>
+      )}
+
       <Tabs
-        defaultValue={
-          roles.includes("creator")
-            ? "creator"
-            : roles.includes("advertiser")
-            ? "advertiser"
-            : "profile"
-        }
+        defaultValue={activeRole ?? (roles.includes("creator") ? "creator" : roles.includes("advertiser") ? "advertiser" : "profile")}
       >
         <TabsList className="flex-wrap h-auto gap-1 sm:gap-2">
           <TabsTrigger value="profile" className="text-sm">Profile</TabsTrigger>
@@ -121,13 +122,13 @@ function SettingsPage() {
             Payouts
           </TabsTrigger>
 
-          {roles.includes("creator") && (
+          {activeRole === "creator" && (
             <TabsTrigger value="creator" className="text-sm">
               Creator
             </TabsTrigger>
           )}
 
-          {roles.includes("advertiser") && (
+          {activeRole === "advertiser" && (
             <TabsTrigger value="advertiser" className="text-sm">
               Advertiser
             </TabsTrigger>
@@ -224,14 +225,14 @@ function SettingsPage() {
           </div>
         </TabsContent>
 
-        {roles.includes("creator") && (
+        {activeRole === "creator" && (
             <TabsContent value="creator" className="mt-4 sm:mt-6 space-y-6">
               <CreatorSettings />
               <SocialAccountsManager />
             </TabsContent>
           )}
 
-          {roles.includes("advertiser") && (
+          {activeRole === "advertiser" && (
             <TabsContent value="advertiser" className="mt-4 sm:mt-6">
               <AdvertiserSettings />
             </TabsContent>
