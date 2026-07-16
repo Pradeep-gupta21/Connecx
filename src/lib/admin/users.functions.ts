@@ -90,16 +90,16 @@ export const deleteUserAccount = createServerFn({ method: "POST" })
         _user_id: data.userId,
         _actor_id: actorId,
       });
-      if (rpcErr) throw rpcErr;
+      if (rpcErr) throw new Error(rpcErr.message || JSON.stringify(rpcErr));
 
-      return { ok: true };
+      return { ok: true, message: "Deleted via RPC" };
     } catch (err: any) {
-      const msg = String(err?.message ?? err);
+      const msg = String(err?.message ?? err ?? "");
       // If RPC not found in DB, fall back to admin.deleteUser (best-effort).
       if (msg.includes("Could not find the function") || msg.includes("function delete_user_and_related") || msg.includes("does not exist")) {
         // Attempt fallback: delete auth user via supabaseAdmin (this was previous behavior)
         const { error: delErr } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
-        if (delErr) throw new Error(delErr.message || "Failed to delete user (fallback)");
+        if (delErr) throw new Error(delErr.message || JSON.stringify(delErr) || "Failed to delete user (fallback)");
 
         // Write audit log (best-effort)
         try {
@@ -114,10 +114,10 @@ export const deleteUserAccount = createServerFn({ method: "POST" })
           // non-fatal
         }
 
-        return { ok: true };
+        return { ok: true, message: "Deleted via fallback" };
       }
 
-      // Re-throw other errors
-      throw err;
+      // Re-throw other errors as Error with message
+      throw new Error(msg || "Failed to delete user");
     }
   });
