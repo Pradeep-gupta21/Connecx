@@ -27,7 +27,9 @@ export function WorkspaceSwitcher() {
   const switchableRoles = ALLOWED_SWITCH_ROLES.filter((role) => roles.includes(role));
   const currentRole = switchableRoles.find((role) => role === activeRole) ?? switchableRoles[0] ?? null;
 
-  if (!currentRole) return null;
+  // Hide the workspace switcher for standard creator/advertiser users.
+  // Role switching is not permitted after account creation.
+  if (!currentRole || currentRole === "creator" || currentRole === "advertiser") return null;
 
   const current = roleMeta[currentRole];
   const Icon = current.icon;

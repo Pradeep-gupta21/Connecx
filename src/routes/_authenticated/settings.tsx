@@ -10,10 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
-import { useWorkspace, type AppRole } from "@/hooks/useWorkspace";
+import { useWorkspace } from "@/hooks/useWorkspace";
 import { supabase } from "@/integrations/supabase/client";
 import { COUNTRIES, dialFor } from "@/lib/countries";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -97,24 +96,6 @@ function SettingsPage() {
     toast.success("Profile saved");
   };
 
-
-  const toggleRole = async (role: AppRole, on: boolean) => {
-    if (!user) return;
-    if (on) {
-      const { error } = await supabase.from("user_roles").insert({ user_id: user.id, role });
-      if (error) return toast.error(error.message);
-      if (role === "advertiser") {
-        await supabase.from("advertiser_profiles").upsert({ user_id: user.id, brand_name: displayName }, { onConflict: "user_id" });
-      } else {
-        await supabase.from("creator_profiles").upsert({ user_id: user.id }, { onConflict: "user_id" });
-      }
-    } else {
-      const { error } = await supabase.from("user_roles").delete().eq("user_id", user.id).eq("role", role);
-      if (error) return toast.error(error.message);
-    }
-    qc.invalidateQueries({ queryKey: ["user_roles", user.id] });
-    toast.success("Workspaces updated");
-  };
 
   return (
     <div className="w-full max-w-3xl mx-auto space-y-6 px-2 sm:px-0 sm:space-y-8">
@@ -261,22 +242,6 @@ function SettingsPage() {
             <div>
               <p className="text-sm font-medium">Email</p>
               <p className="text-sm text-muted-foreground">{user?.email}</p>
-            </div>
-            <div className="border-t border-border pt-5">
-              <p className="text-sm font-medium mb-3">Workspaces</p>
-              <div className="space-y-3">
-                {(["advertiser", "creator"] as const).map((r) => (
-                  <div key={r} className="flex flex-col gap-3 rounded-md border border-border/70 p-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm capitalize">{r}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {r === "advertiser" ? "Run campaigns and brief creators." : "Pitch on campaigns and get hired."}
-                      </p>
-                    </div>
-                    <Switch checked={roles.includes(r)} onCheckedChange={(on) => toggleRole(r, on)} />
-                  </div>
-                ))}
-              </div>
             </div>
             <div className="border-t border-border pt-5">
               <Button variant="outline" onClick={signOut}>Sign out</Button>
