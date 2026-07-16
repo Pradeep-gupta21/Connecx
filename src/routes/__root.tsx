@@ -99,7 +99,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [{ rel: "stylesheet", href: appCss },
+            {rel: "icon", href: "/connecx-favicon-3.ico", sizes: "any"},
+            {
+              rel:"icon",
+              type:"image/svg+xml",
+              href:"/connecx-favicon-3.svg"
+            },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -110,7 +117,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <head>
+      <head >
         <HeadContent />
       </head>
       <body>
