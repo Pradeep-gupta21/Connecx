@@ -173,29 +173,25 @@ function CreatorProfilePage() {
   const avgRating = reviews.length ? reviews.reduce((s: number, r: any) => s + r.rating, 0) / reviews.length : null;
   const completion = computeCompletion(c, p, socials, portfolio);
   const connectedSocials = (socials ?? []).filter((s: any) => Boolean(s?.platform));
-  const socialFollowerTotal = connectedSocials.reduce((sum: number, s: any) => {
-    return sum + (typeof s?.follower_count === "number" && s.follower_count > 0 ? s.follower_count : 0);
-  }, 0);
-  const followerCountValue = connectedSocials.length > 0
-    ? (socialFollowerTotal > 0 ? socialFollowerTotal : (typeof c.follower_count === "number" && c.follower_count > 0 ? c.follower_count : null))
+  
+  // Find the primary social account
+  const primarySocial = connectedSocials.find((s: any) => s.is_primary) ?? connectedSocials[0] ?? null;
+  
+  const followerCountValue = primarySocial
+    ? (typeof primarySocial.follower_count === "number" && primarySocial.follower_count > 0 ? primarySocial.follower_count : (typeof c.follower_count === "number" && c.follower_count > 0 ? c.follower_count : null))
     : (typeof c.follower_count === "number" && c.follower_count > 0 ? c.follower_count : null);
   
   const followersDisplay = followerCountValue ? (formatFollowerCount(followerCountValue) ?? "—") : "—";
   const isOwner = user?.id === id;
-  const followersSubtitle = isOwner && connectedSocials.length === 0 && !followerCountValue
+  const followersSubtitle = isOwner && !primarySocial && !followerCountValue
     ? "Connect your social accounts to display follower count."
     : undefined;
   const followersValue = followersDisplay;
 
-  // Calculate Average Engagement Rate from connected socials
-  const connectedSocialsWithER = connectedSocials.filter(
-    (s: any) => typeof s.engagement_rate === "number" && s.engagement_rate > 0
-  );
-  const avgEngagementRate = connectedSocialsWithER.length > 0
-    ? connectedSocialsWithER.reduce((sum: number, s: any) => sum + s.engagement_rate, 0) / connectedSocialsWithER.length
-    : null;
-  
-  const engagementRateValue = avgEngagementRate ?? analytics.engagement_rate ?? null;
+  // Use Engagement Rate from primary social account
+  const engagementRateValue = primarySocial && typeof primarySocial.engagement_rate === "number" && primarySocial.engagement_rate > 0
+    ? primarySocial.engagement_rate
+    : (analytics.engagement_rate ?? null);
   const formatEngagementRate = (val: number | null) => {
     if (val === null) return "—";
     const percent = val <= 1.0 ? val * 100 : val;

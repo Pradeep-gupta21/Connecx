@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { CardSkeleton } from "@/components/common/Skeletons";
 import { CREATOR_CATEGORIES } from "@/lib/constants";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/discover")({
   head: () => ({ meta: [{ title: "Discover creators · Connecx" }] }),
@@ -341,17 +342,25 @@ function Discover() {
                 )}
 
                 {c.socials && c.socials.length > 0 && (
-                  (() => {
-                    const primarySocial = c.socials[0];
-                    const Icon = socialIcons[primarySocial.platform] ?? Globe;
-                    const formatted = formatFollowers(primarySocial.follower_count);
-                    return (
-                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-semibold bg-secondary/80 py-1 px-2.5 rounded-full border border-border/40">
-                        <Icon className="h-3 w-3 text-muted-foreground/80" />
-                        <span>{formatted ? `${formatted}` : `@${primarySocial.handle}`}</span>
-                      </div>
-                    );
-                  })()
+                  <div className="flex items-center gap-1.5">
+                    {c.socials.map((s: any, idx: number) => {
+                      const Icon = socialIcons[s.platform] ?? Globe;
+                      const formatted = formatFollowers(s.follower_count);
+                      return (
+                        <div
+                          key={idx}
+                          className={cn(
+                            "flex items-center gap-1 text-[11px] text-muted-foreground font-semibold bg-secondary/80 py-1 rounded-full border border-border/40",
+                            s.is_primary ? "px-2.5" : "px-2"
+                          )}
+                          title={`${s.platform}: @${s.handle} (${formatted || '0'} followers)`}
+                        >
+                          <Icon className="h-3 w-3 text-muted-foreground/80" />
+                          {s.is_primary && <span>{formatted ? `${formatted}` : `@${s.handle}`}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
 

@@ -85,7 +85,13 @@ $$;
 
 DROP TRIGGER IF EXISTS enforce_creator_socials_delete ON public.social_accounts;
 CREATE TRIGGER enforce_creator_socials_delete
-BEFORE DELETE OR UPDATE OF deleted_at ON public.social_accounts
+BEFORE DELETE ON public.social_accounts
 FOR EACH ROW
-WHEN (OLD.deleted_at IS NULL AND (TG_OP = 'DELETE' OR NEW.deleted_at IS NOT NULL))
+EXECUTE FUNCTION public.check_social_accounts_limit();
+
+DROP TRIGGER IF EXISTS enforce_creator_socials_deactivate ON public.social_accounts;
+CREATE TRIGGER enforce_creator_socials_deactivate
+BEFORE UPDATE OF deleted_at ON public.social_accounts
+FOR EACH ROW
+WHEN (OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL)
 EXECUTE FUNCTION public.check_social_accounts_limit();
